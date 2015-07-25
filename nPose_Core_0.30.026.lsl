@@ -327,7 +327,7 @@ default{
         if (num == 999999){//slave has asked me to reset so it can get the chatchannel from me.
             llMessageLinked(LINK_SET, 1, (string)chatchannel, NULL_KEY); //let our scripts know the chat channel for props and adjusters
         }else if (num == DOPOSE_READER || num == DOACTION_READER){
-            list allData=llParseStringKeepNulls(str, ["?"], []);
+            list allData=llParseStringKeepNulls(str, [NC_READER_CONTENT_SEPARATOR], []);
             //allData: [ncName, alias, placeholder (currenly not used), contentLine1, contentLine2, ...]
             string ncName=llList2String(allData, 0);
             string menuName=llList2String(allData, 1);
