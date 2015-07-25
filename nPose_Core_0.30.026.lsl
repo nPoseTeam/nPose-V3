@@ -51,7 +51,7 @@ list slots;  //one stride = [animationName, posVector, rotVector, facials, sitte
 
 string curmenuonsit = "off"; //default menuonsit option
 
-string NC_READER_CONTENT_SEPARATOR="?";
+string NC_READER_CONTENT_SEPARATOR="โฅ";
 
 integer FindEmptySlot() {
     integer n;
@@ -164,7 +164,7 @@ SwapTwoSlots(integer currentseatnum, integer newseatnum) {
         integer OldSlot;
         integer NewSlot;
         for (; slotNum < slotMax; ++slotNum){
-            integer z = llSubStringIndex(llList2String(slots, slotNum*8+7), "ง");
+            integer z = llSubStringIndex(llList2String(slots, slotNum*8+7), "ยง");
             string strideSeat = llGetSubString(llList2String(slots, slotNum * 8+7), z+1,-1);
             if (strideSeat == "seat" + (string)(currentseatnum)){
                 OldSlot= slotNum;
@@ -200,11 +200,11 @@ ProcessLine(string sLine, key av, string ncName, string menuName){
         if (slotMax<lastStrideCount){
             slots = llListReplaceList(slots, [llList2String(params, 1), (vector)llList2String(params, 2),
                 llEuler2Rot((vector)llList2String(params, 3) * DEG_TO_RAD), llList2String(params, 4), llList2Key(slots, (slotMax)*stride+4),
-                 "", "",llGetSubString(llList2String(params, 5), 0, 12) + "ง" + "seat"+(string)(slotMax+1)], (slotMax)*stride, (slotMax)*stride+7);
+                 "", "",llGetSubString(llList2String(params, 5), 0, 12) + "ยง" + "seat"+(string)(slotMax+1)], (slotMax)*stride, (slotMax)*stride+7);
         }else{
             slots += [llList2String(params, 1), (vector)llList2String(params, 2),
                 llEuler2Rot((vector)llList2String(params, 3) * DEG_TO_RAD), llList2String(params, 4), "", "", "",
-                llGetSubString(llList2String(params, 5), 0, 12) + "ง" + "seat"+(string)(slotMax+1)]; 
+                llGetSubString(llList2String(params, 5), 0, 12) + "ยง" + "seat"+(string)(slotMax+1)]; 
         }
         slotMax++;
     }else if (action == "SCHMO" || action == "SCHMOE"){
@@ -241,7 +241,7 @@ ProcessLine(string sLine, key av, string ncName, string menuName){
                          slotNumber * stride + 2, slotNumber * stride + 2);
                     }
                     else if(index==6) {
-                        slots=llListReplaceList(slots, [llList2String(params, index) + "งseat" + (string)(slotNumber+1)],
+                        slots=llListReplaceList(slots, [llList2String(params, index) + "ยงseat" + (string)(slotNumber+1)],
                          slotNumber * stride + 7, slotNumber * stride + 7);
                     }
                 }
@@ -291,14 +291,14 @@ ProcessLine(string sLine, key av, string ncName, string menuName){
             index = (((integer)llList2String(params, 4) + -1) * stride + 5);
         }
         slots = llListReplaceList(slots, [llDumpList2String([llList2String(slots,index),
-            llDumpList2String(llDeleteSubList(params, 0, 0), "|")], "ง")], index, index);
+            llDumpList2String(llDeleteSubList(params, 0, 0), "|")], "ยง")], index, index);
     }else if (action == "NOTSATMSG"){
         integer index = (slotMax - 1) * stride + 6;
         if ((integer)llList2String(params, 4) >= 1){
             index = (((integer)llList2String(params, 4) + -1) * stride + 6);
         }
         slots = llListReplaceList(slots, [llDumpList2String([llList2String(slots,index),
-            llDumpList2String(llDeleteSubList(params, 0, 0), "|")], "ง")], index, index);
+            llDumpList2String(llDeleteSubList(params, 0, 0), "|")], "ยง")], index, index);
     }
 }
 
@@ -391,7 +391,7 @@ default{
             //usage:  LINKMSG|210|3  Will swap menu user to seat3 and seat3 occupant moves to existing menu user's seat#
             //this is intended as an internal call for ChangeSeat button but can be used by any plugin, LINKMSG, or SAT/NOTSATMSG
             integer slotIndex = llListFindList(slots, [id]);
-            integer z = llSubStringIndex(llList2String(slots, slotIndex + 3), "ง");
+            integer z = llSubStringIndex(llList2String(slots, slotIndex + 3), "ยง");
             string strideSeat = llGetSubString(llList2String(slots, slotIndex + 3), z+1,-1);
             integer oldseat = (integer)llGetSubString(strideSeat, 4,-1);
             if (oldseat <= 0) {
