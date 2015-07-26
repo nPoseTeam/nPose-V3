@@ -89,7 +89,7 @@ list adminbuttons = [ADJUSTBTN, STOPADJUSTBTN, POSDUMPBTN, UNSITBTN, OPTIONS];
 list pluginPermissionList;
 
 //NC Reader
-#define NC_READER_CONTENT_SEPARATOR "℥"
+#define NC_READER_CONTENT_SEPARATOR "%&§"
 #define NC_READER_REQUEST 224
 #define NC_READER_RESPONSE 225
 
