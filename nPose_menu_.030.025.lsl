@@ -146,7 +146,7 @@ Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page,
                         else if((string)((integer)item)==item){
                             /// seat number
                             integer slotIndex=llListFindList(slots, [rcpt]);
-                            integer z=llSubStringIndex(llList2String(slots, slotIndex + 1), "ง");
+                            integer z=llSubStringIndex(llList2String(slots, slotIndex + 1), "ยง");
                             string seatNumber=llGetSubString(llList2String(slots, slotIndex + 1), z+5,-1);
                             result=logicalXor(invert, item==seatNumber);
                         }
@@ -528,6 +528,7 @@ default{
 
             list newPermission=llCSV2List(str);
             if(llGetListLength(newPermission)==3) {
+                newPermission=llToLower(llList2String(newPermission, 0)) + llList2List(newPermission, 1, -1);
                 index=llListFindList(pluginPermissionList, [llList2String(newPermission, 0)]);
                 if(~index) {
                     pluginPermissionList=llDeleteSubList(pluginPermissionList, index, index+2);
@@ -544,7 +545,7 @@ default{
             slotbuttons = llParseString2List(str, [","], []);
             string strideSeat;
             for (n = 0; n < llGetListLength(slotbuttons); ++n){ // n is the slot number
-                index = llSubStringIndex(llList2String(slotbuttons, n), "ง");
+                index = llSubStringIndex(llList2String(slotbuttons, n), "ยง");
                 if (!index){
                     strideSeat = llGetSubString(llList2String(slotbuttons, n), 1,-1);
                 }else{
