@@ -29,6 +29,8 @@ list menuPerm;
 float currentOffsetDelta = 0.2;
 float menuDistance = 30.0;
 
+key scriptID;
+
 #define setprefix "SET"
 #define btnprefix "BTN"
 #define defaultprefix "DEFAULT"
@@ -86,14 +88,19 @@ list adminbuttons = [ADJUSTBTN, STOPADJUSTBTN, POSDUMPBTN, UNSITBTN, OPTIONS];
 #define USER_PERMISSION_TYPE_BOOL "bool"
 list pluginPermissionList;
 
+//NC Reader
+#define NC_READER_CONTENT_SEPARATOR "℥"
+#define NC_READER_REQUEST 224
+#define NC_READER_RESPONSE 225
+
+
 Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page, string Path){
-    key scriptID = llGetInventoryKey(llGetScriptName());
     integer stopc = llGetListLength(choices);
     integer nc;
     for (; nc < stopc; ++nc){
         integer indexc = llListFindList(menuPerm, [llList2String(choices, nc)]);
         if (indexc != -1){
-            string permissions = llList2String(menuPerm, indexc + 1);
+            string permissions = llToLower(llList2String(menuPerm, indexc + 1));
             if (permissions != ""){//only run this on buttons with button permissions.
                 //Check each button permission
                 
@@ -107,7 +114,7 @@ Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page,
                 // ~ means a logical OR
                 // Operators may be surrounded by spaces
 
-                // KEYWORDS (case sensitive)
+                // KEYWORDS (case insensitive)
                 // owner:  returns TRUE if the user is the object owner
                 // group:  returns TRUE if the active group of the user is equal to the group of the object
                 // seated: returns TRUE if the user is seated
@@ -117,9 +124,9 @@ Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page,
                 // Examples:
                 // 1~3 : is TRUE if the user is seated on seat number 1 or 3
                 // owner~2 : is TRUE for the object owner or anyone sitting on seat number 2
-                // owner&!victim : is TRUE for the object owner, but only if he/she isn't a victim
+                // owner&!rlvVictim : is TRUE for the object owner, but only if he/she isn't a victim (rlvVictim is a UserDefinedPermission used by the RLV+ plugin)
                 // 1~3&group: is TRUE for the user on seat 1 and also for the user on seat 3 if he/she has the same active group as the Object
-    
+
                 list permItemsOr=llParseString2List(permissions, ["~"], []);
                 integer indexOr=~llGetListLength(permItemsOr);
                 integer result;
@@ -255,7 +262,7 @@ BuildMenus(list cardNames){//builds the user defined menu buttons
         integer permsIndex2 = llSubStringIndex(name,"}");
         string menuPerms;
         if (~permsIndex1){ // found
-            menuPerms = llToLower(llGetSubString(name, permsIndex1+1, permsIndex2+-1));
+            menuPerms = llGetSubString(name, permsIndex1+1, permsIndex2+-1);
             name = llDeleteSubString(name, permsIndex1, permsIndex2);
         }
         list pathParts = llParseStringKeepNulls(name, [":"], []);
@@ -296,10 +303,11 @@ BuildMenus(list cardNames){//builds the user defined menu buttons
 
 default{
     state_entry(){
+        scriptID=llGetInventoryKey(llGetScriptName());
         if (llGetInventoryType(menuNC) != INVENTORY_NOTECARD){
             BuildMenus([]);
         }else{
-            llMessageLinked(LINK_SET, 224, menuNC, "");
+            llMessageLinked(LINK_SET, NC_READER_REQUEST, menuNC, scriptID);
         }
     }
     
@@ -316,7 +324,7 @@ default{
         integer n;
         integer stop;
         if (str == "MenuUp") llMessageLinked(LINK_SET, num, "PATH=" + path, "");
-        if (num == DIALOG_RESPONSE && id == llGetInventoryKey(llGetScriptName())){ //response from menu
+        if (num == DIALOG_RESPONSE && id == scriptID){ //response from menu
             list params = llParseString2List(str, ["|"], []);  //parse the message
             integer page = (integer)llList2String(params, 0);  //get the page number
             string selection = llList2String(params, 1);  //get the button that was pressed from str
@@ -517,9 +525,11 @@ default{
             DoMenu_AccessCtrl(toucherid, ROOTMENU, "", 0);
         }else if(num == -238){
             victims = llCSV2List(str);
-        }else if(num == 225){
-            BuildMenus(llList2List(llParseStringKeepNulls(str, ["?"], []), 4, -1));
-            str = "";
+        }else if(num == NC_READER_RESPONSE){
+            if(id==scriptID) {
+                BuildMenus(llList2List(llParseStringKeepNulls(str, [NC_READER_CONTENT_SEPARATOR], []), 3, -1));
+                str = "";
+            }
         }else if(num == USER_PERMISSION_UPDATE) {
             // @param str string CSV: permissionName,permissionType,permissionValue
             // permissionName: a unique name for a permission
@@ -562,10 +572,11 @@ default{
 
     changed(integer change){
         if (change & CHANGED_INVENTORY){
+            scriptID=llGetInventoryKey(llGetScriptName());
             if (llGetInventoryType(menuNC) != INVENTORY_NOTECARD){
                 BuildMenus([]);
             }else{
-                llMessageLinked(LINK_SET, 224, menuNC, "");
+                llMessageLinked(LINK_SET, NC_READER_REQUEST, menuNC, scriptID);
             }
         }
         if (change & CHANGED_OWNER){
