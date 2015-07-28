@@ -12,7 +12,7 @@
 // https://github.com/LeonaMorro/nPose-NC-Reader/issues
 // or IM slmember1 Resident (Leona)
 
-string NC_READER_CONTENT_SEPARATOR="℥";
+string NC_READER_CONTENT_SEPARATOR="%&§";
 integer MEMORY_TO_BE_USED=60000;
 
 integer DOPOSE=200;
