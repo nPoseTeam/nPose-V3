@@ -51,7 +51,7 @@ key scriptID;
 #define UNSIT -222
 #define DOMENU -800
 #define DOMENU_ACCESSCTRL -801
-#DEFINE EXTERNAL_UTIL_REQUEST -888
+#define EXTERNAL_UTIL_REQUEST -888
 #define memusage 34334
 #define seatupdate 35353
 #define SEAT_BUTTONS 35354
