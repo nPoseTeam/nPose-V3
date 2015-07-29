@@ -48,9 +48,14 @@ key scriptID;
 #define ADJUSTOFFSET 208
 #define SETOFFSET 209
 #define SWAPTO 210
+#define UNSIT -222
 #define DOMENU -800
 #define DOMENU_ACCESSCTRL -801
+#DEFINE EXTERNAL_UTIL_REQUEST -888
 #define memusage 34334
+#define seatupdate 35353
+#define SEAT_BUTTONS 35354
+#define VICTIMS_LIST -238
 #define optionsNum -240
 #define FWDBTN "forward"
 #define BKWDBTN "backward"
@@ -414,7 +419,7 @@ default{
 				for (; n < stop; n+=2){
 					key av = llList2Key(slots, n);
 					if (llGetSubString(llKey2Name(av), 0, 20) == selection){
-						llMessageLinked(LINK_SET, -222, (string)av, NULL_KEY);
+						llMessageLinked(LINK_SET, UNSIT, (string)av, NULL_KEY);
 					}else{
 						buttons += [llGetSubString(llKey2Name(av), 0, 20)];
 					}
@@ -458,7 +463,8 @@ default{
 				}
 				if (llGetInventoryType(defaultname) == INVENTORY_NOTECARD){
 					llMessageLinked(LINK_SET, DOPOSE, defaultname, toucherid);					
-				}else if (llGetInventoryType(setname) == INVENTORY_NOTECARD){
+				}
+				if (llGetInventoryType(setname) == INVENTORY_NOTECARD){
 					llMessageLinked(LINK_SET, DOPOSE, setname, toucherid);
 				}
 				if (llGetInventoryType(btnname) == INVENTORY_NOTECARD){
@@ -499,7 +505,7 @@ default{
 					llMessageLinked(LINK_SET, -1812221819, "RLV=" + RLVenabled, NULL_KEY);
 				}
 			}
-		}else if (num == -888){
+		}else if (num == EXTERNAL_UTIL_REQUEST){
 			if (str == ADMINBTN){
 				path += ":" + str;
 				AdminMenu(toucherid, path, "", adminbuttons);
@@ -524,7 +530,7 @@ default{
 		}else if (num == DOMENU_ACCESSCTRL){//external call to check permissions
 			toucherid = id;
 			DoMenu_AccessCtrl(toucherid, ROOTMENU, "", 0);
-		}else if(num == -238){
+		}else if(num == VICTIMS_LIST){
 			victims = llCSV2List(str);
 		}else if(num == NC_READER_RESPONSE){
 			if(id==scriptID) {
@@ -546,13 +552,13 @@ default{
 				}
 				pluginPermissionList+=newPermission;
 			}
-		}else if (num==35353){
+		}else if (num==seatupdate){
 			list slotsList = llParseStringKeepNulls(str, ["^"], []);
 			slots = [];
 			for (n=0; n<(llGetListLength(slotsList)/8); ++n){
 				slots += [(key)llList2String(slotsList, n*8+4), llList2String(slotsList, n*8+7)];
 			}
-		}else if (num==35354){
+		}else if (num==SEAT_BUTTONS){
 			slotbuttons = llParseString2List(str, [","], []);
 			string strideSeat;
 			for (n = 0; n < llGetListLength(slotbuttons); ++n){ // n is the slot number
