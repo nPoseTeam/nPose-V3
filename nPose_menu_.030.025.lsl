@@ -460,7 +460,8 @@ default{
 					llMessageLinked(LINK_SET, DOPOSE, defaultname, toucherid);					
 				}else if (llGetInventoryType(setname) == INVENTORY_NOTECARD){
 					llMessageLinked(LINK_SET, DOPOSE, setname, toucherid);
-				}else if (llGetInventoryType(btnname) == INVENTORY_NOTECARD){
+				}
+				if (llGetInventoryType(btnname) == INVENTORY_NOTECARD){
 					llMessageLinked(LINK_SET, DOBUTTON, btnname, toucherid);
 				}
 				if (~llListFindList(menus, [path + ":" + selection])){
