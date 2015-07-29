@@ -36,7 +36,9 @@ list faceTimes = [];
 list slots;
 key thisAV;
 integer stop;
-integer unsit = -222;
+integer UNSIT = -222;
+integer REQUEST_CHATCHANNEL = 999999;
+integer REZ_ADJUSTERS = 2;
 string facialEnable = "on";
 
 
@@ -142,7 +144,7 @@ default
 {
     state_entry()
     {
-        llMessageLinked(LINK_SET, 999999, "", "");
+        llMessageLinked(LINK_SET, REQUEST_CHATCHANNEL, "", "");
         primcount = llGetNumberOfPrims();
         newprimcount = primcount;
     }
@@ -279,7 +281,7 @@ default
                     }
                 }
             }
-        }else if (num == unsit){
+        }else if (num == UNSIT){
             key avatarUuid=(key)str;
             if(avatarUuid) {
                 if(~llListFindList(SeatedAvs(), [avatarUuid])) {
