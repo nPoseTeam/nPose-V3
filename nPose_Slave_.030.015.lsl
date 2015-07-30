@@ -27,10 +27,10 @@ integer avatarOffsetsLength = 20;
 list avatarOffsets;
 integer stride = 8;
 
-integer seatupdate = 35353;
-integer memusage = 34334;
+integer SEAT_UPDATE = 35353;
+integer MENU_USAGE = 34334;
 list adjusters = [];
-integer layerPose = -218;
+integer LAYER_POSE = -218;
 list animsList; //[string command, string animation name]  use a list to layer multiple animations.
 list faceTimes = [];
 list slots;
@@ -38,41 +38,46 @@ key thisAV;
 integer stop;
 integer UNSIT = -222;
 integer REQUEST_CHATCHANNEL = 999999;
+integer SEND_CHATCHANNEL = 1;
 integer REZ_ADJUSTERS = 2;
+integer ADJUSTER_REPORT = 3;
+integer ADJUST = 201;
+integer DUMP = 204;
+integer STOPADJUST = 205;
+integer FACIALS_FLAG = -241;
 string facialEnable = "on";
 
 
 
-doSeats(integer slotNum, key avKey){
+doSeats(integer slotNum, key avKey) {
     llSetTimerEvent(0.0);
-    if (doSync !=1){
+    if(doSync !=1) {
         vector vpos = appliedOffsets(slotNum);
         MoveLinkedAv(AvLinkNum(avKey), vpos, llList2Rot(slots, ((slotNum)*8)+2)); 
     }
-    if (avKey != ""){
+    if(avKey != "") {
         doingFaceAnim = 0;
         stop = llGetListLength(slots)/8;
         llRequestPermissions(avKey, PERMISSION_TRIGGER_ANIMATION);
     }
 }
 
-list SeatedAvs(){
+list SeatedAvs() {
     list avs = [];
     integer n = llGetNumberOfPrims();
-    for (; n >= llGetObjectPrimCount(llGetKey()); --n){
-        
+    for(; n >= llGetObjectPrimCount(llGetKey()); --n) {
         key id = llGetLinkKey(n);
-        if (llGetAgentSize(id) != ZERO_VECTOR){
+        if(llGetAgentSize(id) != ZERO_VECTOR) {
             avs = [id] + avs;
         }
     }
     return avs;
 }
 
-integer AvLinkNum(key av){
+integer AvLinkNum(key av) {
     integer linkcount = llGetNumberOfPrims();
-    while (av != llGetLinkKey(linkcount)){
-        if (llGetAgentSize(llGetLinkKey(linkcount)) == ZERO_VECTOR){
+    while(av != llGetLinkKey(linkcount)) {
+        if(llGetAgentSize(llGetLinkKey(linkcount)) == ZERO_VECTOR) {
             return -1;
         }
         linkcount--;
@@ -80,15 +85,15 @@ integer AvLinkNum(key av){
     return linkcount;
 }
 
-MoveLinkedAv(integer linknum, vector avpos, rotation avrot){
+MoveLinkedAv(integer linknum, vector avpos, rotation avrot) {
     key user = llGetLinkKey(linknum);
-    if(user){  
+    if(user) {  
         vector size = llGetAgentSize(user);
-        if(size){  
+        if(size) {  
             
             rotation localrot = ZERO_ROTATION;
             vector localpos = ZERO_VECTOR;
-            if(llGetLinkNumber() > 1){  
+            if(llGetLinkNumber() > 1) {  
                 localrot = llGetLocalRot();
                 localpos = llGetLocalPos();
             }
@@ -99,12 +104,12 @@ MoveLinkedAv(integer linknum, vector avpos, rotation avrot){
 }
 
 
-vector appliedOffsets(integer n){
+vector appliedOffsets(integer n) {
     string slot = llList2String(slots, n*stride + 4);
     integer avinoffsets = llListFindList(avatarOffsets, [(key)slot]);
     rotation rot = llList2Rot(slots, n*stride+2); 
     vector pos = (vector)llList2String(slots, n*stride+1); 
-    if (avinoffsets != -1){
+    if(avinoffsets != -1) {
         vector offset = llList2Vector(avatarOffsets, avinoffsets+1);
         pos += offset * rot; 
     }
@@ -113,25 +118,26 @@ vector appliedOffsets(integer n){
 
 SetAvatarOffset(key avatar, vector offset) { 
     integer avatarOffsetsIndex = llListFindList(avatarOffsets, [avatar]); 
-    if (offset == ZERO_VECTOR && avatarOffsetsIndex >= 0){
+    if(offset == ZERO_VECTOR && avatarOffsetsIndex >= 0) {
         avatarOffsets = llDeleteSubList(avatarOffsets, avatarOffsetsIndex, avatarOffsetsIndex+1);
         return;
     }
-    if (avatarOffsetsIndex < 0) { 
+    if(avatarOffsetsIndex < 0) { 
         avatarOffsetsIndex = nextAvatarOffset; 
         nextAvatarOffset = (nextAvatarOffset + 2) % avatarOffsetsLength;
-    }else{ 
+    }
+    else { 
             offset = llList2Vector(avatarOffsets, avatarOffsetsIndex+1) + offset;
     }
     avatarOffsets = llListReplaceList(avatarOffsets, [avatar, offset], avatarOffsetsIndex, avatarOffsetsIndex+1);
 }
 
 
-RezNextAdjuster(){
+RezNextAdjuster() {
     llRezObject("Adjuster", llGetPos() + <0,0,1>, ZERO_VECTOR, llGetRot(), chatchannel);
 }
 
-ChatAdjusterPos(integer slotnum){
+ChatAdjusterPos(integer slotnum) {
     integer index = slotnum * stride;
     vector pos = llGetPos() + llList2Vector(slots, index + 1) * llGetRot();
     rotation rot = llList2Rot(slots, index + 2) * llGetRot();
@@ -140,39 +146,37 @@ ChatAdjusterPos(integer slotnum){
     llRegionSay(chatchannel, out);
 }
 
-default
-{
-    state_entry()
-    {
+default {
+    state_entry() {
         llMessageLinked(LINK_SET, REQUEST_CHATCHANNEL, "", "");
         primcount = llGetNumberOfPrims();
         newprimcount = primcount;
     }
  
-    link_message(integer sender, integer num, string str, key id)
-    {
-        if (num == 1){  //got chatchannel from the core.
+    link_message(integer sender, integer num, string str, key id) {
+        if(num == SEND_CHATCHANNEL) {  //got chatchannel from the core.
             chatchannel = (integer)str;
         }
-        if (num == layerPose){
+        if(num == LAYER_POSE) {
             key av;
             list tempList = llParseString2List(str, ["/"], []);
-            if (llListFindList(SeatedAvs(), [(key)llList2String(tempList, 0)]) != -1){
+            if(llListFindList(SeatedAvs(), [(key)llList2String(tempList, 0)]) != -1) {
                 av = (key)llList2String(tempList, 0);
             }
-            if (av){
+            if(av) {
                 llRequestPermissions(av, PERMISSION_TRIGGER_ANIMATION);
                 av = llGetPermissionsKey();
                 list tempList1 = llParseString2List(llList2String(tempList, 1), ["~"], []);
                 integer instruction;
                 integer layerStop = llGetListLength(tempList1);
-                for (instruction = 0; instruction < layerStop; ++instruction){
+                for(instruction = 0; instruction < layerStop; ++instruction) {
                     tempList = llParseString2List(llList2String(tempList1, instruction), [","],[]);
-                    if (llList2String(tempList,0)=="stopAll"){
+                    if(llList2String(tempList,0)=="stopAll") {
                         animsList = [av, llList2String(tempList, 0), llList2String(tempList, 1)] + animsList;
-                    }else{
+                    }
+                    else {
                         integer index = llListFindList(animsList, [llList2String(tempList, 1)]);
-                        if (index>=1 & (key)llList2String(animsList, index - 2) == av){
+                        if(index>=1 & (key)llList2String(animsList, index - 2) == av) {
                             animsList = llDeleteSubList(animsList, index-2, index);
                         }
                         animsList += [av, llList2String(tempList, 0), llList2String(tempList, 1)];
@@ -180,16 +184,16 @@ default
                 }
                 integer n;
                 layerStop = llGetListLength(animsList)/3;
-                for (n=0; n<layerStop; ++n){
-                    if ((key)llList2String(animsList, n*3) == av){
-                       if (llList2String(animsList, n*3+1) == "stopAll"){
+                for(n=0; n<layerStop; ++n) {
+                    if((key)llList2String(animsList, n*3) == av) {
+                       if(llList2String(animsList, n*3+1) == "stopAll") {
                            animsList = llDeleteSubList(animsList, n*3, n*3+2);
                            n-=1;
                            layerStop-=1;
                             integer x;
                             integer animsStop = llGetListLength(animsList)/3;
-                            if (animsStop > 0){
-                                for (x = 0; x<animsStop; ++x){
+                            if(animsStop > 0) {
+                                for(x = 0; x<animsStop; ++x) {
                                     if ((key)llList2String(animsList, x*3) == av && llList2String(animsList, x*3+2) != ""){
                                         llStopAnimation(llList2String(animsList, x*3+2));
                                         animsList = llDeleteSubList(animsList, x*3, x*3+2);
@@ -198,12 +202,14 @@ default
                                     }
                                 }
                             }
-                        }else if (llList2String(animsList, n*3+1) == "start" && llList2String(animsList, n*3) == av
-                         && llList2String(animsList, n*3+2) != ""){
-                            if (llGetPermissions() & PERMISSION_TRIGGER_ANIMATION){
+                        }
+                        else if(llList2String(animsList, n*3+1) == "start" && llList2String(animsList, n*3) == av
+                         && llList2String(animsList, n*3+2) != "") {
+                            if(llGetPermissions() & PERMISSION_TRIGGER_ANIMATION) {
                                 llStartAnimation(llList2String(animsList, n*3+2));
                             }
-                        }else if (llList2String(animsList, n*3+1) == "stop"){
+                        }
+                        else if(llList2String(animsList, n*3+1) == "stop") {
                             if (llGetPermissions() & PERMISSION_TRIGGER_ANIMATION){
                                 llStopAnimation(llList2String(animsList, n*3+2));
                                 animsList = llDeleteSubList(animsList, n*3, n*3+2);
@@ -215,15 +221,19 @@ default
                 }
             }
 //            llSay(0, "anim list:\n" + llList2CSV(llGetAnimationList(av)));
-        }else if (num == ADJUSTOFFSET) {
+        }
+        else if(num == ADJUSTOFFSET) {
             SetAvatarOffset(id, (vector)str);
-            llMessageLinked(LINK_SET, seatupdate, llDumpList2String(slots, "^"), NULL_KEY);
-        }else if (num == SETOFFSET) {
+            llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(slots, "^"), NULL_KEY);
+        }
+        else if(num == SETOFFSET) {
             SetAvatarOffset(id, (vector)str);
-            llMessageLinked(LINK_SET, seatupdate, llDumpList2String(slots, "^"), NULL_KEY);
-        }else if (num == -241){
+            llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(slots, "^"), NULL_KEY);
+        }
+        else if(num == FACIALS_FLAG) {
             facialEnable = str;
-        }else if (num == seatupdate){
+        }
+        else if(num == SEAT_UPDATE){
             list seatsavailable = llParseStringKeepNulls(str, ["^"], []);
             integer stop = llGetListLength(seatsavailable)/8;
             slots = [];
@@ -231,19 +241,20 @@ default
             gotFaceAnim = 0;
             string buttonStr = "";
 //            string faces = "";
-            for (seatcount = 1; seatcount <= stop; ++seatcount){
+            for(seatcount = 1; seatcount <= stop; ++seatcount) {
                 integer seatNum = (integer)llGetSubString(llList2String(seatsavailable, (seatcount-1)*8+7), 4,-1);
                 slots = slots + [llList2String(seatsavailable, (seatcount-1)*8), (vector)llList2String(seatsavailable, (seatcount-1)*8+1), 
                         (rotation)llList2String(seatsavailable, (seatcount-1)*8+2), llList2String(seatsavailable, (seatcount-1)*8+3), 
                         (key)llList2String(seatsavailable, (seatcount-1)*8+4), llList2String(seatsavailable, (seatcount-1)*8+5),
                         llList2String(seatsavailable, (seatcount-1)*8+6), llList2String(seatsavailable, (seatcount-1)*8+7)];
                 //menu needs the list of buttons for 'ChangeSeats'
-                if (llList2String(slots, (seatcount-1)*8+4)!=""){
+                if(llList2String(slots, (seatcount-1)*8+4)!="") {
                     buttonStr += llGetSubString(llKey2Name((key)llList2String(seatsavailable, (seatcount-1)*8+4)), 0, 20)+",";
-                }else{
+                }
+                else {
                     buttonStr += llList2String(seatsavailable, (seatcount-1)*8+7)+",";
                 }
-                if (llList2String(seatsavailable, (seatcount-1)*8+3) != ""){
+                if(llList2String(seatsavailable, (seatcount-1)*8+3) != "") {
                     //we need a list consisting of sitter key followed by each face anim and the associated time of each
                     //put face anims for this slot in a list
                     list faceanimsTemp = llParseString2List(llList2String(seatsavailable, (seatcount-1)*8+3), ["~"], []); 
@@ -251,16 +262,17 @@ default
                     list faces = []; 
                     integer nFace;
                     integer hasNewFaceTime = 0;
-                    for (nFace=0; nFace<facecount; ++nFace){
+                    for(nFace=0; nFace<facecount; ++nFace) {
                         //parse this face anim for anim name and time
                         list temp = llParseString2List(llList2String(faceanimsTemp, nFace), ["="], []);
                         //time must be optional so we will make default a zero
                         //queue on zero to revert to older stuff
-                        if (llList2String(temp, 1)){
+                        if(llList2String(temp, 1)) {
                             //collect the name of the anim and the time
                             faces += [llList2String(temp, 0), (integer)llList2String(temp, 1)];
                             hasNewFaceTime = 1;
-                        }else{
+                        }
+                        else {
                             faces += [llList2String(temp, 0), -1];
                         }
                     }
@@ -269,50 +281,56 @@ default
                     faceTimes += [(key)llList2String(seatsavailable, (seatcount-1)*8+4), hasNewFaceTime, facecount] + faces;
                 }
             }
-            llMessageLinked(LINK_SET, seatupdate+1, buttonStr, NULL_KEY);//send list of buttons to the menu
+            llMessageLinked(LINK_SET, SEAT_UPDATE+1, buttonStr, NULL_KEY);//send list of buttons to the menu
             buttonStr = "";
             //we have our new list of AV's and positions so put them where they belong.  fire off the first seated AV and run time will do the rest.
-            for (seatcount = 0; seatcount < stop; ++seatcount){
-                if (llList2Key(slots, seatcount*8+4) != ""){
-                    if (llListFindList(SeatedAvs(), [llList2Key(slots, seatcount*8+4)]) != -1){
+            for(seatcount = 0; seatcount < stop; ++seatcount) {
+                if(llList2Key(slots, seatcount*8+4) != "") {
+                    if(llListFindList(SeatedAvs(), [llList2Key(slots, seatcount*8+4)]) != -1) {
                         doSync = 0;
                         doSeats(seatcount, llList2String(slots, (seatcount)*8+4));
                         return;
                     }
                 }
             }
-        }else if (num == UNSIT){
+        }
+        else if(num == UNSIT) {
             key avatarUuid=(key)str;
             if(avatarUuid) {
                 if(~llListFindList(SeatedAvs(), [avatarUuid])) {
                     llUnSit(avatarUuid);
                 }
             }
-        }else if (num == SYNC){
+        }
+        else if(num == SYNC) {
             doSync = 1;
             integer stop = llGetListLength(slots)/8;
-            for (seatcount = 0; seatcount < stop; ++seatcount){
+            for(seatcount = 0; seatcount < stop; ++seatcount) {
                 doSeats(seatcount, llList2String(slots, (seatcount)*8+4));
                 return;
             }
-        }else if (num == 201){ //adjust has been chosen from the menu
+        }
+        else if(num == 201) { //adjust has been chosen from the menu
             llSay(chatchannel, "adjuster_die");
             adjusters = [];
-            if (llGetInventoryType("Adjuster") & INVENTORY_OBJECT) {
+            if(llGetInventoryType("Adjuster") & INVENTORY_OBJECT) {
                 RezNextAdjuster();
-            } else {
+            }
+            else {
                 llRegionSayTo(llGetOwner(), 0, "Seat Adjustment disabled.  No Adjuster object found in" + llGetObjectName()+ ".");
             }
-        }else if (num == 205){ //stopadjust has been chosen from the menu
+        }
+        else if(num == 205) { //stopadjust has been chosen from the menu
             llMessageLinked(LINK_SET, 204, "", "");
             llSay(chatchannel, "adjuster_die"); 
             adjusters = [];
-        }else if (num == 2 && str == "RezAdjuster"){    //got a new pose so update adjusters.
+        }
+        else if (num == REZ_ADJUSTERS && str == "RezAdjuster"){    //got a new pose so update adjusters.
             adjusters = [];
             RezNextAdjuster();
-        }else if (num == 3){    //heard from an adjuster so a new position must be used, upate slots and chat out new position.
+        }else if(num == ADJUSTER_REPORT) {    //heard from an adjuster so a new position must be used, upate slots and chat out new position.
             integer index = llListFindList(adjusters, [id]);
-            if (index != -1){
+            if(index != -1) {
                 string primName = llGetObjectName();
                 llSetObjectName(llGetLinkName(1));
                 list params = llParseString2List(str, ["|"], []);
@@ -324,15 +342,16 @@ default
                 llRegionSayTo(llGetOwner(), 0, "\nANIM|" + llList2String(slots, slotsindex) + "|" + (string)newpos + "|" +
                     (string)(llRot2Euler(newrot) * RAD_TO_DEG) + "|" + llList2String(slots, slotsindex + 3));
                 llSetObjectName(primName);
-                llMessageLinked(LINK_SET, seatupdate, llDumpList2String(slots, "^"), NULL_KEY);
-                //gotta send a message back to the core other than with seatupdate so the core knows it came from here and updates slots list there.
-                llMessageLinked(LINK_SET, (seatupdate + 2000000), llDumpList2String(slots, "^"), NULL_KEY);                
+                llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(slots, "^"), NULL_KEY);
+                //gotta send a message back to the core other than with SEAT_UPDATE so the core knows it came from here and updates slots list there.
+                llMessageLinked(LINK_SET, (SEAT_UPDATE + 2000000), llDumpList2String(slots, "^"), NULL_KEY);                
             }
-        }else if (num == 204){
+        }
+        else if(num == 204) {
             integer n;
             string primName = llGetObjectName();
             llSetObjectName(llGetLinkName(1));
-            for (n = 0; n < llGetListLength(slots)/8; ++n){
+            for(n = 0; n < llGetListLength(slots)/8; ++n) {
                 list slice = llList2List(slots, n*stride, n*stride + 3);
                 slice = llListReplaceList(slice, [RAD_TO_DEG * llRot2Euler(llList2Rot(slice, 2))], 2, 2);
                 string sendSTR = "ANIM|" + llDumpList2String(slice, "|");
@@ -340,16 +359,17 @@ default
             }
             llRegionSay(chatchannel, "posdump");
             llSetObjectName(primName);
-        }else if (num == memusage){
+        }
+        else if(num == MENU_USAGE) {
             llSay(0,"Memory Used by " + llGetScriptName() + ": " + (string)llGetUsedMemory() + " of " + (string)llGetMemoryLimit()
                  + ",Leaving " + (string)llGetFreeMemory() + " memory free.");
         }
     }
  
 
-    run_time_permissions(integer perm){
+    run_time_permissions(integer perm) {
         thisAV = llGetPermissionsKey();
-        if (doingFaceAnim != 1){
+        if(doingFaceAnim != 1) {
             //get the current requested animation from list slots.
             integer avIndex = llListFindList(slots, [thisAV]);
             currentanim = llList2String(slots, avIndex - 4);
@@ -360,27 +380,28 @@ default
             //lastanim is a 2 stride list [thisAV, last active animation name]
             //index thisAV as a string in the list and then we can find the last animation.
             integer thisAvIndex = llListFindList(lastanim, [(string)thisAV]);
-            if (doSync !=1){
-                if (indexx != -1){
+            if(doSync !=1) {
+                if(indexx != -1) {
                     lastAnimRunning = "Sit";
                     lastanim += [(string)thisAV, "Sit"];
                 }
-                if (thisAvIndex != -1){
+                if(thisAvIndex != -1) {
                     lastAnimRunning = llList2String(lastanim, thisAvIndex+1);
                 }
                 //now we know which animation to stop so go ahead and stop it.
-                if (lastAnimRunning != ""){
+                if(lastAnimRunning != "") {
                     llStopAnimation(lastAnimRunning);
                 }
                 thisAvIndex = llListFindList(lastanim, [(string)thisAV]);
                 //now that we have the name of the last animation running, we can update the list with current animation.
                 lastanim = llListReplaceList(lastanim, [(string)thisAV, currentanim], thisAvIndex, thisAvIndex+1);
-                if (avIndex != -1){
-                    if (llListFindList(SeatedAvs(), [thisAV]) != -1){
+                if(avIndex != -1) {
+                    if(llListFindList(SeatedAvs(), [thisAV]) != -1) {
                         llStartAnimation(currentanim);
                     }
                 }
-            }else if (llListFindList(SeatedAvs(), [thisAV]) != -1){
+            }
+            else if(llListFindList(SeatedAvs(), [thisAV]) != -1) {
                 llStopAnimation(currentanim);
                 llStartAnimation("sit");
                 llSleep(0.05);
@@ -389,31 +410,32 @@ default
             }
         }
         //check all the slots for next seated AV, call for next seated AV to move and animate.
-        for (; seatcount < stop-1; ){
+        for(; seatcount < stop-1; ) {
             seatcount += 1;
-            if (llList2Key(slots, seatcount*8+4) != ""){
+            if(llList2Key(slots, seatcount*8+4) != "") {
                 doSeats(seatcount, llList2String(slots, (seatcount)*8+4));
                 return;
             }
         }
         //start timer if we have face anims for any slot
-        if (gotFaceAnim==1){
+        if(gotFaceAnim==1) {
             llSetTimerEvent(1.0);
             doingFaceAnim=1;
-        }else{
+        }
+        else {
             llSetTimerEvent(0.0);
             doingFaceAnim=0;
         }
     }
 
-    timer(){        
+    timer() {        
         integer n;
         integer stop = llGetListLength(slots)/8;
         key av;
         integer facecount;
         integer faceindex;
-        if (facialEnable == "on"){
-            for (n=0; n<stop; ++n){
+        if(facialEnable == "on") {
+            for(n=0; n<stop; ++n) {
                 //doing each seat
                 av = (key)llList2String(slots, n*8+4);
                 faceindex = 0;
@@ -422,52 +444,54 @@ default
                 //get number of face anims for this seat
                 integer newFaceTimeFlag = llList2Integer(faceTimes, keyHasFacial+1);
                 
-                if (newFaceTimeFlag == 0){
+                if(newFaceTimeFlag == 0) {
                 //need to know if someone seated in this seat, if not we won't do any facials
-                    if (av != ""){
+                    if(av != "") {
                         faceanims = llParseString2List(llList2String(slots, n*8+3), ["~"], []);     
                         facecount = llGetListLength(faceanims);                
-                        if (facecount > 0 && (llListFindList(SeatedAvs(), [thisAV]) != -1)){//modified cause face anims were being imposed after AV stands.
+                        if(facecount > 0 && (llListFindList(SeatedAvs(), [thisAV]) != -1)) {//modified cause face anims were being imposed after AV stands.
                             doingFaceAnim=1;
                             thisAV = llGetPermissionsKey();
                             llRequestPermissions(av, PERMISSION_TRIGGER_ANIMATION);
                         }
                     }
                     integer x;
-                    for (x=0; x<facecount; ++x){
-                        if (facecount>0){
-                            if (faceindex < facecount){
-                                if (AvLinkNum(av) != -1){
+                    for(x=0; x<facecount; ++x){
+                        if (facecount>0) {
+                            if(faceindex < facecount) {
+                                if(AvLinkNum(av) != -1) {
                                     llStartAnimation(llList2String(faceanims, faceindex));
                                 }
                             }            
                             faceindex++;
                         }
                     }
-                }else if (av != ""){
+                }
+                else if(av != ""){
                 //need to know if someone seated in this seat, if not we won't do any facials
                 //do our stuff with defined facial times
                     facecount = llList2Integer(faceTimes, keyHasFacial+2);                
                     //if we have facial anims make sure we have permissions for this av
-                    if ((facecount > 0) && (llListFindList(SeatedAvs(), [thisAV]) != -1)){  //modified cause face anims were being imposed after AV stands.
+                    if((facecount > 0) && (llListFindList(SeatedAvs(), [thisAV]) != -1)) {  //modified cause face anims were being imposed after AV stands.
                         doingFaceAnim=1;
                         thisAV = llGetPermissionsKey();
                         llRequestPermissions(av, PERMISSION_TRIGGER_ANIMATION);
                     }
                         integer x;
-                    for (x=1; x<=facecount; ++x){
+                    for(x=1; x<=facecount; ++x) {
                         //non looping we check if anim has run long enough
-                        if (faceindex < facecount){
+                        if(faceindex < facecount) {
                             integer faceStride = keyHasFacial+1+(x*2);
                             string animName = llList2String(faceTimes, faceStride);
-                            if (llList2Integer(faceTimes, faceStride+1) > 0){
+                            if(llList2Integer(faceTimes, faceStride+1) > 0) {
                                 faceTimes = llListReplaceList(faceTimes, [llList2Integer(faceTimes, faceStride+1)-1],
                                  faceStride+1, faceStride+1);
                             }
-                            if (facecount>0){
-                                if (AvLinkNum(av) != -1 && llList2Integer(faceTimes, faceStride+1) > 0){
+                            if(facecount>0) {
+                                if(AvLinkNum(av) != -1 && llList2Integer(faceTimes, faceStride+1) > 0) {
                                     llStartAnimation(animName);
-                                }else if (AvLinkNum(av) != -1 && llList2Integer(faceTimes, faceStride+1) == -1){
+                                }
+                                else if(AvLinkNum(av) != -1 && llList2Integer(faceTimes, faceStride+1) == -1) {
                                     llStartAnimation(animName);
                                 }
                                 faceindex++;
@@ -477,7 +501,7 @@ default
                 
                 }
             }
-            if (llGetListLength(SeatedAvs())<1){
+            if(llGetListLength(SeatedAvs())<1) {
                 llSetTimerEvent(0.0);
                 doingFaceAnim=0;
             }
@@ -485,30 +509,30 @@ default
     }
 
 
-    object_rez(key id){
-        if (llKey2Name(id) == "Adjuster"){
+    object_rez(key id) {
+        if(llKey2Name(id) == "Adjuster") {
             adjusters += [id];
             integer adjLen = llGetListLength(adjusters);
             ChatAdjusterPos(adjLen - 1); 
             
-            if (adjLen < (llGetListLength(slots)/8)){ 
+            if(adjLen < (llGetListLength(slots)/8)) { 
                 RezNextAdjuster();
             }
         }
     }
 
-    changed(integer change){
-        if (change & CHANGED_LINK){
+    changed(integer change) {
+        if(change & CHANGED_LINK) {
 //            animsList=[]; 
             integer newPrimCount1 = llGetNumberOfPrims();
-            if (newprimcount>newPrimCount1){
+            if(newprimcount>newPrimCount1) {
                 //we have lost a sitter so find out who and remove them from the list.
                 integer n;
                 integer stop = llGetListLength(lastanim)/2;
-                for (n=0; n<stop; ++n){
-                    if (AvLinkNum((key)llList2String(lastanim, n*2)) == -1){
+                for(; n<stop; ++n) {
+                    if(AvLinkNum((key)llList2String(lastanim, n*2)) == -1) {
                         integer index = llListFindList(animsList, [(key)llList2String(lastanim, n*2)]);
-                        if (index != -1){
+                        if(index != -1) {
                             animsList = llDeleteSubList(animsList, index, index + 2);
                         }
                         lastanim = llDeleteSubList(lastanim, n*2, n*2+1);
@@ -516,14 +540,15 @@ default
                 }
             }
             newprimcount = newPrimCount1;
-            if (newprimcount == primcount){
+            if(newprimcount == primcount) {
                 //no AV's seated so clear the lastanim list.  done so we can detect LL's default Sit when reseating.
 //                animsList=[];
                 lastanim = [];
                 currentanim = "";
                 lastAnimRunning = "";
             }
-        }else if (change & CHANGED_OWNER){
+        }
+        else if(change & CHANGED_OWNER) {
             llResetScript();
         }
     }
