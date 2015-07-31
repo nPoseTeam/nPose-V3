@@ -31,10 +31,10 @@ float menuDistance = 30.0;
 
 key scriptID;
 
-#define setprefix "SET"
-#define btnprefix "BTN"
-#define defaultprefix "DEFAULT"
-#define cardprefixes [setprefix, defaultprefix, btnprefix]
+#define SET_PREFIX "SET"
+#define BTN_PREFIX "BTN"
+#define DEFAULT_PREFIX "DEFAULT"
+#define CARD_PREFIXES [SET_PREFIX, DEFAULT_PREFIX, BTN_PREFIX]
 #define DIALOG -900
 #define DIALOG_RESPONSE -901
 #define DIALOG_TIMEOUT -902
@@ -52,11 +52,11 @@ key scriptID;
 #define DOMENU -800
 #define DOMENU_ACCESSCTRL -801
 #define EXTERNAL_UTIL_REQUEST -888
-#define memusage 34334
-#define seatupdate 35353
+#define MEMORY_USAGE 34334
+#define SEAT_UPDATE 35353
 #define SEAT_BUTTONS 35354
 #define VICTIMS_LIST -238
-#define optionsNum -240
+#define OPTIONS_NUM -240
 #define FACIALS_FLAG -241
 #define FWDBTN "forward"
 #define BKWDBTN "backward"
@@ -274,7 +274,7 @@ BuildMenus(list cardNames) {//builds the user defined menu buttons
         }
         list pathParts = llParseStringKeepNulls(name, [":"], []);
         string prefix = llList2String(pathParts, 0);
-        if((!defaultSet && prefix == setprefix) | (prefix == defaultprefix)) {
+        if((!defaultSet && prefix == SET_PREFIX) | (prefix == DEFAULT_PREFIX)) {
             if(!fromContents) {
                 defaultPoseNcName = llList2String(cardNames, n);
             }
@@ -285,7 +285,7 @@ BuildMenus(list cardNames) {//builds the user defined menu buttons
         }
         pathParts = llListReplaceList(pathParts, [ROOTMENU], 0, 0);
         menuPerm += [llList2String(pathParts, -1), menuPerms];
-        if(~llListFindList(cardprefixes, [prefix])) { // found
+        if(~llListFindList(CARD_PREFIXES, [prefix])) { // found
             pathParts = llDeleteSubList(pathParts, 0, 0);            
             while(llGetListLength(pathParts)) {
                 string last = llList2String(pathParts, -1);
@@ -333,7 +333,9 @@ default{
         integer index;
         integer n;
         integer stop;
-        if(str == "MenuUp") llMessageLinked(LINK_SET, num, "PATH=" + path, "");
+        if(str == "menuUP") {
+            llMessageLinked(LINK_SET, -802, "PATH=" + path, toucherid);
+        }
         if(num == DIALOG_RESPONSE && id == scriptID) { //response from menu
             list params = llParseString2List(str, ["|"], []);  //parse the message
             integer page = (integer)llList2String(params, 0);  //get the page number
@@ -472,9 +474,9 @@ default{
 //begin and do the selection
                 list pathlist = llDeleteSubList(llParseStringKeepNulls(path, [":"], []), 0, 0);
                 integer permission = llListFindList(menuPerm, [selection]);
-                string defaultname = llDumpList2String([defaultprefix] + pathlist + [selection], ":");                
-                string setname = llDumpList2String([setprefix] + pathlist + [selection], ":");
-                string btnname = llDumpList2String([btnprefix] + pathlist + [selection], ":");
+                string defaultname = llDumpList2String([DEFAULT_PREFIX] + pathlist + [selection], ":");                
+                string setname = llDumpList2String([SET_PREFIX] + pathlist + [selection], ":");
+                string btnname = llDumpList2String([BTN_PREFIX] + pathlist + [selection], ":");
                 //correct the notecard name so the core can find this notecard
                 if(~permission) {
                     string thisPerm = llList2String(menuPerm, permission+1);
@@ -509,7 +511,7 @@ default{
             }
 //begin handle link message inputs
         }
-        else if(num==optionsNum) {
+        else if(num==OPTIONS_NUM) {
             //save new option(s) from LINKMSG
             list optionsToSet = llParseStringKeepNulls(str, ["~"], []);
             stop = llGetListLength(optionsToSet);
@@ -557,6 +559,7 @@ default{
         }
         else if(num == DOMENU) {
             toucherid = id;
+            if(!llSubStringIndex(str, "PATH=")) str = llGetSubString(str, 5, -1);
             DoMenu(toucherid, str, "", 0);
         }
         else if(num == DOMENU_ACCESSCTRL) {//external call to check permissions
@@ -588,7 +591,7 @@ default{
                 pluginPermissionList+=newPermission;
             }
         }
-        else if(num==seatupdate) {
+        else if(num==SEAT_UPDATE) {
             list slotsList = llParseStringKeepNulls(str, ["^"], []);
             slots = [];
             for(n=0; n<(llGetListLength(slotsList)/8); ++n) {
@@ -609,7 +612,7 @@ default{
                 slotbuttons = llListReplaceList(slotbuttons, [strideSeat], n, n);
             }
         }
-        else if(num == memusage) {//dump memory stats to local
+        else if(num == MEMORY_USAGE) {//dump memory stats to local
             llSay(0,"Memory Used by " + llGetScriptName() + ": " + (string)llGetUsedMemory() + " of " + (string)llGetMemoryLimit()
                  + ",Leaving " + (string)llGetFreeMemory() + " memory free.");
         }
