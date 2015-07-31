@@ -11,7 +11,7 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 
 //define block start
 #define ADMIN_HUD_NAME "npose admin hud"
-#define stride 8
+#define STRIDE 8
 #define SLOT_UPDATE 34333
 #define MEMORY_USAGE 34334
 #define SEAT_UPDATE 35353
@@ -53,7 +53,7 @@ string lastDoPoseAlias;
 string lastDoPosePlaceholder;
 key lastDoPoseCardId;
 key lastDoPoseAvatarId;
-list slots;  //one stride = [animationName, posVector, rotVector, facials, sitterKey, SATMSG, NOTSATMSG, seatName]
+list slots;  //one STRIDE = [animationName, posVector, rotVector, facials, sitterKey, SATMSG, NOTSATMSG, seatName]
 
 string curmenuonsit = "off"; //default menuonsit option
 
@@ -62,7 +62,7 @@ string NC_READER_CONTENT_SEPARATOR="%&§";
 integer FindEmptySlot() {
     integer n;
     for(; n < slotMax; ++n) {
-        if(llList2String(slots, n*stride+4) == "") {
+        if(llList2String(slots, n*STRIDE+4) == "") {
             return n;
         }
     }
@@ -91,9 +91,9 @@ assignSlots(){
     integer n;
     for(; x < slotMax; ++x) {
         //look in the avqueue for the key in the slots list
-        if(!~llListFindList(avqueue, [llList2Key(slots, x*stride+4)])) {
+        if(!~llListFindList(avqueue, [llList2Key(slots, x*STRIDE+4)])) {
             //if the key is not in the avqueue, remove it from the slots list
-            slots = llListReplaceList(slots, [""], x*stride+4, x*stride+4);
+            slots = llListReplaceList(slots, [""], x*STRIDE+4, x*STRIDE+4);
         }
     }
     //we need to check if less seats are available, more seats would not need slots assigned at this point, they just empty seats.
@@ -101,17 +101,17 @@ assignSlots(){
         //new pose set has less seats available
         //AV's that were in a available seats are already assigned so leave them be
         for(x = slotMax; x <= lastStrideCount; ++x) {//only need to worry about the 'extra' slots so limit the count
-            if(llList2Key(slots, x*stride+4) != "") {
+            if(llList2Key(slots, x*STRIDE+4) != "") {
                 //this is a 'now' extra sitter
                 integer emptySlot = FindEmptySlot();//find an empty slot for them if available
                 if((emptySlot >= 0) && (emptySlot < slotMax)) {
                     //if a real seat available, seat them
-                    slots = llListReplaceList(slots, [llList2Key(slots, x*stride+4)], emptySlot*stride+4, emptySlot*stride+4);
+                    slots = llListReplaceList(slots, [llList2Key(slots, x*STRIDE+4)], emptySlot*STRIDE+4, emptySlot*STRIDE+4);
                 }
             }
         }
         //remove the 'now' extra seats from slots list
-        slots = llDeleteSubList(slots, (slotMax)*stride, -1);
+        slots = llDeleteSubList(slots, (slotMax)*STRIDE, -1);
         //unsit extra seated AV's
         for(; n<llGetListLength(avqueue); ++n) {
             if(!~llListFindList(slots, [llList2Key(avqueue, n)])) {
@@ -136,9 +136,9 @@ assignSlots(){
                 integer x = (integer)llGetSubString(llGetLinkName(n), 4, -1);
                 if((x > 0) && (x <= slotMax)) {
                     if(llAvatarOnLinkSitTarget(n) == thisKey) {
-                        if(llList2String(slots, (x-1)*stride+4) == "") {
+                        if(llList2String(slots, (x-1)*STRIDE+4) == "") {
                             slotNum = (integer)llGetLinkName(n);
-                            slots = llListReplaceList(slots, [thisKey], (slotNum-1)*stride+4, (slotNum-1)*stride+4);
+                            slots = llListReplaceList(slots, [thisKey], (slotNum-1)*STRIDE+4, (slotNum-1)*STRIDE+4);
                             newAvatar=thisKey;
                         }
                     }
@@ -147,7 +147,7 @@ assignSlots(){
             if(!~llListFindList(slots, [thisKey])) {
                 if(~emptySlot) {
                     //they not on numbered seat so grab the lowest available seat for them, we have one available
-                    slots = llListReplaceList(slots, [thisKey], (emptySlot * stride) + 4, (emptySlot * stride) + 4);
+                    slots = llListReplaceList(slots, [thisKey], (emptySlot * STRIDE) + 4, (emptySlot * STRIDE) + 4);
                     newAvatar=thisKey;
                 }
                 else {
@@ -181,14 +181,14 @@ SwapTwoSlots(integer currentseatnum, integer newseatnum) {
             }
         }
 
-        list curslot = llList2List(slots, NewSlot*stride, NewSlot*stride+3)
-                + [llList2Key(slots, OldSlot*stride+4)]
-                + llList2List(slots, NewSlot*stride+5, NewSlot*stride+7);
-        slots = llListReplaceList(slots, llList2List(slots, OldSlot*stride, OldSlot*stride+3)
-                + [llList2Key(slots, NewSlot*stride+4)]
-                + llList2List(slots, OldSlot*stride+5, OldSlot*stride+7), OldSlot*stride, (OldSlot+1)*stride-1);
+        list curslot = llList2List(slots, NewSlot*STRIDE, NewSlot*STRIDE+3)
+                + [llList2Key(slots, OldSlot*STRIDE+4)]
+                + llList2List(slots, NewSlot*STRIDE+5, NewSlot*STRIDE+7);
+        slots = llListReplaceList(slots, llList2List(slots, OldSlot*STRIDE, OldSlot*STRIDE+3)
+                + [llList2Key(slots, NewSlot*STRIDE+4)]
+                + llList2List(slots, OldSlot*STRIDE+5, OldSlot*STRIDE+7), OldSlot*STRIDE, (OldSlot+1)*STRIDE-1);
 
-        slots = llListReplaceList(slots, curslot, NewSlot*stride, (NewSlot+1)*stride-1);
+        slots = llListReplaceList(slots, curslot, NewSlot*STRIDE, (NewSlot+1)*STRIDE-1);
     }
     else {
         llRegionSayTo(llList2Key(slots, llListFindList(slots, ["seat"+(string)currentseatnum])-4),
@@ -207,8 +207,8 @@ ProcessLine(string sLine, key av, string ncName, string menuName) {
     if(action == "ANIM") {
         if(slotMax<lastStrideCount) {
             slots = llListReplaceList(slots, [llList2String(params, 1), (vector)llList2String(params, 2),
-                llEuler2Rot((vector)llList2String(params, 3) * DEG_TO_RAD), llList2String(params, 4), llList2Key(slots, (slotMax)*stride+4),
-                 "", "",llGetSubString(llList2String(params, 5), 0, 12) + "§" + "seat"+(string)(slotMax+1)], (slotMax)*stride, (slotMax)*stride+7);
+                llEuler2Rot((vector)llList2String(params, 3) * DEG_TO_RAD), llList2String(params, 4), llList2Key(slots, (slotMax)*STRIDE+4),
+                 "", "",llGetSubString(llList2String(params, 5), 0, 12) + "§" + "seat"+(string)(slotMax+1)], (slotMax)*STRIDE, (slotMax)*STRIDE+7);
         }
         else {
             slots += [llList2String(params, 1), (vector)llList2String(params, 2),
@@ -233,26 +233,26 @@ ProcessLine(string sLine, key av, string ncName, string menuName) {
         When multiple SCHMOE lines are in the same notecard, all seats will change.
         */
         integer slotNumber = (integer)llList2String(params,1)-1;
-        if(slotNumber * stride < llGetListLength(slots)) { //sanity
-            if(action == "SCHMOE" || (action == "SCHMO" && llList2Key(slots, slotNumber * stride + 4) == av)) {
+        if(slotNumber * STRIDE < llGetListLength(slots)) { //sanity
+            if(action == "SCHMOE" || (action == "SCHMO" && llList2Key(slots, slotNumber * STRIDE + 4) == av)) {
                 integer index=2;
                 integer length=llGetListLength(params);
                 for(; index<length; index++) {
                     if(index==2 || index==5) {
                         slots=llListReplaceList(slots, [llList2String(params, index)],
-                         slotNumber * stride + index - 2, slotNumber * stride + index - 2);
+                         slotNumber * STRIDE + index - 2, slotNumber * STRIDE + index - 2);
                     }
                     else if(index==3) {
                         slots=llListReplaceList(slots, [(vector)llList2String(params, index)],
-                         slotNumber * stride + 1, slotNumber * stride + 1);
+                         slotNumber * STRIDE + 1, slotNumber * STRIDE + 1);
                     }
                     else if(index==4) {
                         slots=llListReplaceList(slots, [llEuler2Rot((vector)llList2String(params, index) * DEG_TO_RAD)],
-                         slotNumber * stride + 2, slotNumber * stride + 2);
+                         slotNumber * STRIDE + 2, slotNumber * STRIDE + 2);
                     }
                     else if(index==6) {
                         slots=llListReplaceList(slots, [llList2String(params, index) + "§seat" + (string)(slotNumber+1)],
-                         slotNumber * stride + 7, slotNumber * stride + 7);
+                         slotNumber * STRIDE + 7, slotNumber * STRIDE + 7);
                     }
                 }
             }
@@ -296,24 +296,24 @@ ProcessLine(string sLine, key av, string ncName, string menuName) {
             lmid = (key)llList2String(params, 3);
         }
         else {
-            lmid = (key)llList2String(slots, (slotMax-1)*stride+4);
+            lmid = (key)llList2String(slots, (slotMax-1)*STRIDE+4);
         }
         llMessageLinked(LINK_SET, num, llList2String(params, 2), lmid);
         llSleep((float)llList2String(params, 4));
         llRegionSay(chatchannel, llDumpList2String(["LINKMSG",num,llList2String(params, 2),lmid], "|"));
     }
     else if (action == "SATMSG") {
-        integer index = (slotMax - 1) * stride + 5;
+        integer index = (slotMax - 1) * STRIDE + 5;
         if((integer)llList2String(params, 4) >= 1) {
-            index = (((integer)llList2String(params, 4) + -1) * stride + 5);
+            index = (((integer)llList2String(params, 4) + -1) * STRIDE + 5);
         }
         slots = llListReplaceList(slots, [llDumpList2String([llList2String(slots,index),
             llDumpList2String(llDeleteSubList(params, 0, 0), "|")], "§")], index, index);
     }
     else if (action == "NOTSATMSG") {
-        integer index = (slotMax - 1) * stride + 6;
+        integer index = (slotMax - 1) * STRIDE + 6;
         if((integer)llList2String(params, 4) >= 1) {
-            index = (((integer)llList2String(params, 4) + -1) * stride + 6);
+            index = (((integer)llList2String(params, 4) + -1) * STRIDE + 6);
         }
         slots = llListReplaceList(slots, [llDumpList2String([llList2String(slots,index),
             llDumpList2String(llDeleteSubList(params, 0, 0), "|")], "§")], index, index);
@@ -327,7 +327,7 @@ default{
            llLinkSitTarget(n,<0.0,0.0,0.5>,ZERO_ROTATION);
         }
         chatchannel = (integer)("0x" + llGetSubString((string)llGetKey(), 0, 7));
-        llMessageLinked(LINK_SET, 1, (string)chatchannel, NULL_KEY); //let our scripts know the chat channel for props and adjusters
+        llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)chatchannel, NULL_KEY); //let our scripts know the chat channel for props and adjusters
         integer listener = llListen(chatchannel, "", "", "");
         //the nPose Menu will do the same, so this should basically only run if there is no nPose menu script in this build
         //but currently we don't check this, so at the startup the DOPOSE|DEFAULT will happen twice
@@ -405,7 +405,7 @@ default{
         else if (num == SWAP) {
             //swap the two slots
             //usage LINKMSG|202|1,2
-            if(llGetListLength(slots)/stride >= 2) {
+            if(llGetListLength(slots)/STRIDE >= 2) {
                 list seats2Swap = llCSV2List(str);
                 SwapTwoSlots((integer)llList2String(seats2Swap, 0), (integer)llList2String(seats2Swap, 1));
             }
@@ -428,13 +428,13 @@ default{
         else if (num == (SEAT_UPDATE + 2000000)) {
             //slave sent slots list after adjuster moved the AV.  we need to keep our slots list up to date. replace slots list
             list tempList = llParseStringKeepNulls(str, ["^"], []);
-            integer listStop = llGetListLength(tempList)/stride;
+            integer listStop = llGetListLength(tempList)/STRIDE;
             integer slotNum;
             for(; slotNum < listStop; ++slotNum) {
-                slots = llListReplaceList(slots, [llList2String(tempList, slotNum*stride), (vector)llList2String(tempList, slotNum*stride+1),
-                 (rotation)llList2String(tempList, slotNum*stride+2), llList2String(tempList, slotNum*stride+3),
-                 (key)llList2String(tempList, slotNum*stride+4), llList2String(tempList, slotNum*stride+5), 
-                 llList2String(tempList, slotNum*stride+6), llList2String(tempList, slotNum*stride+7)], slotNum*stride, slotNum*stride + 7);
+                slots = llListReplaceList(slots, [llList2String(tempList, slotNum*STRIDE), (vector)llList2String(tempList, slotNum*STRIDE+1),
+                 (rotation)llList2String(tempList, slotNum*STRIDE+2), llList2String(tempList, slotNum*STRIDE+3),
+                 (key)llList2String(tempList, slotNum*STRIDE+4), llList2String(tempList, slotNum*STRIDE+5), 
+                 llList2String(tempList, slotNum*STRIDE+6), llList2String(tempList, slotNum*STRIDE+7)], slotNum*STRIDE, slotNum*STRIDE + 7);
             }
             slotMax = listStop;
         }
@@ -540,7 +540,7 @@ default{
             }
         }
         if(change & CHANGED_LINK) {
-            llMessageLinked(LINK_SET, 1, (string)chatchannel, NULL_KEY); //let our scripts know the chat channel for props and adjusters
+            llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)chatchannel, NULL_KEY); //let our scripts know the chat channel for props and adjusters
             assignSlots();
         }
         if(change & CHANGED_REGION) {
