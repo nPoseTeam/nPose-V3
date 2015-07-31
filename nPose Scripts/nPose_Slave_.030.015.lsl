@@ -310,7 +310,7 @@ default {
                 return;
             }
         }
-        else if(num == 201) { //adjust has been chosen from the menu
+        else if(num == ADJUST) { //adjust has been chosen from the menu
             llSay(chatchannel, "adjuster_die");
             adjusters = [];
             if(llGetInventoryType("Adjuster") & INVENTORY_OBJECT) {
@@ -320,8 +320,8 @@ default {
                 llRegionSayTo(llGetOwner(), 0, "Seat Adjustment disabled.  No Adjuster object found in" + llGetObjectName()+ ".");
             }
         }
-        else if(num == 205) { //stopadjust has been chosen from the menu
-            llMessageLinked(LINK_SET, 204, "", "");
+        else if(num == STOPADJUST) { //stopadjust has been chosen from the menu
+            llMessageLinked(LINK_SET, DUMP, "", "");
             llSay(chatchannel, "adjuster_die"); 
             adjusters = [];
         }
@@ -339,6 +339,7 @@ default {
                 integer slotsindex = index * stride;
                 rotation newrot = (rotation)llList2String(params, 1) / llGetRot();
                 slots = llListReplaceList(slots, [newpos, newrot], slotsindex + 1, slotsindex + 2);
+                llRegionSayTo(llGetOwner(), 0, "SCHMOE and SCHMO lines will be reported as ANIM.  Be sure to replace if needed.");
                 llRegionSayTo(llGetOwner(), 0, "\nANIM|" + llList2String(slots, slotsindex) + "|" + (string)newpos + "|" +
                     (string)(llRot2Euler(newrot) * RAD_TO_DEG) + "|" + llList2String(slots, slotsindex + 3));
                 llSetObjectName(primName);
@@ -347,10 +348,11 @@ default {
                 llMessageLinked(LINK_SET, (SEAT_UPDATE + 2000000), llDumpList2String(slots, "^"), NULL_KEY);                
             }
         }
-        else if(num == 204) {
+        else if(num == DUMP) {
             integer n;
             string primName = llGetObjectName();
             llSetObjectName(llGetLinkName(1));
+            llRegionSayTo(llGetOwner(), 0, "SCHMOE and SCHMO lines will be reported as ANIM.  Be sure to replace if needed.");
             for(n = 0; n < llGetListLength(slots)/8; ++n) {
                 list slice = llList2List(slots, n*stride, n*stride + 3);
                 slice = llListReplaceList(slice, [RAD_TO_DEG * llRot2Euler(llList2Rot(slice, 2))], 2, 2);
