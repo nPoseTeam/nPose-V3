@@ -49,8 +49,6 @@ integer chatchannel;
 integer explicitFlag;
 key hudId;
 string lastDoPoseCardName;
-string lastDoPoseAlias;
-string lastDoPosePlaceholder;
 key lastDoPoseCardId;
 key lastDoPoseAvatarId;
 list slots;  //one STRIDE = [animationName, posVector, rotVector, facials, sitterKey, SATMSG, NOTSATMSG, seatName]
@@ -336,7 +334,7 @@ default{
             string cardName = llGetInventoryName(INVENTORY_NOTECARD, n);
             if((llSubStringIndex(cardName, DEFAULT_PREFIX) == 0) || (llSubStringIndex(cardName, CARD_PREFIX) == 0)) {
                 llSleep(1.0); //be sure that the NC reader script finished resetting
-                llMessageLinked(LINK_SET, DOPOSE, cardName + NC_READER_CONTENT_SEPARATOR + cardName, NULL_KEY);
+                llMessageLinked(LINK_SET, DOPOSE, cardName, NULL_KEY);
                 return;
             }
         }
@@ -377,8 +375,6 @@ default{
             if(num==DOPOSE_READER) {
                 if (llGetInventoryType(ncName) == INVENTORY_NOTECARD){ //sanity
                     lastDoPoseCardName=ncName;
-                    lastDoPoseAlias=llList2String(allData, 1);
-                    lastDoPosePlaceholder=llList2String(allData, 2);
                     lastDoPoseCardId=llGetInventoryKey(lastDoPoseCardName);
                     lastDoPoseAvatarId=id;
                 }
@@ -528,8 +524,7 @@ default{
                 if(lastDoPoseCardId!=llGetInventoryKey(lastDoPoseCardName)) {
                     //the last used nc changed, "redo" the nc
                     llSleep(1.0); //be sure that the NC reader script finished resetting
-                    llMessageLinked(LINK_SET, DOPOSE, llList2CSV([lastDoPoseCardName, lastDoPoseAlias,
-                     lastDoPosePlaceholder]), lastDoPoseAvatarId); 
+                    llMessageLinked(LINK_SET, DOPOSE, lastDoPoseCardName, lastDoPoseAvatarId); 
                 }
                 else {
                     llResetScript();
