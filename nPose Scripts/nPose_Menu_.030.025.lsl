@@ -304,9 +304,6 @@ BuildMenus(list cardNames) {//builds the user defined menu buttons
             }
         }
     }
-    if(defaultPoseNcName) {
-        llMessageLinked(LINK_SET, DOPOSE, defaultPoseNcName, NULL_KEY);
-    }
 }
 
 default{
