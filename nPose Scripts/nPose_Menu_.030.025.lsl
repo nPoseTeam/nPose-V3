@@ -130,7 +130,7 @@ Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page,
                 // Examples:
                 // 1~3 : is TRUE if the user is seated on seat number 1 or 3
                 // owner~2 : is TRUE for the object owner or anyone sitting on seat number 2
-                // owner&!rlvVictim : is TRUE for the object owner, but only if he/she isn't a victim (rlvVictim is a UserDefinedPermission used by the RLV+ plugin)
+                // owner&!victim : is TRUE for the object owner, but only if he/she isn't a victim (victim is a UserDefinedPermission used by the RLV+ plugin)
                 // 1~3&group: is TRUE for the user on seat 1 and also for the user on seat 3 if he/she has the same active group as the Object
 
                 list permItemsOr=llParseString2List(permissions, ["~"], []);
@@ -170,8 +170,7 @@ Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page,
                                 //plugin permission
                                 string pluginPermissionType=llList2String(pluginPermissionList, pluginPermissionIndex+1);
                                 if(pluginPermissionType==USER_PERMISSION_TYPE_LIST) {
-                                    result=logicalXor(invert, ~llSubStringIndex(llList2String(pluginPermissionList,
-                                     pluginPermissionIndex+2), (string)rcpt));
+                                    result=logicalXor(invert, ~llSubStringIndex(llList2String(pluginPermissionList, pluginPermissionIndex+2), (string)rcpt));
                                 }
                                 else if(pluginPermissionType==USER_PERMISSION_TYPE_BOOL) {
                                     result=logicalXor(invert, (integer)llList2String(pluginPermissionList, pluginPermissionIndex+2));
