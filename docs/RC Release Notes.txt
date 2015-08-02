@@ -1,0 +1,75 @@
+Thank you to all who have contributed work and ideas which have moved nPose to an entirely new level.
+Thank you to all who have contributed work and ideas which have moved nPose to an entirely new level.
+A special thank you to Leona for ideas which forced me to pull off my blinders and see new ways of doing things which opened the door for lots of new features and resources open to nPose users.  When you see these changes, you'll realize they almost all came from Leona.  Please send your thanks for all her efforts.
+One of Leona's many contributions is to re-vitalize the nPose Portal.  We now have a Forum where everyone can contribute ideas, and comments for all to see.  We have a Calendar where you'll find scheduled events such as classes.  We also have a Documentation page where all current documentation can be found (We have started to post documents here, hopefully enough to get Beta testing going).  We also hope to have some class text put up here as well.
+
+nPose Portal link:
+https://sites.google.com/site/nposeportal/home
+
+
+
+
+New in next release:
+1. Pose selection cache for quicker response to recently use pose sets.
+2. Far more advanced button permissions.  When using a '~' delimited list of button permissions, each is treated separately rather than the entire list as one permission.
+    Button permissions now have highest priority (example: {1} button permissions will require you to be seated in seat1 to see this menu, owner cannot see this button unless in seat1).
+3. nPose now offers SchmoPose 'like' action where only the menu user will change poses and all others are not affected.  Used in conjunction with button permissions, a single notecard can support several seats.
+4. Extended SchmoPose 'like' action where one couple can change their pose set while other couples are not affected.  Used in conjunction with button permissions, no 2 sitters will be on top of each other.
+5. SATMSG and NOTSATMSG now have an optional way to set the seat# so they no longer have to follow the ANIM line they will be associated with.  This will allow SAT/NOTSAT messages for SCHMO type notecards.
+6. Built in support to set any menu button order desired via a single notecard.
+7. Set a limit to how far away from the nPose build that touchers are allowed to pull a menu.
+8. A pause time option has been added to LINKMSG lines to only allow a pause when it is needed rather than a pause each and every time a LINKMSG is run.
+    (example:  when rezzing a temp attach item, it needs time to rez and get scripts up and running before sending the command to temp attach.)
+9. An additional global pause command has been added as a built in line processing function.  Simply add a line inside any notecard as follows:  PAUSE|(float)pauseTime
+10. Support for running a notecard when a submenu button is clicked.  This should help to allow setting up a scene for a submenu or to ensure and SCHMO/SCHMOE submenus will be applied to an appropriate pose set.
+11. Many of the user defined functions have been re-written to simplify them and make them easier to follow.  This also adds up to memory savings and faster running scripts.
+
+
+
+
+
+The next release encompasses the largest number of changes in nPose history.  There are so many new and advanced features that some of the existing functions make little sense to keep.
+TRUE CONFESSION:  Many of these new functions may appear to be a hack (old skool term) of sorts.  To use some of these new features, may be just a bit awkward.  We chose this path to ease the pain of updating scripts in existing builds.  
+
+Required scripts:
+    nPose Core
+    nPose NC Reader
+    nPose Menu
+    nPose Dialog
+    nPose Slave
+    
+nPose Core:
+    The Core script drops the function of reading notecards and passes that responsibility to the new NC Reader script.  This makes room for a few more features not previously possible.  The Core script still holds responsibility to sort out and assign sitters to their proper seat,  process notecard line data and distribute responsibilities to the other scripts, and holds the listener for outside communications to props and huds.
+    The Core script has some new features for processing more notecard line commands.  READ MORE ABOUT THESE NEW COMMANDS ON THE "nPose Portal under Documentation".  The new commands are as follows:
+        SCHMO
+        SCHMOE
+        PAUSE
+        SATMSG with optional seat# to let nPose know which seat the message should be associated with.
+        NOTSATMSG with optional seat# to let nPose know which seat the message should be associated with.
+    BTN type notecards now support SAT and NOTSAT messages (with the addition of the seat# option).
+---------------------------------------------------
+NC commands SCHMO/SCHMOE
+At least one of us does not like these two names, because they are only descriptive for a few of our users.
+So please be so nice and give us a little feedback:
+    1) Do you like SCHMO/SCHMOE as a command name?
+    2) Perhaps do you have a suggestion for more descriptive names instead?
+---------------------------------------------------
+
+nPose NC Reader:
+    The new NC Reader script takes on the responsibility of reading notecards in contents and passes that information to the other scripts.
+    The NC Reader also stores NC information in a cache for quicker response to the most recently accessed pose sets.
+    When the NC Reader memory reaches a cap, it will remove the oldest pose sets from the cache to make room for the more recent pose sets.
+    The NC Reader script intercepts all DOPOSE/DOACTION requests, grabs the notecard information and passes it along to the Core for processing.
+    You may also make use of the NC reader in your own nPose plugins. 
+
+nPose Menu:
+    The Menu script has some added features which probably will not appear to be much but are a vital part of many new functionalities.  
+    The Menu script will now look for a special notecard (.Change Menu Order).  If found the Menu will ask the NC Reader to read that notecard and pass back the contents in a list (notecard names) which the Menu then uses to build its' menu in the order received.  
+    The builder has the ability to change the order of all buttons, including submenu buttons.  If this special notecard is not found, the Menu script will use the names of notecards in contents as usual and in that order.
+    The button permissions got a big functionality face lift.  READ MORE ABOUT THESE NEW BUTTON PERMISSIONS ON THE "nPose Portal under Documentation/Menus".
+
+nPose Dialog:
+    The Dialog script has a change which is only utilized internally which saves memory and makes handling the menu path more robust.
+    
+nPose Slave:
+    The Slave script gets a bug fix which produced that annoying issue where sometimes when an AV would sit, they would not be animated with the proper animation.
