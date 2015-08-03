@@ -1,7 +1,6 @@
 Thank you to all who have contributed work and ideas which have moved nPose to an entirely new level.
-Thank you to all who have contributed work and ideas which have moved nPose to an entirely new level.
 A special thank you to Leona for ideas which forced me to pull off my blinders and see new ways of doing things which opened the door for lots of new features and resources open to nPose users.  When you see these changes, you'll realize they almost all came from Leona.  Please send your thanks for all her efforts.
-One of Leona's many contributions is to re-vitalize the nPose Portal.  We now have a Forum where everyone can contribute ideas, and comments for all to see.  We have a Calendar where you'll find scheduled events such as classes.  We also have a Documentation page where all current documentation can be found (We have started to post documents here, hopefully enough to get Beta testing going).  We also hope to have some class text put up here as well.
+One of Leona's many contributions is to re-vitalize the nPose Portal. We now have a Forum where everyone can contribute ideas, and comments for all to see.  We have a Calendar where you'll find scheduled events such as classes.  We also have a Documentation page where all current documentation can be found (We have started to post documents here, hopefully enough to get Beta testing going).  We also hope to have some class text put up here as well.
 
 nPose Portal link:
 https://sites.google.com/site/nposeportal/home
@@ -40,7 +39,7 @@ Required scripts:
     
 nPose Core:
     The Core script drops the function of reading notecards and passes that responsibility to the new NC Reader script.  This makes room for a few more features not previously possible.  The Core script still holds responsibility to sort out and assign sitters to their proper seat,  process notecard line data and distribute responsibilities to the other scripts, and holds the listener for outside communications to props and huds.
-    The Core script has some new features for processing more notecard line commands.  READ MORE ABOUT THESE NEW COMMANDS ON THE "nPose Portal under Documentation".  The new commands are as follows:
+    The Core script has some new features for processing more notecard line commands.  READ MORE ABOUT THESE NEW COMMANDS ON THE "nPose Portal under Documentation / Wiki".  The new commands are as follows:
         SCHMO
         SCHMOE
         PAUSE
@@ -66,7 +65,7 @@ nPose Menu:
     The Menu script has some added features which probably will not appear to be much but are a vital part of many new functionalities.  
     The Menu script will now look for a special notecard (.Change Menu Order).  If found the Menu will ask the NC Reader to read that notecard and pass back the contents in a list (notecard names) which the Menu then uses to build its' menu in the order received.  
     The builder has the ability to change the order of all buttons, including submenu buttons.  If this special notecard is not found, the Menu script will use the names of notecards in contents as usual and in that order.
-    The button permissions got a big functionality face lift.  READ MORE ABOUT THESE NEW BUTTON PERMISSIONS ON THE "nPose Portal under Documentation/Menus".
+    The button permissions got a big functionality face lift.  READ MORE ABOUT THESE NEW BUTTON PERMISSIONS ON THE "nPose Portal under Documentation / Wiki".
 
 nPose Dialog:
     The Dialog script has a change which is only utilized internally which saves memory and makes handling the menu path more robust.
