@@ -14,6 +14,7 @@ integer SEAT_UPDATE = 35353;//we gonna do satmsg and notsatmsg
 integer STRIDE = 8;
 integer MEMORY_USAGE = 34334;
 integer SEND_CHATCHANNEL = 1;
+integer REQUEST_CHATCHANNEL = 999999;
 
 string str_replace(string str, string search, string replace) {
     return llDumpList2String(llParseStringKeepNulls((str = "") + str, [search], []), replace);
@@ -29,6 +30,9 @@ integer ListCompare(list a, list b) {
 }
 
 default {
+    state_entry() {
+        llMessageLinked(LINK_SET, REQUEST_CHATCHANNEL, "", "");
+    }
     link_message(integer sender, integer num, string str, key id) {
         if(num == SEND_CHATCHANNEL) {  //got chatchannel from the core.
             chatchannel = (integer)str;
@@ -62,8 +66,10 @@ default {
                                 (key)llList2String(oldstride, 4));
 //                            llRegionSayTo(llGetOwner(), 0,llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
 //                                llList2String(parts, 1), llList2String(oldstride, 4)], "|"));
-                            llRegionSay(chatchannel,llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
-                                llList2String(parts, 1), llList2String(oldstride, 4)], "|"));
+                            if (chatchannel != 0)
+                                llRegionSay(chatchannel,llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
+                                    llList2String(parts, 1), llList2String(oldstride, 4)], "|"));
+                            }
                         }
                     }
                 }
@@ -99,8 +105,10 @@ default {
                             llSleep(1.5);
     //                        llRegionSayTo(llGetOwner(), 0, llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
     //                            llList2String(parts, 1), (string)llList2String(slots, n*STRIDE + 4)], "|"));
-                            llRegionSay(chatchannel, llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
-                                llList2String(parts, 1), (string)llList2String(slots, n*STRIDE + 4)], "|"));
+                            if (chatchannel != 0)
+                                llRegionSay(chatchannel, llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
+                                    llList2String(parts, 1), (string)llList2String(slots, n*STRIDE + 4)], "|"));
+                            }
                         }
                     }
                 }
