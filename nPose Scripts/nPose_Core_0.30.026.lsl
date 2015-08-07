@@ -345,6 +345,7 @@ default{
         }
         else if(num == DOPOSE_READER || num == DOACTION_READER) {
             list allData=llParseStringKeepNulls(str, [NC_READER_CONTENT_SEPARATOR], []);
+            str = "";
             //allData: [ncName, alias, placeholder (currenly not used), contentLine1, contentLine2, ...]
             string ncName=llList2String(allData, 0);
             string menuName=llList2String(allData, 1);
