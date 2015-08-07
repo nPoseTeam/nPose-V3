@@ -62,7 +62,7 @@ checkMemory() {
 
 fetchNcContent(string str, key id, integer type) {
 	//we can also use the expanded DOPOSE/DOACTIONS format:
-	//str (separated by "℥"): cardname, menuname, placeholder
+	//str (separated by NC_READER_CONTENT_SEPARATOR): cardname, menuname, placeholder
 	list parts=llParseStringKeepNulls(str, [NC_READER_CONTENT_SEPARATOR], []);
 	string ncName=llList2String(parts, 0);
 	string menuName=llList2String(parts, 1);
@@ -90,7 +90,7 @@ processResponseStack() {
 		if(~index) {
 			//The data is in the cache (and therefore valid and fully read) .. send the response
 			//data Format:
-			//str (separated by the CONTENT_SEPARATOR: ncName, menuName, placeholder(currently not used), content
+			//str (separated by the NC_READER_CONTENT_SEPARATOR: ncName, menuName, placeholder(currently not used), content
 			llMessageLinked(
 				LINK_SET,
 				llList2Integer(responseStack, RESPONSE_STACK_TYPE),
@@ -105,10 +105,18 @@ processResponseStack() {
 		}
 		else {
 			//we need to start the reader
-			cacheMiss++;
-			ncReadStackNcNames+=[ncName];
-			ncReadStack+=[llGetNotecardLine(ncName, 0), 0, ""];
-			return;
+			//sanity: check the presense of the nc once more. It should be almost impossible that the NC is deleted meanwhile, because
+			//if it is deleted, all the lists (esp. the responseStack) is also deleted in the changed event and we should not be here
+			if(llGetInventoryType(ncName) == INVENTORY_NOTECARD) {
+				cacheMiss++;
+				ncReadStackNcNames+=[ncName];
+				ncReadStack+=[llGetNotecardLine(ncName, 0), 0, ""];
+				return;
+			}
+			else {
+				//we should remove this entry from the response stack, even if we expect all the lists to be deleted in the expected changed event
+				responseStack=llDeleteSubList(responseStack, 0, RESPONSE_STACK_STRIDE - 1);
+			}
 		}
 	}
 	while(TRUE);
@@ -117,17 +125,17 @@ processResponseStack() {
 default {
 	link_message(integer sender, integer num, string str, key id) {
 		if(num==DOPOSE) {
-			//str (separated by "℥"): ncName, menuName, placeholder(currently not used)
+			//str (separated by NC_READER_CONTENT_SEPARATOR): ncName, menuName, placeholder(currently not used)
 			//id: toucher
 			fetchNcContent(str, id, DOPOSE_READER);
 		}
 		else if(num==DOACTIONS) {
-			//str (separated by "℥"): ncName, menuName, placeholder(currently not used)
+			//str (separated by NC_READER_CONTENT_SEPARATOR): ncName, menuName, placeholder(currently not used)
 			//id: toucher
 			fetchNcContent(str, id, DOACTION_READER);
 		}
 		else if(num==NC_READER_REQUEST) {
-			//str (separated by "℥"): cardname, userDefinedData1, userDefinedData2
+			//str (separated by NC_READER_CONTENT_SEPARATOR): cardname, userDefinedData1, userDefinedData2
 			//id: userDefinedKey
 			fetchNcContent(str, id, NC_READER_RESPONSE);
 		}
@@ -149,8 +157,20 @@ default {
 		integer ncReadStackIndex=llListFindList(ncReadStack, [queryid]);
 		if(~ncReadStackIndex) {
 			//its for us
-			checkMemory();
 			string ncName=llList2String(ncReadStackNcNames, ncReadStackIndex);
+			//do a sanity check: If the NC is deleted from the prims inventory while we read it, it may/will happen that the
+			//dataserver event from the last line reading will trigger BEFORE the changed event. This will lead to a
+			//shout on debug channel
+			if(llGetInventoryType(ncName) != INVENTORY_NOTECARD) {
+				//there should be a changed event inside the eventqueue, but nevertheless we clean up the stuff
+				cacheNcNames=[];
+				cacheContent=[];
+				ncReadStackNcNames=[];
+				ncReadStack=[];
+				responseStack=[];
+				return;
+			}
+			checkMemory();
 			if(data==EOF) {
 				//move the stuff to the cache and process the response stack
 				cacheNcNames+=ncName;
