@@ -33,6 +33,7 @@ default {
     state_entry() {
         llMessageLinked(LINK_SET, REQUEST_CHATCHANNEL, "", "");
     }
+    
     link_message(integer sender, integer num, string str, key id) {
         if(num == SEND_CHATCHANNEL) {  //got chatchannel from the core.
             chatchannel = (integer)str;
@@ -66,7 +67,7 @@ default {
                                 (key)llList2String(oldstride, 4));
 //                            llRegionSayTo(llGetOwner(), 0,llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
 //                                llList2String(parts, 1), llList2String(oldstride, 4)], "|"));
-                            if (chatchannel != 0)
+                            if (chatchannel != 0) {
                                 llRegionSay(chatchannel,llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
                                     llList2String(parts, 1), llList2String(oldstride, 4)], "|"));
                             }
@@ -88,8 +89,8 @@ default {
                     //if same sitter and has new pose set
                     // or new sitter (don't care if new pose set or not, still run SATMSGs)
                     if((llList2String(currentstride, 4) == llList2String(oldstride, 4) && llList2String(currentstride, 4) != ""
-                      && listsEqual == FALSE)
-                     || (llList2String(currentstride, 4) != llList2String(oldstride, 4) && llList2String(currentstride, 4) != "")) {
+                      && listsEqual == FALSE) || (llList2String(currentstride, 4) != llList2String(oldstride, 4) 
+                      && llList2String(currentstride, 4) != "")) {
                     
             //satmsg things
                         //we have a sitter and satmsg so add it to the current list
@@ -105,7 +106,7 @@ default {
                             llSleep(1.5);
     //                        llRegionSayTo(llGetOwner(), 0, llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
     //                            llList2String(parts, 1), (string)llList2String(slots, n*STRIDE + 4)], "|"));
-                            if (chatchannel != 0)
+                            if (chatchannel != 0) {
                                 llRegionSay(chatchannel, llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
                                     llList2String(parts, 1), (string)llList2String(slots, n*STRIDE + 4)], "|"));
                             }
