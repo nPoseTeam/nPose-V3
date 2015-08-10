@@ -25,7 +25,8 @@ string menuNC = ".Change Menu Order"; //holds the name of the menu order notecar
 list slotbuttons = [];//list of seat# or seated AV name for change seats menu.
 key toucherid;
 list menus;
-list menuPerm;
+list menuPermPath;
+list menuPermPerms;
 float currentOffsetDelta = 0.2;
 float menuDistance = 30.0;
 
@@ -104,9 +105,9 @@ Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page,
     integer stopc = llGetListLength(choices);
     integer nc;
     for(; nc < stopc; ++nc) {
-        integer indexc = llListFindList(menuPerm, [llDumpList2String(llDeleteSubList(llParseStringKeepNulls(Path , [":"], []), 0, 0) + [llList2String(choices, nc)], ":")]);
+        integer indexc = llListFindList(menuPermPath, [llDumpList2String(llDeleteSubList(llParseStringKeepNulls(Path , [":"], []), 0, 0) + [llList2String(choices, nc)], ":")]);
         if(indexc != -1) {
-            string permissions = llToLower(llList2String(menuPerm, indexc + 1));
+            string permissions = llToLower(llList2String(menuPermPerms, indexc));
             if(permissions != "") {//only run this on buttons with button permissions.
                 //Check each button permission
                 
@@ -250,7 +251,8 @@ DoMenu_AccessCtrl(key toucher, string path, string menuPrompt, integer page) {//
 
 BuildMenus(list cardNames) {//builds the user defined menu buttons
     menus = [];
-    menuPerm = [];
+    menuPermPath = [];
+    menuPermPerms = [];
     integer stop = llGetListLength(cardNames);
     integer fromContents;
     if(!stop) {
@@ -284,7 +286,8 @@ BuildMenus(list cardNames) {//builds the user defined menu buttons
         }
         pathParts = llListReplaceList(pathParts, [ROOTMENU], 0, 0);
         if(menuPerms) {
-            menuPerm += [llDumpList2String(llDeleteSubList(pathParts, 0, 0), ":"), menuPerms];
+            menuPermPath += llDumpList2String(llDeleteSubList(pathParts, 0, 0), ":");
+            menuPermPerms += menuPerms;
         }
         if(~llListFindList(CARD_PREFIXES, [prefix])) { // found
             pathParts = llDeleteSubList(pathParts, 0, 0);            
@@ -477,10 +480,10 @@ default{
                 string btnname = llDumpList2String([BTN_PREFIX] + pathlist + [selection], ":");
                 //correct the notecard name so the core can find this notecard
 
-                integer permission = llListFindList(menuPerm, [llDumpList2String(pathlist + [selection], ":")]);
+                integer permission = llListFindList(menuPermPath, [llDumpList2String(pathlist + [selection], ":")]);
 
                 if(~permission) {
-                    string thisPerm = llList2String(menuPerm, permission+1);
+                    string thisPerm = llList2String(menuPermPerms, permission);
                     if(thisPerm != "") {
                         defaultname += "{"+thisPerm+"}";
                         setname += "{"+thisPerm+"}";
