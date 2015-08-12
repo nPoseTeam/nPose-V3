@@ -580,19 +580,21 @@ default{
             }
         }
         else if(num == USER_PERMISSION_UPDATE) {
-            // @param str string CSV: permissionName,permissionType,permissionValue
+            // @param str string CSV: permissionName, permissionType, permissionValue[, permissionName, permissionType, permissionValue[, ...]]
             // permissionName: a unique name for a permission
-            // permissionType: inUserList, bool, maybeSomeMoreToAdd
-            // permissionValue: a list (as string separated by "|") with Avatar UUIDs, 
+            // permissionType: bool|list
+            // permissionValue: 0|1 or a list with Avatar UUIDs (must not contain a ",")
 
             list newPermission=llCSV2List(str);
-            if(llGetListLength(newPermission)==3) {
-                newPermission=llToLower(llList2String(newPermission, 0)) + llList2List(newPermission, 1, -1);
-                index=llListFindList(pluginPermissionList, [llList2String(newPermission, 0)]);
+            integer n;
+            integer length=llGetListLength(newPermission);
+            for(; n<length; n+=3) {
+                string permissionName=llToLower(llList2String(newPermission, n));
+                index=llListFindList(pluginPermissionList, [permissionName]);
                 if(~index) {
                     pluginPermissionList=llDeleteSubList(pluginPermissionList, index, index+2);
                 }
-                pluginPermissionList+=newPermission;
+                pluginPermissionList+=[permissionName] + llList2List(newPermission, n+1, n+2);
             }
         }
         else if(num==SEAT_UPDATE) {
