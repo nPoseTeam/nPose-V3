@@ -7,10 +7,13 @@
 // "Full perms" means having the modify, copy, and transfer permissions enabled in Second Life and/or other virtual world platforms derived from Second Life (such as OpenSim).  If the platform should allow more fine-grained permissions, then "full perms" will mean the most permissive possible set of permissions allowed by the platform.
 //
 // Documentation:
-// https://github.com/LeonaMorro/nPose-NC-Reader/wiki
+// https://github.com/HowardBaxton/nPose/wiki
 // Report Bugs to:
-// https://github.com/LeonaMorro/nPose-NC-Reader/issues
-// or IM slmember1 Resident (Leona)
+// https://github.com/HowardBaxton/nPose/issues
+// or sent an IM to: slmember1 Resident (Leona)
+//
+// Have fun
+// Leona
 
 string NC_READER_CONTENT_SEPARATOR="%&§";
 integer MEMORY_TO_BE_USED=60000;
