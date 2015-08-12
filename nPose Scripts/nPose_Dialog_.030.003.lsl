@@ -22,14 +22,15 @@ string MORE = "More";
 string BLANK = " ";
 integer timeout = 60;
 integer repeat = 5;//how often the timer will go off, in seconds
-string path;
+integer channel;
+integer listener = -1;
 
-list menus;//9-strided list in form listenchannel, dialogid, listener, starttime, recipient, prompt, list buttons, page buttons, currentpage
+list menus;//8-strided list in form [recipient, dialogid, starttime, prompt, list buttons, page buttons, currentpage, path]
 //where "list buttons" means the big list of choices presented to the user
 //and "page buttons" means utility buttons that will appear on every page, such as one saying "go up one level"
 //and "currentpage" is an integer meaning which page of the menu the user is currently viewing
 
-integer stridelength = 10;
+integer stridelength = 8;
 
 list avs;//fill this on start and update on changed_link.  leave dialogs open until avs stand
 
@@ -74,14 +75,14 @@ list SeatedAvs()
 integer RandomUniqueChannel()
 {
     integer out = llRound(llFrand(10000000)) + 100000;
-    if (~llListFindList(menus, [out]))
+    if (out == channel)
     {
         out = RandomUniqueChannel();
     }
     return out;
 }
 
-Dialog(key recipient, string prompt, list menuitems, list utilitybuttons, integer page, key id)
+Dialog(key recipient, string prompt, list menuitems, list utilitybuttons, integer page, key id, string path)
 {
     prompt = Utf8Trim(prompt, 483);
     string thisprompt = prompt + "(Timeout in 60 seconds.)\n";
@@ -121,8 +122,13 @@ Dialog(key recipient, string prompt, list menuitems, list utilitybuttons, intege
     buttons = SanitizeButtons(buttons);
     utilitybuttons = SanitizeButtons(utilitybuttons);
     
-    integer channel = RandomUniqueChannel();
-    integer listener = llListen(channel, "", recipient, "");
+    integer menusIndex = llListFindList(menus, [recipient]);
+    if(menusIndex >= 0) {
+        menus = RemoveMenuStride(menus, menusIndex);
+    }
+    if(!~listener) {
+        listener = llListen(channel, "", NULL_KEY, "");
+    }
     llSetTimerEvent(repeat);
     if (numitems > pagesize)
     {
@@ -137,7 +143,8 @@ Dialog(key recipient, string prompt, list menuitems, list utilitybuttons, intege
     {
         ts = llGetUnixTime();
     }
-    menus += [channel, id, listener, ts, recipient, prompt, llDumpList2String(menuitems, "|"), llDumpList2String(utilitybuttons, "|"), page, path];
+    
+    menus += [recipient, id, ts, prompt, llDumpList2String(menuitems, "|"), llDumpList2String(utilitybuttons, "|"), page, path];
 }
 
 list SanitizeButtons(list in)
@@ -180,10 +187,8 @@ list PrettyButtons(list options, list utilitybuttons)
 list RemoveMenuStride(list menu, integer index)
 {
     //tell this function the menu you wish to remove, identified by list index
-    //it will close the listener, remove the menu's entry from the list, and return the new list
+    //it will remove the menu's entry from the list, and return the new list
     //should be called in the listen event, and on menu timeout    
-    integer listener = llList2Integer(menu, index + 2);
-    llListenRemove(listener);
     return llDeleteSubList(menu, index, index + stridelength - 1);
 }
 
@@ -196,12 +201,12 @@ CleanList()
     integer n;
     for (n = length - stridelength; n >= 0; n -= stridelength)
     {
-        integer starttime = llList2Integer(menus, n + 3);
+        integer starttime = llList2Integer(menus, n + 2);
         debug("starttime: " + (string)starttime);
         if (starttime == -1)
         {          
             //menu was for seated av.  close if they're not seated anymore
-            key av = (key)llList2String(menus, n + 4);
+            key av = (key)llList2String(menus, n);
             if (llListFindList(avs, [av]) == -1)
             {
                 debug("mainmenu stood");
@@ -219,7 +224,7 @@ CleanList()
                 menus = RemoveMenuStride(menus, n);
             }            
         }
-    } 
+    }
 }
 
 debug(string str)
@@ -236,6 +241,7 @@ default
 
     state_entry()
     {
+        channel = RandomUniqueChannel();
         avs = SeatedAvs();
     }
     
@@ -260,24 +266,24 @@ default
             key rcpt = (key)llList2String(params, 0);
             string prompt = llList2String(params, 1);
             integer page = (integer)llList2String(params, 2);
-            path = llList2String(params, 5);
+            string path = llList2String(params, 5);
             list lbuttons = llParseStringKeepNulls(llList2String(params, 3), ["`"], []);
             list ubuttons = llParseStringKeepNulls(llList2String(params, 4), ["`"], []);            
-            Dialog(rcpt, prompt, lbuttons, ubuttons, page, id);
+            Dialog(rcpt, prompt, lbuttons, ubuttons, page, id, path);
         }
     }
     
     listen(integer channel, string name, key id, string message)
     {
-        integer menuindex = llListFindList(menus, [channel]);
+        integer menuindex = llListFindList(menus, [id]);
         if (~menuindex)
         {
             key menuid = llList2Key(menus, menuindex + 1);
-            string prompt = llList2String(menus, menuindex + 5);            
-            list items = llParseStringKeepNulls(llList2String(menus, menuindex + 6), ["|"], []);
-            list ubuttons = llParseStringKeepNulls(llList2String(menus, menuindex + 7), ["|"], []);
-            integer page = llList2Integer(menus, menuindex + 8);
-            string Path = llList2String(menus, menuindex + 9);
+            string prompt = llList2String(menus, menuindex + 3);            
+            list items = llParseStringKeepNulls(llList2String(menus, menuindex + 4), ["|"], []);
+            list ubuttons = llParseStringKeepNulls(llList2String(menus, menuindex + 5), ["|"], []);
+            integer page = llList2Integer(menus, menuindex + 6);
+            string path = llList2String(menus, menuindex + 7);
             menus = RemoveMenuStride(menus, menuindex);              
             if (message == MORE)
             {
@@ -289,16 +295,16 @@ default
                 {
                     page = 0;
                 }
-                Dialog(id, prompt, items, ubuttons, page, menuid);
+                Dialog(id, prompt, items, ubuttons, page, menuid, path);
             }
             else if (message == BLANK)
             {
                 //give the same menu back
-                Dialog(id, prompt, items, ubuttons, page, menuid);
+                Dialog(id, prompt, items, ubuttons, page, menuid, path);
             }            
             else
             {
-                llMessageLinked(LINK_SET, DIALOG_RESPONSE, (string)page + "|" + message + "|" + (string)id + "|" + Path, menuid);
+                llMessageLinked(LINK_SET, DIALOG_RESPONSE, (string)page + "|" + message + "|" + (string)id + "|" + path, menuid);
             }       
         }
     }
@@ -311,6 +317,8 @@ default
         
         if (!llGetListLength(menus))
         {
+            llListenRemove(listener);
+            listener = -1;
             llSetTimerEvent(0.0);
         }
     }
