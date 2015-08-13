@@ -128,8 +128,8 @@ Dialog(key recipient, string prompt, list menuitems, list utilitybuttons, intege
     }
     if(!~listener) {
         listener = llListen(channel, "", NULL_KEY, "");
+        llSetTimerEvent(repeat);
     }
-    llSetTimerEvent(repeat);
     if (numitems > pagesize)
     {
         llDialog(recipient, thisprompt, PrettyButtons(buttons, utilitybuttons + [MORE]), channel);      
