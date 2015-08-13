@@ -120,4 +120,8 @@ default {
              + ", Leaving " + (string)llGetFreeMemory() + " memory free.");
         }
     }
+
+    on_rez(integer params) {
+        llResetScript();
+    }
 }
