@@ -102,9 +102,16 @@ list pluginPermissionList;
 
 
 Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page, string Path) {
-    //check (some) menu permissions
-    if(rcpt == llGetOwner() || menuReqSit == "off" || ~llListFindList(slots, [rcpt])) {
+    //check menu permissions
+    if(
+        //the whole if statement only exists for backward compability, because all this (and more) could be done via button permissions on root level
+        (rcpt == llGetOwner() || Permissions == "GROUP" && llSameGroup(rcpt) || Permissions == "PUBLIC") &&
+        (rcpt == llGetOwner() || menuReqSit == "off" || ~llListFindList(slots, [rcpt])) &&
+        // old RLV plugin, (Lenoa: This behaves like gecko release)
+        (rcpt == llGetOwner() || !~llListFindList(victims, [(string)rcpt]))
+    ) {
         //check button permission this path up to the root
+        //this also means that button permissions are inheritable
         string thisMenuPath=llDumpList2String(llDeleteSubList(llParseStringKeepNulls(Path , [":"], []), 0, 0), ":");
         string tempPath=thisMenuPath+":";
         integer allowed=TRUE;
@@ -253,21 +260,6 @@ DoMenu(key toucher, string path, string menuPrompt, integer page) {//builds the 
     }
 }
 
-DoMenu_AccessCtrl(key toucher, string path, string menuPrompt, integer page) {//checks and enforces who has access to the menu.
-    integer authorized;// = FALSE; // it's FALSE by default
-    if(toucher == llGetOwner()) {//owner always gets authorized
-        authorized = TRUE;
-    }
-    else if((Permissions == "GROUP" && llSameGroup(toucher))
-     | (Permissions == "PUBLIC") 
-     | (!~llListFindList(victims, [(string)toucher]))) {
-        authorized = TRUE;
-    }
-    if(authorized) {
-        DoMenu(toucher, path, menuPrompt, page);
-    }
-}
-
 BuildMenus(list cardNames) {//builds the user defined menu buttons
     menus = [];
     menuPermPath = [];
@@ -346,7 +338,7 @@ default{
         toucherid = llDetectedKey(0);
         vector vDelta = llDetectedPos(0) - llGetPos();
         if(toucherid == llGetOwner() || llVecMag(vDelta) < menuDistance) {
-            DoMenu_AccessCtrl(toucherid,ROOTMENU, "",0);
+            DoMenu(toucherid,ROOTMENU, "",0);
         }
     }
     
@@ -587,7 +579,7 @@ default{
         }
         else if(num == DOMENU_ACCESSCTRL) {//external call to check permissions
             toucherid = id;
-            DoMenu_AccessCtrl(toucherid, ROOTMENU, "", 0);
+            DoMenu(toucherid, ROOTMENU, "", 0);
         }
         else if(num == VICTIMS_LIST) {
             victims = llCSV2List(str);
