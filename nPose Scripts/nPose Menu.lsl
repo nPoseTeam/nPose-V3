@@ -23,7 +23,7 @@ list slots; //this slots list is not complete. it only contains seated AV key an
 string defaultPoseNcName; //holds the name of the default notecard.
 string menuNC = ".Change Menu Order"; //holds the name of the menu order notecard to read.
 list slotbuttons = [];//list of seat# or seated AV name for change seats menu.
-key toucherid;
+//key toucherid;
 list menus;
 list menuPermPath;
 list menuPermPerms;
@@ -324,10 +324,10 @@ default{
     }
     
     touch_start(integer total_number) {
-        toucherid = llDetectedKey(0);
+        key toucherKey = llDetectedKey(0);
         vector vDelta = llDetectedPos(0) - llGetPos();
-        if(toucherid == llGetOwner() || llVecMag(vDelta) < menuDistance) {
-            DoMenu_AccessCtrl(toucherid,ROOTMENU, "",0);
+        if(toucherKey == llGetOwner() || llVecMag(vDelta) < menuDistance) {
+            DoMenu_AccessCtrl(toucherKey, ROOTMENU, "", 0);
         }
     }
     
@@ -335,8 +335,9 @@ default{
         integer index;
         integer n;
         integer stop;
+        key toucherid;
         if(str == "menuUP") {
-            llMessageLinked(LINK_SET, -802, "PATH=" + path, toucherid);
+            llMessageLinked(LINK_SET, -802, "PATH=" + path, NULL_KEY);
         }
         if(num == DIALOG_RESPONSE && id == scriptID) { //response from menu
             list params = llParseString2List(str, ["|"], []);  //parse the message
@@ -539,6 +540,7 @@ default{
             }
         }
         else if(num == EXTERNAL_UTIL_REQUEST) {
+            toucherid = id;
             if(str == ADMINBTN) {
                 path += ":" + str;
                 AdminMenu(toucherid, path, "", adminbuttons);
