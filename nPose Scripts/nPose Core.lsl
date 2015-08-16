@@ -236,9 +236,12 @@ ProcessLine(string sLine, key av, string ncName, string menuName) {
                 integer index=2;
                 integer length=llGetListLength(params);
                 for(; index<length; index++) {
-                    if(index==2 || index==5) {
+                    if(index==2) {
                         slots=llListReplaceList(slots, [llList2String(params, index)],
-                         slotNumber * STRIDE + index - 2, slotNumber * STRIDE + index - 2);
+                         slotNumber * STRIDE, slotNumber * STRIDE);
+                        //Clear out the SATMSG/NOTSATMSG. If we need them, we must add them back in the NC
+                        slots=llListReplaceList(slots, ["",""],
+                         slotNumber * STRIDE + 5, slotNumber * STRIDE + 6);
                     }
                     else if(index==3) {
                         slots=llListReplaceList(slots, [(vector)llList2String(params, index)],
@@ -247,6 +250,10 @@ ProcessLine(string sLine, key av, string ncName, string menuName) {
                     else if(index==4) {
                         slots=llListReplaceList(slots, [llEuler2Rot((vector)llList2String(params, index) * DEG_TO_RAD)],
                          slotNumber * STRIDE + 2, slotNumber * STRIDE + 2);
+                    }
+                    if(index==5) {
+                        slots=llListReplaceList(slots, [llList2String(params, index)],
+                         slotNumber * STRIDE + 3, slotNumber * STRIDE + 3);
                     }
                     else if(index==6) {
                         slots=llListReplaceList(slots, [llList2String(params, index) + "§seat" + (string)(slotNumber+1)],
