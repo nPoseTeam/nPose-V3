@@ -23,7 +23,7 @@ list slots; //this slots list is not complete. it only contains seated AV key an
 string defaultPoseNcName; //holds the name of the default notecard.
 string menuNC = ".Change Menu Order"; //holds the name of the menu order notecard to read.
 list slotbuttons = [];//list of seat# or seated AV name for change seats menu.
-key toucherid;
+//key toucherid;
 list menus;
 list menuPermPath;
 list menuPermPerms;
@@ -324,10 +324,10 @@ default{
     }
     
     touch_start(integer total_number) {
-        toucherid = llDetectedKey(0);
+        key toucherKey = llDetectedKey(0);
         vector vDelta = llDetectedPos(0) - llGetPos();
-        if(toucherid == llGetOwner() || llVecMag(vDelta) < menuDistance) {
-            DoMenu_AccessCtrl(toucherid,ROOTMENU, "",0);
+        if(toucherKey == llGetOwner() || llVecMag(vDelta) < menuDistance) {
+            DoMenu_AccessCtrl(toucherKey, ROOTMENU, "", 0);
         }
     }
     
@@ -336,13 +336,13 @@ default{
         integer n;
         integer stop;
         if(str == "menuUP") {
-            llMessageLinked(LINK_SET, -802, "PATH=" + path, toucherid);
+            llMessageLinked(LINK_SET, -802, "PATH=" + path, NULL_KEY);
         }
         if(num == DIALOG_RESPONSE && id == scriptID) { //response from menu
             list params = llParseString2List(str, ["|"], []);  //parse the message
             integer page = (integer)llList2String(params, 0);  //get the page number
             string selection = llList2String(params, 1);  //get the button that was pressed from str
-            toucherid = llList2Key(params, 2);
+            key toucherid = llList2Key(params, 2);
             path = llList2String(params, 3); //get the path from params list
             if(selection == BACKBTN) {
                 //handle the back button. admin menu gets handled differently cause buttons are custom
@@ -541,34 +541,32 @@ default{
         else if(num == EXTERNAL_UTIL_REQUEST) {
             if(str == ADMINBTN) {
                 path += ":" + str;
-                AdminMenu(toucherid, path, "", adminbuttons);
+                AdminMenu(id, path, "", adminbuttons);
             }
             else if(str == SLOTBTN) {
                 //someone wants to change sit positionss.
                 //taking a place where someone already has that slot should do the swap regardless of how many 
                 //places are open
                 path = path + ":" + str;
-                AdminMenu(toucherid, path,  "Where will you sit?", slotbuttons);
+                AdminMenu(id, path,  "Where will you sit?", slotbuttons);
             }
             else if(str == OFFSETBTN) {
                 //give offset menu
                 path = path + ":" + str;
-                AdminMenu(toucherid, path,   "Adjust by " + (string)currentOffsetDelta
+                AdminMenu(id, path,   "Adjust by " + (string)currentOffsetDelta
                  + "m, or choose another distance.", offsetbuttons);
             }
             else if(str == SYNCBTN) {
                 llMessageLinked(LINK_SET, SYNC, "", "");
-                DoMenu(toucherid, path, "", 0);
+                DoMenu(id, path, "", 0);
             }
         }
         else if(num == DOMENU) {
-            toucherid = id;
             if(!llSubStringIndex(str, "PATH=")) str = llGetSubString(str, 5, -1);
-            DoMenu(toucherid, str, "", 0);
+            DoMenu(id, str, "", 0);
         }
         else if(num == DOMENU_ACCESSCTRL) {//external call to check permissions
-            toucherid = id;
-            DoMenu_AccessCtrl(toucherid, ROOTMENU, "", 0);
+            DoMenu_AccessCtrl(id, ROOTMENU, "", 0);
         }
         else if(num == VICTIMS_LIST) {
             victims = llCSV2List(str);
