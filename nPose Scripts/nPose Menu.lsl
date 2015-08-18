@@ -110,25 +110,23 @@ Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page,
         // old RLV plugin, (Lenoa: This behaves like gecko release)
         (rcpt == llGetOwner() || !~llListFindList(victims, [(string)rcpt]))
     ) {
-        //check button permission this path up to the root
+        list thisMenuPath=llDeleteSubList(llParseStringKeepNulls(Path , [":"], []), 0, 0);
+        //check button permission for this path up to the root
         //this also means that button permissions are inheritable
-        string thisMenuPath=llDumpList2String(llDeleteSubList(llParseStringKeepNulls(Path , [":"], []), 0, 0), ":");
-        string tempPath=thisMenuPath+":";
-        integer allowed=TRUE;
-        while(tempPath) {
-            tempPath=llDumpList2String(llDeleteSubList(llParseStringKeepNulls(tempPath , [":"], []), -1, -1), ":");
-            integer indexc=llListFindList(menuPermPath, [tempPath]);
+        list tempPath=thisMenuPath;
+        do {
+            integer indexc=llListFindList(menuPermPath, [llDumpList2String(tempPath, ":")]);
             if(~indexc) {
                 if(!isAllowed(rcpt, llList2String(menuPermPerms, indexc))) {
                     return;
                 }
             }
-        }
+        } while (llGetListLength(tempPath=llDeleteSubList(tempPath, -1, -1)));
         //check button permission for each button
         integer stopc = llGetListLength(choices);
         integer nc;
         for(; nc < stopc; ++nc) {
-            integer indexc = llListFindList(menuPermPath, [thisMenuPath + ":" + llList2String(choices, nc)]);
+            integer indexc = llListFindList(menuPermPath, [llDumpList2String(thisMenuPath + llList2String(choices, nc), ":")]);
             if(indexc != -1) {
                 if(!isAllowed(rcpt, llList2String(menuPermPerms, indexc))) {
                     choices = llDeleteSubList(choices, nc, nc);
@@ -337,13 +335,8 @@ default{
     touch_start(integer total_number) {
         key toucherKey = llDetectedKey(0);
         vector vDelta = llDetectedPos(0) - llGetPos();
-<<<<<<< HEAD
-        if(toucherid == llGetOwner() || llVecMag(vDelta) < menuDistance) {
-            DoMenu(toucherid,ROOTMENU, "",0);
-=======
         if(toucherKey == llGetOwner() || llVecMag(vDelta) < menuDistance) {
-            DoMenu_AccessCtrl(toucherKey, ROOTMENU, "", 0);
->>>>>>> master
+            DoMenu(toucherKey, ROOTMENU, "", 0);
         }
     }
     
@@ -582,12 +575,7 @@ default{
             DoMenu(id, str, "", 0);
         }
         else if(num == DOMENU_ACCESSCTRL) {//external call to check permissions
-<<<<<<< HEAD
-            toucherid = id;
-            DoMenu(toucherid, ROOTMENU, "", 0);
-=======
-            DoMenu_AccessCtrl(id, ROOTMENU, "", 0);
->>>>>>> master
+            DoMenu(id, ROOTMENU, "", 0);
         }
         else if(num == VICTIMS_LIST) {
             victims = llCSV2List(str);
