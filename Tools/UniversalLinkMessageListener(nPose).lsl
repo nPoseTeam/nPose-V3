@@ -59,8 +59,10 @@ list REPLACE_NUM=[
 	
 	//PLUGIN SPECIFIC
 	1337, "RLV Timer Plugin (deprecated):RLV Timer Release", "LINKMSG|1337|10|%AVKEY%  where 10 is the number of minutes before releasing a captured victim",
-	7200, "???:STARTCHAIN", "channel relayed out to chain point to start chains.", 
-	7201, "???:STOPCHAIN", "channel relayed out to chain point to stop chains.", 
+	2732, "plugin_lockmeister_lockguard:gCMD_SET_CHAINS", ""
+	2733, "plugin_lockmeister_lockguard:gCMD_REM_CHAINS", ""
+	7200, "nPose Chain Point Plugin:STARTCHAIN", "channel relayed out to chain point to start chains.", 
+	7201, "nPose Chain Point Plugin:STOPCHAIN", "channel relayed out to chain point to stop chains.", 
 	98132, "morph plugin:arbNum", "Used to send notecard name to the morph plugin",
 
 	-123, "Rygel sequencer plugin:MENU_LINK", "used for menu", 
