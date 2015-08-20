@@ -13,6 +13,7 @@ list BLACKLIST_ID=[];
 //additional informations
 list REPLACE_SENDER_NUM=[];
 list REPLACE_NUM=[
+	//format: number, numberName, description
 	//INTERNAL TO nPose BASIC SCRIPTS
 	1, "SEND_CHATCHANNEL", "core sent out chatChannel", 
 	2, "REZ_ADJUSTERS", "menu sending a request to slave to rez all adjusters", 
@@ -44,7 +45,6 @@ list REPLACE_NUM=[
 	999999, "REQUEST_CHATCHANNEL", "slave sent request to core to get chatChannel", 
 	69696969, "myChannel", "adjuster hud is on this channel and communicates with the receiver/sender script in the adjuster prim.", 
 	
-	-238, "VICTIMS_LIST (deprecated)", "old RLV plugin sent the victims list to the menu.", 
 	-240, "OPTIONS", "a global option string", 
 	-241, "FACIALS_FLAG", "any string received by the slave with arb number -241 will be assigned to the permissions.  This should either be 'on' or 'off'.", 
 	-800, "DOMENU", "call to menu to pull menu dialog.", 
@@ -58,17 +58,32 @@ list REPLACE_NUM=[
 	-999, "HUD_REQUEST", "rez or detach admin hud",
 	
 	//PLUGIN SPECIFIC
+	1334, "nPose Giver Script:LnkMsgNo", "giver plugin used for sending information to use the giver",
 	1337, "RLV Timer Plugin (deprecated):RLV Timer Release", "LINKMSG|1337|10|%AVKEY%  where 10 is the number of minutes before releasing a captured victim",
-	7200, "???:STARTCHAIN", "channel relayed out to chain point to start chains.", 
-	7201, "???:STOPCHAIN", "channel relayed out to chain point to stop chains.", 
+	1338, "RLV Timer Plugin (deprecated):???", "",
+	1444, "nPose plugin AnimSoundOnce:???", "",
+	2732, "nPose LM/LG chains plugin (plugin_lockmeister_lockguard):gCMD_SET_CHAINS", "",
+	2733, "nPose LM/LG chains plugin (plugin_lockmeister_lockguard):gCMD_REM_CHAINS", "",
+	2734, "nPose LM/LG chains plugin:???", "TODO: slmember1",
+	7200, "nPose Chain Point Plugin:STARTCHAIN", "channel relayed out to chain point to start chains.", 
+	7201, "nPose Chain Point Plugin:STOPCHAIN", "channel relayed out to chain point to stop chains.", 
+	27130, "plugin_movePrims:gCMD_GET_PRIMS", "",
+	27131, "plugin_movePrims:gCMD_SET_PRIMS", "",
 	98132, "morph plugin:arbNum", "Used to send notecard name to the morph plugin",
 
 	-123, "Rygel sequencer plugin:MENU_LINK", "used for menu", 
 	-125, "Rygel sequencer plugin:MENU_LINK", "used to let core know it is time for next sequence",
+	-233, "RLV:SENSOR_START (deprecated)", "",
+	-234, "RLV:SENSOR_END (deprecated)", "",
+	-237, "RLV:SEND_CURRENT_VICTIMS (deprecated)", "",
+	-238, "RLV:VICTIMS_LIST (deprecated)", "old RLV plugin sent the victims list to the menu.", 
+	-239, "RLV:???(change current victim)(deprecated)", "",
+	
 	-1011, "vehicle plugin:SIT_BUTTON", "", 
 	-1012, "vehicle plugin:STAND_BUTTON", "", 
 	-1200, "vehicle plugin:SPEED_SET", "signal speed change", 
 	-1201, "vehicle plugin:VEHICLETYPE", "used to select vehicle type", 
+	-2241, "nPose Sequencer:???", "",
 	-2344, "sound plugin:arbNum", "message to stop sound",
 	-2345, "sound plugin:arbNum", "message to start sound",
 	-6000, "Updater:listenChannel", "channel used by the updater to chat with the updater script within the nPose update target",
@@ -106,7 +121,7 @@ default {
 	}
 	link_message(integer sender_num, integer num, string str, key id) {
 		if(!~llListFindList(BLACKLIST_NUM, [num])) {
-			if(!~llListFindList(BLACKLIST_ID, [id])) {
+			if(!~llListFindList(BLACKLIST_ID, [(string)id])) {
 				if(!~llListFindList(BLACKLIST_SENDER_NUM, [sender_num])) {
 					if(!~llListFindList(BLACKLIST_STR, [str])) {
 						integer isKnownNum;
