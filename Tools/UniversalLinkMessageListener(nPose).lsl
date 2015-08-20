@@ -58,7 +58,11 @@ list REPLACE_NUM=[
 	-999, "HUD_REQUEST", "rez or detach admin hud",
 	
 	//PLUGIN SPECIFIC
+<<<<<<< HEAD
 	1334, "nPose Giver Script:LnkMsgNo", "",
+=======
+	1334, "giver plugin used for sending information to use the giver",
+>>>>>>> origin/Leona_update-linkmessage#-list
 	1337, "RLV Timer Plugin (deprecated):RLV Timer Release", "LINKMSG|1337|10|%AVKEY%  where 10 is the number of minutes before releasing a captured victim",
 	1338, "RLV Timer Plugin (deprecated):???", "",
 	1444, "nPose plugin AnimSoundOnce:???", "",
