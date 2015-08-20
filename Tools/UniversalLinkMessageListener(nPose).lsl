@@ -58,6 +58,7 @@ list REPLACE_NUM=[
 	-999, "HUD_REQUEST", "rez or detach admin hud",
 	
 	//PLUGIN SPECIFIC
+	1334, "giver plugin used for sending information to use the giver",
 	1337, "RLV Timer Plugin (deprecated):RLV Timer Release", "LINKMSG|1337|10|%AVKEY%  where 10 is the number of minutes before releasing a captured victim",
 	2732, "plugin_lockmeister_lockguard:gCMD_SET_CHAINS", ""
 	2733, "plugin_lockmeister_lockguard:gCMD_REM_CHAINS", ""
