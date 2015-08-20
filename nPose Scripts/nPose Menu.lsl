@@ -102,107 +102,131 @@ list pluginPermissionList;
 
 
 Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page, string Path) {
-    integer stopc = llGetListLength(choices);
-    integer nc;
-    for(; nc < stopc; ++nc) {
-        integer indexc = llListFindList(menuPermPath, [llDumpList2String(llDeleteSubList(llParseStringKeepNulls(Path , [":"], []), 0, 0) + [llList2String(choices, nc)], ":")]);
-        if(indexc != -1) {
-            string permissions = llToLower(llList2String(menuPermPerms, indexc));
-            if(permissions != "") {//only run this on buttons with button permissions.
-                //Check each button permission
-                
-                // Syntax of the permission string:
-                // The permission string is the last part of the notecard name surrounded by {}
-                // It contains KEYWORDS and OPERATORS.
-
-                // OPERATORS (listed in order of their precedence)
-                // ! means a logical NOT
-                // & means a logical AND
-                // ~ means a logical OR
-                // Operators may be surrounded by spaces
-
-                // KEYWORDS (case insensitive)
-                // owner:  returns TRUE if the user is the object owner
-                // group:  returns TRUE if the active group of the user is equal to the group of the object
-                // seated: returns TRUE if the user is seated
-                // any integer counts as a seatNumber: returns true if the user is sitting on the seat with the specified number
-                // any other string counts as a permission registered by a plugin
-
-                // Examples:
-                // 1~3 : is TRUE if the user is seated on seat number 1 or 3
-                // owner~2 : is TRUE for the object owner or anyone sitting on seat number 2
-                // owner&!victim : is TRUE for the object owner, but only if he/she isn't a victim (victim is a UserDefinedPermission used by the RLV+ plugin)
-                // 1~3&group: is TRUE for the user on seat 1 and also for the user on seat 3 if he/she has the same active group as the Object
-
-                list permItemsOr=llParseString2List(permissions, ["~"], []);
-                integer indexOr=~llGetListLength(permItemsOr);
-                integer result;
-                while(++indexOr && !result) {
-                    list permItemsAnd=llParseString2List(llList2String(permItemsOr, indexOr), ["&"], []);
-                    integer indexAnd=~llGetListLength(permItemsAnd);
-                    result=TRUE;
-                    while(++indexAnd && result) {
-                        integer invert;
-                        string item=llStringTrim(llList2String(permItemsAnd, indexAnd), STRING_TRIM);
-                        if(llGetSubString(item, 0, 0)=="!") {
-                            invert=TRUE;
-                            item=llStringTrim(llDeleteSubString(item, 0, 0), STRING_TRIM);
-                        }
-                        if(item==PERMISSION_GROUP) {
-                            result=logicalXor(invert, llSameGroup(rcpt));
-                        }
-                        else if(item==PERMISSION_OWNER) {
-                            result=logicalXor(invert, llGetOwner()==rcpt);
-                        }
-                        else if(item==PERMISSION_SEATED) {
-                            result=logicalXor(invert, ~llListFindList(slots, [rcpt]));
-                        }
-                        else if((string)((integer)item)==item){
-                            /// seat number
-                            integer slotIndex=llListFindList(slots, [rcpt]);
-                            integer z=llSubStringIndex(llList2String(slots, slotIndex + 1), "§");
-                            string seatNumber=llGetSubString(llList2String(slots, slotIndex + 1), z+5,-1);
-                            result=logicalXor(invert, item==seatNumber);
-                        }
-                        else {
-                            //maybe a plugin permission
-                            integer pluginPermissionIndex=llListFindList(pluginPermissionList, [item]);
-                            if(~pluginPermissionIndex) {
-                                //plugin permission
-                                string pluginPermissionType=llList2String(pluginPermissionList, pluginPermissionIndex+1);
-                                if(pluginPermissionType==USER_PERMISSION_TYPE_LIST) {
-                                    result=logicalXor(invert, ~llSubStringIndex(llList2String(pluginPermissionList, pluginPermissionIndex+2), (string)rcpt));
-                                }
-                                else if(pluginPermissionType==USER_PERMISSION_TYPE_BOOL) {
-                                    result=logicalXor(invert, (integer)llList2String(pluginPermissionList, pluginPermissionIndex+2));
-                                }
-                                else {
-                                    //error unknown plugin permission type
-                                    //maybe a message to the owner?
-                                    result=invert;
-                                }
-                            }
-                            else {
-                                //maybe the plugin has not registered itself right now. So assume a blank list or a 0 as value
-                                result=invert;
-                            }
-                        }
-                    }
+    //check menu permissions
+    if(
+        //the whole if statement only exists for backward compability, because all this (and more) could be done via button permissions on root level
+        (rcpt == llGetOwner() || Permissions == "GROUP" && llSameGroup(rcpt) || Permissions == "PUBLIC") &&
+        (rcpt == llGetOwner() || menuReqSit == "off" || ~llListFindList(slots, [rcpt])) &&
+        // old RLV plugin, (Lenoa: This behaves like gecko release)
+        (rcpt == llGetOwner() || !~llListFindList(victims, [(string)rcpt]))
+    ) {
+        list thisMenuPath=llDeleteSubList(llParseStringKeepNulls(Path , [":"], []), 0, 0);
+        //check button permission for this path up to the root
+        //this also means that button permissions are inheritable
+        list tempPath=thisMenuPath;
+        do {
+            integer indexc=llListFindList(menuPermPath, [llDumpList2String(tempPath, ":")]);
+            if(~indexc) {
+                if(!isAllowed(rcpt, llList2String(menuPermPerms, indexc))) {
+                    return;
                 }
-                if(!result) {
+            }
+        } while (llGetListLength(tempPath=llDeleteSubList(tempPath, -1, -1)));
+        //check button permission for each button
+        integer stopc = llGetListLength(choices);
+        integer nc;
+        for(; nc < stopc; ++nc) {
+            integer indexc = llListFindList(menuPermPath, [llDumpList2String(thisMenuPath + llList2String(choices, nc), ":")]);
+            if(indexc != -1) {
+                if(!isAllowed(rcpt, llList2String(menuPermPerms, indexc))) {
                     choices = llDeleteSubList(choices, nc, nc);
                     --nc;
                     --stopc;
                 }
             }
         }
-    }
-    if(llGetInventoryType(menuNC) != INVENTORY_NOTECARD) {
-        choices = llListSort(choices, 1, 1);
-    }
-    if(rcpt == llGetOwner() || menuReqSit == "off" || (menuReqSit == "on" && ~llListFindList(slots, [rcpt]))) {
+        if(llGetInventoryType(menuNC) != INVENTORY_NOTECARD) {
+            choices = llListSort(choices, 1, 1);
+        }
         llMessageLinked(LINK_SET, DIALOG, (string)rcpt + "|" + prompt + "|" + (string)page +
          "|" + llDumpList2String(choices, "`") + "|" + llDumpList2String(utilitybuttons, "`") + "|" + Path, scriptID);
+    }
+}
+
+integer isAllowed(key rcpt, string permissions) {
+    // Syntax of the permission string:
+    // The permission string is the last part of the notecard name surrounded by {}
+    // It contains KEYWORDS and OPERATORS.
+
+    // OPERATORS (listed in order of their precedence)
+    // ! means a logical NOT
+    // & means a logical AND
+    // ~ means a logical OR
+    // Operators may be surrounded by spaces
+
+    // KEYWORDS (case insensitive)
+    // owner:  returns TRUE if the user is the object owner
+    // group:  returns TRUE if the active group of the user is equal to the group of the object
+    // seated: returns TRUE if the user is seated
+    // any integer counts as a seatNumber: returns true if the user is sitting on the seat with the specified number
+    // any other string counts as a permission registered by a plugin
+
+    // Examples:
+    // 1~3 : is TRUE if the user is seated on seat number 1 or 3
+    // owner~2 : is TRUE for the object owner or anyone sitting on seat number 2
+    // owner&!victim : is TRUE for the object owner, but only if he/she isn't a victim (victim is a UserDefinedPermission used by the RLV+ plugin)
+    // 1~3&group: is TRUE for the user on seat 1 and also for the user on seat 3 if he/she has the same active group as the Object
+    permissions=llStringTrim(permissions, STRING_TRIM);
+    if(permissions=="") {
+        return TRUE;
+    }
+    else {
+        list permItemsOr=llParseString2List(llToLower(permissions), ["~"], []);
+        integer indexOr=~llGetListLength(permItemsOr);
+        integer result;
+        while(++indexOr && !result) {
+            list permItemsAnd=llParseString2List(llList2String(permItemsOr, indexOr), ["&"], []);
+            integer indexAnd=~llGetListLength(permItemsAnd);
+            result=TRUE;
+            while(++indexAnd && result) {
+                integer invert;
+                string item=llStringTrim(llList2String(permItemsAnd, indexAnd), STRING_TRIM);
+                if(llGetSubString(item, 0, 0)=="!") {
+                    invert=TRUE;
+                    item=llStringTrim(llDeleteSubString(item, 0, 0), STRING_TRIM);
+                }
+                if(item==PERMISSION_GROUP) {
+                    result=logicalXor(invert, llSameGroup(rcpt));
+                }
+                else if(item==PERMISSION_OWNER) {
+                    result=logicalXor(invert, llGetOwner()==rcpt);
+                }
+                else if(item==PERMISSION_SEATED) {
+                    result=logicalXor(invert, ~llListFindList(slots, [rcpt]));
+                }
+                else if((string)((integer)item)==item){
+                    /// seat number
+                    integer slotIndex=llListFindList(slots, [rcpt]);
+                    integer z=llSubStringIndex(llList2String(slots, slotIndex + 1), "§");
+                    string seatNumber=llGetSubString(llList2String(slots, slotIndex + 1), z+5,-1);
+                    result=logicalXor(invert, item==seatNumber);
+                }
+                else {
+                    //maybe a plugin permission
+                    integer pluginPermissionIndex=llListFindList(pluginPermissionList, [item]);
+                    if(~pluginPermissionIndex) {
+                        //plugin permission
+                        string pluginPermissionType=llList2String(pluginPermissionList, pluginPermissionIndex+1);
+                        if(pluginPermissionType==USER_PERMISSION_TYPE_LIST) {
+                            result=logicalXor(invert, ~llSubStringIndex(llList2String(pluginPermissionList, pluginPermissionIndex+2), (string)rcpt));
+                        }
+                        else if(pluginPermissionType==USER_PERMISSION_TYPE_BOOL) {
+                            result=logicalXor(invert, (integer)llList2String(pluginPermissionList, pluginPermissionIndex+2));
+                        }
+                        else {
+                            //error unknown plugin permission type
+                            //maybe a message to the owner?
+                            result=invert;
+                        }
+                    }
+                    else {
+                        //maybe the plugin has not registered itself right now. So assume a blank list or a 0 as value
+                        result=invert;
+                    }
+                }
+            }
+        }
+        return result;
     }
 }
 
@@ -231,21 +255,6 @@ DoMenu(key toucher, string path, string menuPrompt, integer page) {//builds the 
         }
         //added path to send to dialog script
         Dialog(toucher, menuPrompt + "\n"+path+"\n", buttons, tmp, page, path);
-    }
-}
-
-DoMenu_AccessCtrl(key toucher, string path, string menuPrompt, integer page) {//checks and enforces who has access to the menu.
-    integer authorized;// = FALSE; // it's FALSE by default
-    if(toucher == llGetOwner()) {//owner always gets authorized
-        authorized = TRUE;
-    }
-    else if((Permissions == "GROUP" && llSameGroup(toucher))
-     | (Permissions == "PUBLIC") 
-     | (!~llListFindList(victims, [(string)toucher]))) {
-        authorized = TRUE;
-    }
-    if(authorized) {
-        DoMenu(toucher, path, menuPrompt, page);
     }
 }
 
@@ -327,7 +336,7 @@ default{
         key toucherKey = llDetectedKey(0);
         vector vDelta = llDetectedPos(0) - llGetPos();
         if(toucherKey == llGetOwner() || llVecMag(vDelta) < menuDistance) {
-            DoMenu_AccessCtrl(toucherKey, ROOTMENU, "", 0);
+            DoMenu(toucherKey, ROOTMENU, "", 0);
         }
     }
     
@@ -566,7 +575,7 @@ default{
             DoMenu(id, str, "", 0);
         }
         else if(num == DOMENU_ACCESSCTRL) {//external call to check permissions
-            DoMenu_AccessCtrl(id, ROOTMENU, "", 0);
+            DoMenu(id, ROOTMENU, "", 0);
         }
         else if(num == VICTIMS_LIST) {
             victims = llCSV2List(str);
