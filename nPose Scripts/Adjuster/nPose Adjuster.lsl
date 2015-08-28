@@ -1,7 +1,7 @@
 integer chatchannel = 0;
 integer slotid = 0;
 
-float timeout = 2.0;
+float timeout = 0.1;
 vector pos = ZERO_VECTOR;
 rotation rot = ZERO_ROTATION;
 
