@@ -508,8 +508,6 @@ default {
         if(llKey2Name(id) == "Adjuster") {
             adjusters += [id];
             integer adjLen = llGetListLength(adjusters);
-            ChatAdjusterPos(adjLen - 1); 
-            
             if(adjLen < (llGetListLength(slots)/8)) { 
                 RezNextAdjuster(adjLen);
             }
