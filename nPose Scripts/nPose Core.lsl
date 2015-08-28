@@ -388,7 +388,6 @@ default{
                 }
                 if(rezadjusters) {
                     //card has been read and we have adjusters, send message to slave script.
-                    llRegionSay(chatchannel, "adjuster_die");
                     llMessageLinked(LINK_SET, REZ_ADJUSTERS, "RezAdjuster", "");
                 }
             }
