@@ -307,7 +307,7 @@ default {
         else if((num == ADJUST) || (num == REZ_ADJUSTERS && str == "RezAdjuster")) { //adjust has been chosen from the menu
             llSay(chatchannel, "adjuster_die");
             adjusters = [];
-            if(llGetInventoryType("Adjuster") & INVENTORY_OBJECT) {
+            if(llGetInventoryType("Adjuster") == INVENTORY_OBJECT) {
                 RezNextAdjuster(0);
             }
             else {
