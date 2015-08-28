@@ -48,9 +48,9 @@ integer rezadjusters;
 integer chatchannel;
 integer explicitFlag;
 key hudId;
-string lastDoPoseCardName;
-key lastDoPoseCardId;
-key lastDoPoseAvatarId;
+string lastAssignSlotsCardName;
+key lastAssignSlotsCardId;
+key lastAssignSlotsAvatarId;
 list slots;  //one STRIDE = [animationName, posVector, rotVector, facials, sitterKey, SATMSG, NOTSATMSG, seatName]
 
 string curmenuonsit = "off"; //default menuonsit option
@@ -301,7 +301,7 @@ ProcessLine(string sLine, key av, string ncName, string menuName) {
             lmid = (key)llList2String(params, 3);
         }
         else {
-            lmid = (key)llList2String(slots, (slotMax-1)*STRIDE+4);
+            lmid = av;
         }
         llMessageLinked(LINK_SET, num, llList2String(params, 2), lmid);
         llSleep((float)llList2String(params, 4));
@@ -361,7 +361,6 @@ default{
                 lastStrideCount = slotMax;
                 slotMax = 0;
                 llRegionSay(chatchannel, "die");
-                llRegionSay(chatchannel, "adjuster_die");
             }
             integer length=llGetListLength(allData);
             integer index=3;
@@ -380,18 +379,17 @@ default{
                     run_assignSlots = TRUE;
                 }
             }
-            if(num==DOPOSE_READER) {
-                if (llGetInventoryType(ncName) == INVENTORY_NOTECARD){ //sanity
-                    lastDoPoseCardName=ncName;
-                    lastDoPoseCardId=llGetInventoryKey(lastDoPoseCardName);
-                    lastDoPoseAvatarId=id;
-                }
-                if(rezadjusters) {
-                    llMessageLinked(LINK_SET, REZ_ADJUSTERS, "RezAdjuster", "");    //card has been read and we have adjusters, send message to slave script.
-                }
-            }
             if(run_assignSlots) {
                 assignSlots();
+                if (llGetInventoryType(ncName) == INVENTORY_NOTECARD){ //sanity
+                    lastAssignSlotsCardName=ncName;
+                    lastAssignSlotsCardId=llGetInventoryKey(lastAssignSlotsCardName);
+                    lastAssignSlotsAvatarId=id;
+                }
+                if(rezadjusters) {
+                    //card has been read and we want to have adjusters, send message to slave script.
+                    llMessageLinked(LINK_SET, REZ_ADJUSTERS, "RezAdjuster", "");
+                }
             }
         }
         else if(num == ADJUST) { 
@@ -483,7 +481,7 @@ default{
     listen(integer channel, string name, key id, string message) {
         list temp = llParseString2List(message, ["|"], []);
         if(name == "Adjuster") {
-                llMessageLinked(LINK_SET, ADJUSTER_REPORT, message, id);
+            llMessageLinked(LINK_SET, ADJUSTER_REPORT, message, id);
         }
         else if(llGetListLength(temp) >= 2 || llGetSubString(message,0,4) == "ping" || llGetSubString(message,0,8) == "PROPRELAY") {
             if(llGetOwnerKey(id) == llGetOwner()) {
@@ -528,11 +526,11 @@ default{
 
     changed(integer change) {
         if(change & CHANGED_INVENTORY) {
-            if(llGetInventoryType(lastDoPoseCardName) == INVENTORY_NOTECARD) {
-                if(lastDoPoseCardId!=llGetInventoryKey(lastDoPoseCardName)) {
+            if(llGetInventoryType(lastAssignSlotsCardName) == INVENTORY_NOTECARD) {
+                if(lastAssignSlotsCardId!=llGetInventoryKey(lastAssignSlotsCardName)) {
                     //the last used nc changed, "redo" the nc
                     llSleep(1.0); //be sure that the NC reader script finished resetting
-                    llMessageLinked(LINK_SET, DOPOSE, lastDoPoseCardName, lastDoPoseAvatarId); 
+                    llMessageLinked(LINK_SET, DOPOSE, lastAssignSlotsCardName, lastAssignSlotsAvatarId); 
                 }
                 else {
                     llResetScript();
