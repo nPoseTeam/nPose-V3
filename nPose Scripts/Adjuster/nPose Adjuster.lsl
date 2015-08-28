@@ -14,6 +14,8 @@ default
         if (param)
         {
             chatchannel = param;
+            pos = llGetPos();
+            rot = llGetRot();
             llListen(chatchannel, "", "", "");
             llSetTimerEvent(timeout);
         }

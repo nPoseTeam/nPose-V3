@@ -133,17 +133,11 @@ SetAvatarOffset(key avatar, vector offset) {
 }
 
 
-RezNextAdjuster() {
-    llRezObject("Adjuster", llGetPos() + <0,0,1>, ZERO_VECTOR, llGetRot(), chatchannel);
-}
-
-ChatAdjusterPos(integer slotnum) {
+RezNextAdjuster(integer slotnum) {
     integer index = slotnum * stride;
     vector pos = llGetPos() + llList2Vector(slots, index + 1) * llGetRot();
     rotation rot = llList2Rot(slots, index + 2) * llGetRot();
-    string out = llList2String(adjusters, slotnum) + "|posrot|" + (string)pos + "|" + (string)rot;
-//    llOwnerSay("chatting out: " + out);
-    llRegionSay(chatchannel, out);
+    llRezObject("Adjuster", pos, ZERO_VECTOR, rot, chatchannel);
 }
 
 default {
@@ -310,11 +304,11 @@ default {
                 return;
             }
         }
-        else if(num == ADJUST) { //adjust has been chosen from the menu
+        else if((num == ADJUST) || (num == REZ_ADJUSTERS && str == "RezAdjuster")) { //adjust has been chosen from the menu
             llSay(chatchannel, "adjuster_die");
             adjusters = [];
-            if(llGetInventoryType("Adjuster") & INVENTORY_OBJECT) {
-                RezNextAdjuster();
+            if(llGetInventoryType("Adjuster") == INVENTORY_OBJECT) {
+                RezNextAdjuster(0);
             }
             else {
                 llRegionSayTo(llGetOwner(), 0, "Seat Adjustment disabled.  No Adjuster object found in" + llGetObjectName()+ ".");
@@ -325,10 +319,7 @@ default {
             llSay(chatchannel, "adjuster_die"); 
             adjusters = [];
         }
-        else if (num == REZ_ADJUSTERS && str == "RezAdjuster"){    //got a new pose so update adjusters.
-            adjusters = [];
-            RezNextAdjuster();
-        }else if(num == ADJUSTER_REPORT) {    //heard from an adjuster so a new position must be used, upate slots and chat out new position.
+        else if(num == ADJUSTER_REPORT) {    //heard from an adjuster so a new position must be used, upate slots and chat out new position.
             integer index = llListFindList(adjusters, [id]);
             if(index != -1) {
                 string primName = llGetObjectName();
@@ -518,7 +509,7 @@ default {
             ChatAdjusterPos(adjLen - 1); 
             
             if(adjLen < (llGetListLength(slots)/8)) { 
-                RezNextAdjuster();
+                RezNextAdjuster(adjLen);
             }
         }
     }
