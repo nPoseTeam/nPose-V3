@@ -387,7 +387,7 @@ default{
                     lastAssignSlotsAvatarId=id;
                 }
                 if(rezadjusters) {
-                    //card has been read and we have adjusters, send message to slave script.
+                    //card has been read and we want to have adjusters, send message to slave script.
                     llMessageLinked(LINK_SET, REZ_ADJUSTERS, "RezAdjuster", "");
                 }
             }
