@@ -134,10 +134,17 @@ SetAvatarOffset(key avatar, vector offset) {
 
 
 RezNextAdjuster(integer slotnum) {
-    integer index = slotnum * stride;
-    vector pos = llGetPos() + llList2Vector(slots, index + 1) * llGetRot();
-    rotation rot = llList2Rot(slots, index + 2) * llGetRot();
-    llRezObject("Adjuster", pos, ZERO_VECTOR, rot, chatchannel);
+    if(llGetInventoryType("Adjuster") == INVENTORY_OBJECT) {
+        integer index = slotnum * stride;
+        vector pos = llGetPos() + llList2Vector(slots, index + 1) * llGetRot();
+        rotation rot = llList2Rot(slots, index + 2) * llGetRot();
+        llRezObject("Adjuster", pos, ZERO_VECTOR, rot, chatchannel);
+    }
+    else {
+        llSay(chatchannel, "adjuster_die");
+        adjusters = [];
+        llRegionSayTo(llGetOwner(), 0, "Seat Adjustment disabled.  No Adjuster object found in " + llGetObjectName()+ ".");
+    }
 }
 
 default {
@@ -307,12 +314,7 @@ default {
         else if((num == ADJUST) || (num == REZ_ADJUSTERS && str == "RezAdjuster")) { //adjust has been chosen from the menu
             llSay(chatchannel, "adjuster_die");
             adjusters = [];
-            if(llGetInventoryType("Adjuster") == INVENTORY_OBJECT) {
-                RezNextAdjuster(0);
-            }
-            else {
-                llRegionSayTo(llGetOwner(), 0, "Seat Adjustment disabled.  No Adjuster object found in" + llGetObjectName()+ ".");
-            }
+            RezNextAdjuster(0);
         }
         else if(num == STOPADJUST) { //stopadjust has been chosen from the menu
             llMessageLinked(LINK_SET, DUMP, "", "");
