@@ -301,7 +301,7 @@ ProcessLine(string sLine, key av, string ncName, string menuName) {
             lmid = (key)llList2String(params, 3);
         }
         else {
-            lmid = (key)llList2String(slots, (slotMax-1)*STRIDE+4);
+            lmid = av;
         }
         llMessageLinked(LINK_SET, num, llList2String(params, 2), lmid);
         llSleep((float)llList2String(params, 4));
@@ -392,6 +392,16 @@ default{
             }
             if(run_assignSlots) {
                 assignSlots();
+                if (llGetInventoryType(ncName) == INVENTORY_NOTECARD){ //sanity
+                    lastAssignSlotsCardName=ncName;
+                    lastAssignSlotsCardId=llGetInventoryKey(lastAssignSlotsCardName);
+                    lastAssignSlotsAvatarId=id;
+                }
+                if(rezadjusters) {
+                    //card has been read and we have adjusters, send message to slave script.
+                    llRegionSay(chatchannel, "adjuster_die");
+                    llMessageLinked(LINK_SET, REZ_ADJUSTERS, "RezAdjuster", "");
+                }
             }
         }
         else if(num == ADJUST) { 
