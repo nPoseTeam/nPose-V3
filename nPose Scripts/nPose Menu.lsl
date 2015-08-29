@@ -135,9 +135,6 @@ Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page,
                 }
             }
         }
-        if(llGetInventoryType(menuNC) != INVENTORY_NOTECARD) {
-            choices = llListSort(choices, 1, 1);
-        }
         llMessageLinked(LINK_SET, DIALOG, (string)rcpt + "|" + prompt + "|" + (string)page +
          "|" + llDumpList2String(choices, "`") + "|" + llDumpList2String(utilitybuttons, "`") + "|" + Path, scriptID);
     }
@@ -308,6 +305,9 @@ BuildMenus(list cardNames) {//builds the user defined menu buttons
                     list children = llParseStringKeepNulls(llList2String(menus, index + 1), ["|"], []);
                     if(!~llListFindList(children, [last])) {
                         children += [last];
+                        if(llGetInventoryType(menuNC) != INVENTORY_NOTECARD) {
+                            children = llListSort(children, 1, 1);
+                        }
                         menus = llListReplaceList(menus, [llDumpList2String(children, "|")], index + 1, index + 1);
                     }
                 }
