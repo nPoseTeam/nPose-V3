@@ -345,7 +345,7 @@ default{
         integer n;
         integer stop;
         if(str == "menuUP") {
-            llMessageLinked(LINK_SET, -802, "PATH=" + path, NULL_KEY);
+            llMessageLinked(LINK_SET, -802, "PATH=" + path, id);
         }
         if(num == DIALOG_RESPONSE && id == scriptID) { //response from menu
             list params = llParseString2List(str, ["|"], []);  //parse the message
