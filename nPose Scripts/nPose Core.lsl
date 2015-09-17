@@ -271,6 +271,7 @@ ProcessLine(string sLine, key av, string ncName, string menuName) {
         if(llGetInventoryType(obj) == INVENTORY_OBJECT) {
             list strParm2 = llParseString2List(llList2String(params, 2), ["="], []);
             if(llList2String(strParm2, 1) == "die") {
+        llOwnerSay("chatchannel: " + (string)chatchannel);
                 llRegionSay(chatchannel,llList2String(strParm2,0)+"=die");
             }
             else {
@@ -286,15 +287,17 @@ ProcessLine(string sLine, key av, string ncName, string menuName) {
                 vector vDelta = (vector)llList2String(params, 2);
                 vector pos = llGetPos() + (vDelta * llGetRot());
                 rotation rot = llEuler2Rot((vector)llList2String(params, 3) * DEG_TO_RAD) * llGetRot();
+                integer sendToPropChannel = (chatchannel << 8);
+                sendToPropChannel = sendToPropChannel | explicitFlag;
                 if(llVecMag(vDelta) > 9.9) {
                     //too far to rez it direct.  need to do a prop move
-                    llRezAtRoot(obj, llGetPos(), ZERO_VECTOR, rot, (chatchannel << 2) + explicitFlag);
+                    llRezAtRoot(obj, llGetPos(), ZERO_VECTOR, rot, sendToPropChannel);
                     llSleep(1.0);
                     llRegionSay(chatchannel, llDumpList2String(["MOVEPROP", obj, (string)pos], "|"));
                 }
                 else {
                     llRezAtRoot(obj, llGetPos() + ((vector)llList2String(params, 2) * llGetRot()),
-                     ZERO_VECTOR, rot, (chatchannel << 2) + explicitFlag);
+                     ZERO_VECTOR, rot, sendToPropChannel);
                 }
             }
         }
@@ -339,9 +342,9 @@ default{
         for(; n<=llGetNumberOfPrims(); ++n) {
            llLinkSitTarget(n,<0.0,0.0,0.5>,ZERO_ROTATION);
         }
-        chatchannel = (integer)("0x7F" + llGetSubString((string)llGetKey(), 0, 4));
-//        chatchannel = (integer)("0x" + llGetSubString((string)llGetKey(), 0, 7));
-        llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)chatchannel, NULL_KEY); //let our scripts know the chat channel for props and adjusters
+        chatchannel = (integer)("0x7F" + llGetSubString((string)llGetKey(), 0, 5));
+        //let our scripts know the chat channel for props and adjusters
+        llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)chatchannel, NULL_KEY);
         integer listener = llListen(chatchannel, "", "", "");
         //the nPose Menu will do the same, so this should basically only run if there is no nPose menu script in this build
         //but currently we don't check this, so at the startup the DOPOSE|DEFAULT will happen twice
@@ -357,7 +360,8 @@ default{
     }
     link_message(integer sender, integer num, string str, key id) {
         if(num == REQUEST_CHATCHANNEL) {//slave has asked me to reset so it can get the chatchannel from me.
-            llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)chatchannel, NULL_KEY); //let our scripts know the chat channel for props and adjusters
+            //let our scripts know the chat channel for props and adjusters
+            llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)chatchannel, NULL_KEY);
         }
         else if(num == DOPOSE_READER || num == DOACTION_READER) {
             list allData=llParseStringKeepNulls(str, [NC_READER_CONTENT_SEPARATOR], []);
