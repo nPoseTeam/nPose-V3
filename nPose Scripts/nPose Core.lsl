@@ -271,7 +271,6 @@ ProcessLine(string sLine, key av, string ncName, string menuName) {
         if(llGetInventoryType(obj) == INVENTORY_OBJECT) {
             list strParm2 = llParseString2List(llList2String(params, 2), ["="], []);
             if(llList2String(strParm2, 1) == "die") {
-        llOwnerSay("chatchannel: " + (string)chatchannel);
                 llRegionSay(chatchannel,llList2String(strParm2,0)+"=die");
             }
             else {
