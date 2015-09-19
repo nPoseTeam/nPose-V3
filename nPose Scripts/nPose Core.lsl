@@ -413,7 +413,7 @@ default{
         else if(num == CORERELAY) {
             list msg = llParseString2List(str, ["|"], []);
             if(id != NULL_KEY) msg = llListReplaceList((msg = []) + msg, [id], 2, 2);
-            llRegionSay(chatchannel,llDumpList2String(["LINKMSG", num, (string)llList2String(msg, 0),
+            llRegionSay(chatchannel,llDumpList2String(["LINKMSG", (string)llList2String(msg, 0),
                 llList2String(msg, 1), (string)llList2String(msg,2)], "|"));
         }
         else if (num == SWAP) {
