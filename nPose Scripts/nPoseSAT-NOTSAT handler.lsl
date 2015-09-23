@@ -48,7 +48,7 @@ default {
             integer stop = llGetListLength(oldSlots)/STRIDE;
             for(n = 0; n < stop; ++n) {
                 oldstride = llList2List(oldSlots, n*STRIDE, n*STRIDE+6);
-                currentstride = llList2List(slots, n*STRIDE, n*STRIDE+6);
+//                currentstride = llList2List(slots, n*STRIDE, n*STRIDE+6);
                 //check if we have an existing NOTSATMSG and if there was a sitter in this seat
                 if((llList2String(oldstride, 6) != "" && llList2String(oldstride, 4) != "")) {
                     integer curStrideIndex = llListFindList(slots, [llList2String(oldstride, 4)])-4;
@@ -57,22 +57,20 @@ default {
                     // or the pose set has changed
                     integer listsEqual = ListCompare(llList2List(oldstride, 0, 4), llList2List(currentstride, 0, 4));
                     if(listsEqual == FALSE) {
-                        if((curStrideIndex == -1) || (curStrideIndex != -1 && llList2CSV(oldstride) != llList2CSV(currentstride))) {
-                            integer ndx;
-                            string nsm = llList2String(oldstride, 6);
-                            nsm = str_replace(nsm, "%AVKEY%", (key)llList2String(oldstride, 4));
-                            list smsgs=llParseString2List(nsm, ["§"], []);
-                            integer msgcnt = llGetListLength(smsgs);
-                            for(ndx = 0; ndx < msgcnt; ndx++) {
-                                list parts = llParseString2List(llList2String(smsgs,ndx), ["|"], []);
-                                llMessageLinked(LINK_SET, (integer)llList2String(parts, 0), llList2String(parts, 1),
-                                    (key)llList2String(oldstride, 4));
-    //                            llRegionSayTo(llGetOwner(), 0,llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
-    //                                llList2String(parts, 1), llList2String(oldstride, 4)], "|"));
-                                if (chatchannel != 0) {
-                                    llRegionSay(chatchannel,llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
-                                        llList2String(parts, 1), llList2String(oldstride, 4)], "|"));
-                                }
+                        integer ndx;
+                        string nsm = llList2String(oldstride, 6);
+                        nsm = str_replace(nsm, "%AVKEY%", (key)llList2String(oldstride, 4));
+                        list smsgs=llParseString2List(nsm, ["§"], []);
+                        integer msgcnt = llGetListLength(smsgs);
+                        for(ndx = 0; ndx < msgcnt; ndx++) {
+                            list parts = llParseString2List(llList2String(smsgs,ndx), ["|"], []);
+                            llMessageLinked(LINK_SET, (integer)llList2String(parts, 0), llList2String(parts, 1),
+                                (key)llList2String(oldstride, 4));
+//                            llRegionSayTo(llGetOwner(), 0,llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
+//                                llList2String(parts, 1), llList2String(oldstride, 4)], "|"));
+                            if (chatchannel != 0) {
+                                llRegionSay(chatchannel,llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
+                                    llList2String(parts, 1), llList2String(oldstride, 4)], "|"));
                             }
                         }
                     }
@@ -106,7 +104,7 @@ default {
                             list parts = llParseString2List(llList2String(smsgs,ndx), ["|"], []);
                             llMessageLinked(LINK_SET, (integer)llList2String(parts, 0), llList2String(parts, 1),
                                 (key)llList2String(slots, n*STRIDE + 4));
-                            llSleep(1.5);
+    //                        llSleep(1.5);
     //                        llRegionSayTo(llGetOwner(), 0, llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
     //                            llList2String(parts, 1), (string)llList2String(slots, n*STRIDE + 4)], "|"));
                             if (chatchannel != 0) {
