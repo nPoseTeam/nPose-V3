@@ -104,7 +104,7 @@ default {
                             list parts = llParseString2List(llList2String(smsgs,ndx), ["|"], []);
                             llMessageLinked(LINK_SET, (integer)llList2String(parts, 0), llList2String(parts, 1),
                                 (key)llList2String(slots, n*STRIDE + 4));
-    //                        llSleep(1.5);
+                            llSleep(1.5);
     //                        llRegionSayTo(llGetOwner(), 0, llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
     //                            llList2String(parts, 1), (string)llList2String(slots, n*STRIDE + 4)], "|"));
                             if (chatchannel != 0) {
