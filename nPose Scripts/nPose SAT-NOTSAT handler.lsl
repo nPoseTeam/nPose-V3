@@ -29,6 +29,24 @@ integer ListCompare(list a, list b) {
     return !llListFindList((a = []) + a, (b = []) + b);
 }
 
+processMessages(list message, integer index) {
+    integer ndx;
+    string nsm = llList2String(message, index);
+    nsm = str_replace(nsm, "%AVKEY%", (key)llList2String(message, 4));
+    list smsgs=llParseString2List(nsm, ["§"], []);
+    integer msgcnt = llGetListLength(smsgs);
+    for(ndx = 0; ndx < msgcnt; ndx++) {
+        list parts = llParseString2List(llList2String(smsgs,ndx), ["|"], []);
+        llMessageLinked(LINK_SET, (integer)llList2String(parts, 0), llList2String(parts, 1),
+            (key)llList2String(message, 4));
+        llSleep(1.5);
+        if (chatchannel != 0) {
+            llRegionSay(chatchannel,llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
+                llList2String(parts, 1), llList2String(message, 4)], "|"));
+        }
+    }
+}
+
 default {
     state_entry() {
         llMessageLinked(LINK_SET, REQUEST_CHATCHANNEL, "", "");
@@ -57,22 +75,7 @@ default {
                     // or the pose set has changed
                     integer listsEqual = ListCompare(llList2List(oldstride, 0, 4), llList2List(currentstride, 0, 4));
                     if(listsEqual == FALSE) {
-                        integer ndx;
-                        string nsm = llList2String(oldstride, 6);
-                        nsm = str_replace(nsm, "%AVKEY%", (key)llList2String(oldstride, 4));
-                        list smsgs=llParseString2List(nsm, ["§"], []);
-                        integer msgcnt = llGetListLength(smsgs);
-                        for(ndx = 0; ndx < msgcnt; ndx++) {
-                            list parts = llParseString2List(llList2String(smsgs,ndx), ["|"], []);
-                            llMessageLinked(LINK_SET, (integer)llList2String(parts, 0), llList2String(parts, 1),
-                                (key)llList2String(oldstride, 4));
-//                            llRegionSayTo(llGetOwner(), 0,llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
-//                                llList2String(parts, 1), llList2String(oldstride, 4)], "|"));
-                            if (chatchannel != 0) {
-                                llRegionSay(chatchannel,llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
-                                    llList2String(parts, 1), llList2String(oldstride, 4)], "|"));
-                            }
-                        }
+                        processMessages(oldstride, 6);
                     }
                 }
             }//finished looping all strides
@@ -95,23 +98,7 @@ default {
                     
             //satmsg things
                         //we have a sitter and satmsg so add it to the current list
-                        integer ndx;
-                        string sm = llList2String(currentstride, 5);
-                        sm = str_replace(sm, "%AVKEY%", (key)llList2String(currentstride, 4));
-                        list smsgs=llParseString2List(sm, ["§"], []);
-                        integer msgcnt = llGetListLength(smsgs);
-                        for(ndx = 0; ndx < msgcnt; ndx++) {
-                            list parts = llParseString2List(llList2String(smsgs,ndx), ["|"], []);
-                            llMessageLinked(LINK_SET, (integer)llList2String(parts, 0), llList2String(parts, 1),
-                                (key)llList2String(slots, n*STRIDE + 4));
-                            llSleep(1.5);
-    //                        llRegionSayTo(llGetOwner(), 0, llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
-    //                            llList2String(parts, 1), (string)llList2String(slots, n*STRIDE + 4)], "|"));
-                            if (chatchannel != 0) {
-                                llRegionSay(chatchannel, llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
-                                    llList2String(parts, 1), (string)llList2String(slots, n*STRIDE + 4)], "|"));
-                            }
-                        }
+                        processMessages(currentstride, 5);
                     }
                 }
             }
