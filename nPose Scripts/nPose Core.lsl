@@ -52,6 +52,7 @@ string lastAssignSlotsCardName;
 key lastAssignSlotsCardId;
 key lastAssignSlotsAvatarId;
 list slots;  //one STRIDE = [animationName, posVector, rotVector, facials, sitterKey, SATMSG, NOTSATMSG, seatName]
+//list propsRezzing;
 
 string curmenuonsit = "off"; //default menuonsit option
 
@@ -196,8 +197,9 @@ SwapTwoSlots(integer currentseatnum, integer newseatnum) {
 }
 
 ProcessLine(string sLine, key av, string ncName, string menuName) {
-    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%AVKEY%"], []), av);
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%CARDNAME%"], []), ncName);
+    list paramsOriginal = llParseStringKeepNulls(sLine, ["|"], []);
+    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%AVKEY%"], []), av);
 //    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%MENUNAME%"], []), menuName);
     list params = llParseStringKeepNulls(sLine, ["|"], []);
     string action = llList2String(params, 0);
@@ -276,17 +278,25 @@ ProcessLine(string sLine, key av, string ncName, string menuName) {
                 if(llList2String(params, 4) == "explicit") {
                     explicitFlag = 1;
                 }
+                //This flag will keep the prop from chatting out it's moves. Some props should move but not spam owner.
+                if(llList2String(params, 5) == "quiet") {
+                    explicitFlag += 2;
+                }
+//                propsRezzing += [explicitFlag];
                 vector vDelta = (vector)llList2String(params, 2);
                 vector pos = llGetPos() + (vDelta * llGetRot());
                 rotation rot = llEuler2Rot((vector)llList2String(params, 3) * DEG_TO_RAD) * llGetRot();
-                 if(llVecMag(vDelta) > 9.9) {
+                integer sendToPropChannel = (chatchannel << 8);
+                sendToPropChannel = sendToPropChannel | explicitFlag;
+                if(llVecMag(vDelta) > 9.9) {
                     //too far to rez it direct.  need to do a prop move
-                    llRezAtRoot(obj, llGetPos(), ZERO_VECTOR, rot, chatchannel);
+                    llRezAtRoot(obj, llGetPos(), ZERO_VECTOR, rot, sendToPropChannel);
                     llSleep(1.0);
                     llRegionSay(chatchannel, llDumpList2String(["MOVEPROP", obj, (string)pos], "|"));
                 }
                 else {
-                    llRezAtRoot(obj, llGetPos() + ((vector)llList2String(params, 2) * llGetRot()), ZERO_VECTOR, rot, chatchannel);
+                    llRezAtRoot(obj, llGetPos() + ((vector)llList2String(params, 2) * llGetRot()),
+                     ZERO_VECTOR, rot, sendToPropChannel);
                 }
             }
         }
@@ -309,19 +319,19 @@ ProcessLine(string sLine, key av, string ncName, string menuName) {
     }
     else if (action == "SATMSG") {
         integer index = (slotMax - 1) * STRIDE + 5;
-        if((integer)llList2String(params, 4) >= 1) {
-            index = (((integer)llList2String(params, 4) + -1) * STRIDE + 5);
+        if((integer)llList2String(paramsOriginal, 4) >= 1) {
+            index = (((integer)llList2String(paramsOriginal, 4) + -1) * STRIDE + 5);
         }
         slots = llListReplaceList(slots, [llDumpList2String([llList2String(slots,index),
-            llDumpList2String(llDeleteSubList(params, 0, 0), "|")], "§")], index, index);
+            llDumpList2String(llDeleteSubList(paramsOriginal, 0, 0), "|")], "§")], index, index);
     }
     else if (action == "NOTSATMSG") {
         integer index = (slotMax - 1) * STRIDE + 6;
-        if((integer)llList2String(params, 4) >= 1) {
-            index = (((integer)llList2String(params, 4) + -1) * STRIDE + 6);
+        if((integer)llList2String(paramsOriginal, 4) >= 1) {
+            index = (((integer)llList2String(paramsOriginal, 4) + -1) * STRIDE + 6);
         }
         slots = llListReplaceList(slots, [llDumpList2String([llList2String(slots,index),
-            llDumpList2String(llDeleteSubList(params, 0, 0), "|")], "§")], index, index);
+            llDumpList2String(llDeleteSubList(paramsOriginal, 0, 0), "|")], "§")], index, index);
     }
 }
 
@@ -331,8 +341,9 @@ default{
         for(; n<=llGetNumberOfPrims(); ++n) {
            llLinkSitTarget(n,<0.0,0.0,0.5>,ZERO_ROTATION);
         }
-        chatchannel = (integer)("0x" + llGetSubString((string)llGetKey(), 0, 7));
-        llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)chatchannel, NULL_KEY); //let our scripts know the chat channel for props and adjusters
+        chatchannel = (integer)("0x7F" + llGetSubString((string)llGetKey(), 0, 5));
+        //let our scripts know the chat channel for props and adjusters
+        llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)chatchannel, NULL_KEY);
         integer listener = llListen(chatchannel, "", "", "");
         //the nPose Menu will do the same, so this should basically only run if there is no nPose menu script in this build
         //but currently we don't check this, so at the startup the DOPOSE|DEFAULT will happen twice
@@ -348,7 +359,8 @@ default{
     }
     link_message(integer sender, integer num, string str, key id) {
         if(num == REQUEST_CHATCHANNEL) {//slave has asked me to reset so it can get the chatchannel from me.
-            llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)chatchannel, NULL_KEY); //let our scripts know the chat channel for props and adjusters
+            //let our scripts know the chat channel for props and adjusters
+            llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)chatchannel, NULL_KEY);
         }
         else if(num == DOPOSE_READER || num == DOACTION_READER) {
             list allData=llParseStringKeepNulls(str, [NC_READER_CONTENT_SEPARATOR], []);
@@ -401,7 +413,7 @@ default{
         else if(num == CORERELAY) {
             list msg = llParseString2List(str, ["|"], []);
             if(id != NULL_KEY) msg = llListReplaceList((msg = []) + msg, [id], 2, 2);
-            llRegionSay(chatchannel,llDumpList2String(["LINKMSG", num, (string)llList2String(msg, 0),
+            llRegionSay(chatchannel,llDumpList2String(["LINKMSG", (string)llList2String(msg, 0),
                 llList2String(msg, 1), (string)llList2String(msg,2)], "|"));
         }
         else if (num == SWAP) {
@@ -486,7 +498,9 @@ default{
         else if(llGetListLength(temp) >= 2 || llGetSubString(message,0,4) == "ping" || llGetSubString(message,0,8) == "PROPRELAY") {
             if(llGetOwnerKey(id) == llGetOwner()) {
                 if(message == "ping") {
-                    llRegionSay(chatchannel, "pong|"+(string)explicitFlag + "|" + (string)llGetPos());
+//                    explicitFlag = llList2Integer(propsRezzing, 0);
+//                    propsRezzing = llDeleteSubList(propsRezzing, 0, 0);
+                    llRegionSayTo(id, chatchannel, "pong|" + (string)llGetPos());
                 }
                 else if(llGetSubString(message,0,8) == "PROPRELAY") {
                     list msg = llParseString2List(message, ["|"], []);
