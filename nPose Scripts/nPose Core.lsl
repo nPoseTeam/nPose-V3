@@ -197,9 +197,9 @@ SwapTwoSlots(integer currentseatnum, integer newseatnum) {
 }
 
 ProcessLine(string sLine, key av, string ncName, string menuName) {
+    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%CARDNAME%"], []), ncName);
     list paramsOriginal = llParseStringKeepNulls(sLine, ["|"], []);
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%AVKEY%"], []), av);
-    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%CARDNAME%"], []), ncName);
 //    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%MENUNAME%"], []), menuName);
     list params = llParseStringKeepNulls(sLine, ["|"], []);
     string action = llList2String(params, 0);
@@ -500,7 +500,7 @@ default{
                 if(message == "ping") {
 //                    explicitFlag = llList2Integer(propsRezzing, 0);
 //                    propsRezzing = llDeleteSubList(propsRezzing, 0, 0);
-                    llRegionSayTo(id, chatchannel, "pong|"+(string)explicitFlag + "|" + (string)llGetPos());
+                    llRegionSayTo(id, chatchannel, "pong|" + (string)llGetPos());
                 }
                 else if(llGetSubString(message,0,8) == "PROPRELAY") {
                     list msg = llParseString2List(message, ["|"], []);
