@@ -38,7 +38,7 @@ list REPLACE_NUM=[
 	
 	300, "CORERELAY", " to the core. This triggers chat to props directly from the core.  There must be a custom receiver script in the props to interpret and act on this message.", 
 	
-	34333, "SLOT_UPDATE", "from the core when PosDump is clicked to save new positions to memory of the in memory plugin.", 
+	34333, "SLOT_UPDATE (deprecated)", "from the core when PosDump is clicked to save new positions to memory of the in memory plugin.", 
 	34334, "MEMORY_USAGE", "Sends out a request to all script so they can report their memory stats.", 
 	35353, "SEAT_UPDATE", " core sends out to update everyone when the slots list has changed in any way.  changed seats or new pose.", 
 	35354, "SEAT_BUTTONS", "menu received seat buttons list", 
