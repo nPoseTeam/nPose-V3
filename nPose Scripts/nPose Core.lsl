@@ -12,7 +12,6 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 //define block start
 #define ADMIN_HUD_NAME "npose admin hud"
 #define STRIDE 8
-#define SLOT_UPDATE 34333
 #define MEMORY_USAGE 34334
 #define SEAT_UPDATE 35353
 #define REQUEST_CHATCHANNEL 999999
@@ -40,11 +39,8 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 //define block end
 
 integer slotMax;
-//integer curPrimCount;
-//integer lastPrimCount;
 integer lastStrideCount = 12;
 integer rezadjusters;
-//integer listener;
 integer chatchannel;
 integer explicitFlag;
 key hudId;
@@ -52,7 +48,6 @@ string lastAssignSlotsCardName;
 key lastAssignSlotsCardId;
 key lastAssignSlotsAvatarId;
 list slots;  //one STRIDE = [animationName, posVector, rotVector, facials, sitterKey, SATMSG, NOTSATMSG, seatName]
-//list propsRezzing;
 
 string curmenuonsit = "off"; //default menuonsit option
 
@@ -282,7 +277,6 @@ ProcessLine(string sLine, key av, string ncName, string menuName) {
                 if(llList2String(params, 5) == "quiet") {
                     explicitFlag += 2;
                 }
-//                propsRezzing += [explicitFlag];
                 vector vDelta = (vector)llList2String(params, 2);
                 vector pos = llGetPos() + (vDelta * llGetRot());
                 rotation rot = llEuler2Rot((vector)llList2String(params, 3) * DEG_TO_RAD) * llGetRot();
@@ -476,7 +470,6 @@ default{
         else if(num == MEMORY_USAGE) {
             llSay(0,"Memory Used by " + llGetScriptName() + ": " + (string)llGetUsedMemory() + " of " + (string)llGetMemoryLimit()
              + ", Leaving " + (string)llGetFreeMemory() + " memory free.");
-//        list details = llGetObjectDetails(llGetKey(), ([OBJECT_SCRIPT_TIME]));
         llSay(0, "running script time for all scripts in this nPose object are consuming " 
          + (string)(llList2Float(llGetObjectDetails(llGetKey(), ([OBJECT_SCRIPT_TIME])), 0)*1000.0) + " ms of cpu time");
         }
@@ -498,8 +491,6 @@ default{
         else if(llGetListLength(temp) >= 2 || llGetSubString(message,0,4) == "ping" || llGetSubString(message,0,8) == "PROPRELAY") {
             if(llGetOwnerKey(id) == llGetOwner()) {
                 if(message == "ping") {
-//                    explicitFlag = llList2Integer(propsRezzing, 0);
-//                    propsRezzing = llDeleteSubList(propsRezzing, 0, 0);
                     llRegionSayTo(id, chatchannel, "pong|" + (string)llGetPos());
                 }
                 else if(llGetSubString(message,0,8) == "PROPRELAY") {
@@ -515,9 +506,6 @@ default{
                     rotation newrot = (rotation)llList2String(params, 1) / llGetRot();
                     llRegionSayTo(llGetOwner(), 0, "\nPROP|" + name + "|" + (string)newpos + "|" + (string)(llRot2Euler(newrot) * RAD_TO_DEG)
                      + "|" + llList2String(params, 2));
-                    llMessageLinked(LINK_SET, SLOT_UPDATE, "PROP|" + name + "|" + (string)newpos + "|" +
-                        (string)(llRot2Euler(newrot) * RAD_TO_DEG), NULL_KEY); 
-
                 }
             }
         }
