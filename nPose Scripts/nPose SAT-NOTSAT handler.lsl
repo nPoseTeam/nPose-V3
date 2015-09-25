@@ -39,7 +39,6 @@ processMessages(list message, integer index) {
         list parts = llParseString2List(llList2String(smsgs,ndx), ["|"], []);
         llMessageLinked(LINK_SET, (integer)llList2String(parts, 0), llList2String(parts, 1),
             (key)llList2String(message, 4));
-        llSleep(1.5);
         if (chatchannel != 0) {
             llRegionSay(chatchannel,llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
                 llList2String(parts, 1), llList2String(message, 4)], "|"));
