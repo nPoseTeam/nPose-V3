@@ -29,6 +29,23 @@ integer ListCompare(list a, list b) {
     return !llListFindList((a = []) + a, (b = []) + b);
 }
 
+processMessages(list message, integer index) {
+    integer ndx;
+    string nsm = llList2String(message, index);
+    nsm = str_replace(nsm, "%AVKEY%", (key)llList2String(message, 4));
+    list smsgs=llParseString2List(nsm, ["§"], []);
+    integer msgcnt = llGetListLength(smsgs);
+    for(ndx = 0; ndx < msgcnt; ndx++) {
+        list parts = llParseString2List(llList2String(smsgs,ndx), ["|"], []);
+        llMessageLinked(LINK_SET, (integer)llList2String(parts, 0), llList2String(parts, 1),
+            (key)llList2String(message, 4));
+        if (chatchannel != 0) {
+            llRegionSay(chatchannel,llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
+                llList2String(parts, 1), llList2String(message, 4)], "|"));
+        }
+    }
+}
+
 default {
     state_entry() {
         llMessageLinked(LINK_SET, REQUEST_CHATCHANNEL, "", "");
@@ -48,41 +65,27 @@ default {
             integer stop = llGetListLength(oldSlots)/STRIDE;
             for(n = 0; n < stop; ++n) {
                 oldstride = llList2List(oldSlots, n*STRIDE, n*STRIDE+6);
-                currentstride = llList2List(slots, n*STRIDE, n*STRIDE+8);
+//                currentstride = llList2List(slots, n*STRIDE, n*STRIDE+6);
                 //check if we have an existing NOTSATMSG and if there was a sitter in this seat
                 if((llList2String(oldstride, 6) != "" && llList2String(oldstride, 4) != "")) {
                     integer curStrideIndex = llListFindList(slots, [llList2String(oldstride, 4)])-4;
                     currentstride = llList2List(slots, curStrideIndex, curStrideIndex+6);
                     //if this sitter is no longer in this seat
                     // or the pose set has changed
-                    if((curStrideIndex == -1) || (curStrideIndex != -1 && llList2CSV(oldstride) != llList2CSV(currentstride))) {
-                        integer ndx;
-                        string nsm = llList2String(oldstride, 6);
-                        nsm = str_replace(nsm, "%AVKEY%", (key)llList2String(oldstride, 4));
-                        list smsgs=llParseString2List(nsm, ["§"], []);
-                        integer msgcnt = llGetListLength(smsgs);
-                        for(ndx = 0; ndx < msgcnt; ndx++) {
-                            list parts = llParseString2List(llList2String(smsgs,ndx), ["|"], []);
-                            llMessageLinked(LINK_SET, (integer)llList2String(parts, 0), llList2String(parts, 1),
-                                (key)llList2String(oldstride, 4));
-//                            llRegionSayTo(llGetOwner(), 0,llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
-//                                llList2String(parts, 1), llList2String(oldstride, 4)], "|"));
-                            if (chatchannel != 0) {
-                                llRegionSay(chatchannel,llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
-                                    llList2String(parts, 1), llList2String(oldstride, 4)], "|"));
-                            }
-                        }
+                    integer listsEqual = ListCompare(llList2List(oldstride, 0, 4), llList2List(currentstride, 0, 4));
+                    if(listsEqual == FALSE) {
+                        processMessages(oldstride, 6);
                     }
                 }
             }//finished looping all strides
             stop = llGetListLength(slots)/STRIDE;
             for(n = 0; n < stop; ++n) {
                 //this is a slot change so do some work
-                oldstride = llList2List(oldSlots, n*STRIDE, n*STRIDE+8);
-                currentstride = llList2List(slots, n*STRIDE, n*STRIDE+8);
+                oldstride = llList2List(oldSlots, n*STRIDE, n*STRIDE+5);
+                currentstride = llList2List(slots, n*STRIDE, n*STRIDE+5);
                 //if existing sitter and new pose set and has SATMSG
                 // or if new sitter and same pose set and SATMSG
-                integer listsEqual = ListCompare(oldstride, currentstride);
+                integer listsEqual = ListCompare(llList2List(oldstride, 0, 4), llList2List(currentstride, 0, 4));
                 //only run SATMSG section if this seat has a SATMSG to run in new pose set
                 if(llList2String(currentstride, 5) != "") {
                     //if we have a SATMSG in this seat we need to check a couple more conditions
@@ -94,23 +97,7 @@ default {
                     
             //satmsg things
                         //we have a sitter and satmsg so add it to the current list
-                        integer ndx;
-                        string sm = llList2String(currentstride, 5);
-                        sm = str_replace(sm, "%AVKEY%", (key)llList2String(currentstride, 4));
-                        list smsgs=llParseString2List(sm, ["§"], []);
-                        integer msgcnt = llGetListLength(smsgs);
-                        for(ndx = 0; ndx < msgcnt; ndx++) {
-                            list parts = llParseString2List(llList2String(smsgs,ndx), ["|"], []);
-                            llMessageLinked(LINK_SET, (integer)llList2String(parts, 0), llList2String(parts, 1),
-                                (key)llList2String(slots, n*STRIDE + 4));
-                            llSleep(1.5);
-    //                        llRegionSayTo(llGetOwner(), 0, llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
-    //                            llList2String(parts, 1), (string)llList2String(slots, n*STRIDE + 4)], "|"));
-                            if (chatchannel != 0) {
-                                llRegionSay(chatchannel, llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
-                                    llList2String(parts, 1), (string)llList2String(slots, n*STRIDE + 4)], "|"));
-                            }
-                        }
+                        processMessages(currentstride, 5);
                     }
                 }
             }
