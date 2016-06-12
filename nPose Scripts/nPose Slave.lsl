@@ -93,10 +93,6 @@ MoveLinkedAv(integer linknum, vector avpos, rotation avrot) {
             
             rotation localrot = ZERO_ROTATION;
             vector localpos = ZERO_VECTOR;
-            if(llGetLinkNumber() > 1) {  
-                localrot = llGetLocalRot();
-                localpos = llGetLocalPos();
-            }
             avpos.z += 0.4;
             llSetLinkPrimitiveParamsFast(linknum, [PRIM_POSITION, ((avpos - (llRot2Up(avrot) * size.z * 0.02638)) * localrot) + localpos, PRIM_ROTATION, avrot * localrot / llGetRootRotation()]);
         }
@@ -136,8 +132,9 @@ SetAvatarOffset(key avatar, vector offset) {
 RezNextAdjuster(integer slotnum) {
     if(llGetInventoryType("Adjuster") == INVENTORY_OBJECT) {
         integer index = slotnum * stride;
-        vector pos = llGetPos() + llList2Vector(slots, index + 1) * llGetRot();
-        rotation rot = llList2Rot(slots, index + 2) * llGetRot();
+        vector pos = llGetRootPosition() + llList2Vector(slots, index + 1) * llGetRootRotation();
+        rotation rot = llList2Rot(slots, index + 2) * llGetRootRotation();
+
         llRezObject("Adjuster", pos, ZERO_VECTOR, rot, chatchannel);
     }
     else {
@@ -327,10 +324,10 @@ default {
                 string primName = llGetObjectName();
                 llSetObjectName(llGetLinkName(1));
                 list params = llParseString2List(str, ["|"], []);
-                vector newpos = (vector)llList2String(params, 0) - llGetPos();
-                newpos = newpos / llGetRot();
+                vector newpos = (vector)llList2String(params, 0) - llGetRootPosition();
+                newpos = newpos / llGetRootRotation();
                 integer slotsindex = index * stride;
-                rotation newrot = (rotation)llList2String(params, 1) / llGetRot();
+                rotation newrot = (rotation)llList2String(params, 1) / llGetRootRotation();
                 slots = llListReplaceList(slots, [newpos, newrot], slotsindex + 1, slotsindex + 2);
                 llRegionSayTo(llGetOwner(), 0, "SCHMOE and SCHMO lines will be reported as ANIM.  Be sure to replace if needed.");
                 llRegionSayTo(llGetOwner(), 0, "\nANIM|" + llList2String(slots, slotsindex) + "|" + (string)newpos + "|" +
