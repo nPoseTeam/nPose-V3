@@ -377,7 +377,7 @@ default {
                 else {
                     //New Sitter!
                     //New Sitter isn't in our list yet so give the list some beef
-                    llStartAnimation("Sit");
+//                    llStartAnimation("Sit");
                     lastAnimRunning = "Sit";
                     lastanim += [(string)thisAV, "Sit"];
                 }
