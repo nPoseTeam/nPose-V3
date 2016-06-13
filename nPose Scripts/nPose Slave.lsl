@@ -365,20 +365,21 @@ default {
             //get the current requested animation from list slots.
             integer avIndex = llListFindList(slots, [thisAV]);
             currentanim = llList2String(slots, avIndex - 4);
-            //look for the default LL 'Sit' animation.  We must stop this animation if it is running. New Sitter!
-            list animsRunning = llGetAnimationList(thisAV);
-            integer indexx = llListFindList(animsRunning, [(key)"1a5fe8ac-a804-8a5d-7cbd-56bd83184568"]);
-            //we also need to know the last animation running.  Not New Sitter!
+            //we also need to know the last animation running.  
             //lastanim is a 2 stride list [thisAV, last active animation name]
             //index thisAV as a string in the list and then we can find the last animation.
             integer thisAvIndex = llListFindList(lastanim, [(string)thisAV]);
             if(doSync !=1) {
-                if(indexx != -1) {
+                if(thisAvIndex != -1) {
+                    //Not New Sitter!
+                    lastAnimRunning = llList2String(lastanim, thisAvIndex+1);
+                }
+                else {
+                    //New Sitter!
+                    //New Sitter isn't in our list yet so give the list some beef
+//                    llStartAnimation("Sit");
                     lastAnimRunning = "Sit";
                     lastanim += [(string)thisAV, "Sit"];
-                }
-                if(thisAvIndex != -1) {
-                    lastAnimRunning = llList2String(lastanim, thisAvIndex+1);
                 }
                 //now we know which animation to stop so go ahead and stop it.
                 if(lastAnimRunning != "") {
