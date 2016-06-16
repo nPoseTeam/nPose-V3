@@ -15,6 +15,8 @@ string cur2default = "off";  //default action to revert back to default pose whe
 string Facials = "on";
 string menuReqSit = "off";  //required to be seated to get a menu
 string RLVenabled = "on";   //default RLV enabled state  on or no
+
+integer OptionUseDisplayNames;
 //
 
 list victims;
@@ -22,7 +24,6 @@ string path;
 list slots; //this slots list is not complete. it only contains seated AV key and seat numbers
 string defaultPoseNcName; //holds the name of the default notecard.
 string menuNC = ".Change Menu Order"; //holds the name of the menu order notecard to read.
-list slotbuttons = [];//list of seat# or seated AV name for change seats menu.
 //key toucherid;
 list menus;
 list menuPermPath;
@@ -52,10 +53,10 @@ key scriptID;
 #define UNSIT -222
 #define DOMENU -800
 #define DOMENU_ACCESSCTRL -801
+#define DOMENU_CORE -803
 #define EXTERNAL_UTIL_REQUEST -888
 #define MEMORY_USAGE 34334
 #define SEAT_UPDATE 35353
-#define SEAT_BUTTONS 35354
 #define VICTIMS_LIST -238
 #define OPTIONS_NUM -240
 #define FACIALS_FLAG -241
@@ -83,7 +84,7 @@ list offsetbuttons = [FWDBTN, LEFTBTN, UPBTN, BKWDBTN, RIGHTBTN, DOWNBTN, "0.2",
 #define MENUONSIT "Menuonsit"
 #define TODEFUALT "ToDefault"
 #define PERMITBTN "Permit"
-list adminbuttons = [ADJUSTBTN, STOPADJUSTBTN, POSDUMPBTN, UNSITBTN, OPTIONS];
+list adminbuttons = [ADJUSTBTN, STOPADJUSTBTN, POSDUMPBTN, OPTIONS];
 
 // userDefinedPermissions
 #define USER_PERMISSION_UPDATE -806
@@ -91,8 +92,11 @@ list adminbuttons = [ADJUSTBTN, STOPADJUSTBTN, POSDUMPBTN, UNSITBTN, OPTIONS];
 #define PERMISSION_GROUP "group"
 #define PERMISSION_OWNER "owner"
 #define PERMISSION_SEATED "seated"
+#define PERMISSION_OCCUPIED "occupied"
+#define PERMISSION_OWNSEAT "ownseat"
 #define USER_PERMISSION_TYPE_LIST "list"
 #define USER_PERMISSION_TYPE_BOOL "bool"
+#define USER_PERMISSION_TYPE_MACRO "macro"
 list pluginPermissionList;
 
 //NC Reader
@@ -100,6 +104,9 @@ list pluginPermissionList;
 #define NC_READER_REQUEST 224
 #define NC_READER_RESPONSE 225
 
+debug(list message){
+    llOwnerSay((((llGetScriptName() + "\n##########\n#>") + llDumpList2String(message,"\n#>")) + "\n##########"));
+}
 
 Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page, string Path) {
     //check menu permissions
@@ -114,10 +121,14 @@ Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page,
         //check button permission for this path up to the root
         //this also means that button permissions are inheritable
         list tempPath=thisMenuPath;
+        integer rcptSlotNumber=llListFindList(slots, [rcpt]);
+        if(~rcptSlotNumber) {
+            rcptSlotNumber=rcptSlotNumber/2;
+        }
         do {
             integer indexc=llListFindList(menuPermPath, [llDumpList2String(tempPath, ":")]);
             if(~indexc) {
-                if(!isAllowed(rcpt, llList2String(menuPermPerms, indexc))) {
+                if(!isAllowed(rcpt, rcptSlotNumber, llList2String(menuPermPerms, indexc))) {
                     return;
                 }
             }
@@ -128,7 +139,7 @@ Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page,
         for(; nc < stopc; ++nc) {
             integer indexc = llListFindList(menuPermPath, [llDumpList2String(thisMenuPath + llList2String(choices, nc), ":")]);
             if(indexc != -1) {
-                if(!isAllowed(rcpt, llList2String(menuPermPerms, indexc))) {
+                if(!isAllowed(rcpt, rcptSlotNumber, llList2String(menuPermPerms, indexc))) {
                     choices = llDeleteSubList(choices, nc, nc);
                     --nc;
                     --stopc;
@@ -140,9 +151,17 @@ Dialog(key rcpt, string prompt, list choices, list utilitybuttons, integer page,
     }
 }
 
-integer isAllowed(key rcpt, string permissions) {
+integer isAllowed(key rcpt, integer slotNumber, string permissions) {
+    // rcpt:
+    // In case of a menu permission: the key of the avatar using the menu
+    // If the rcpt doesn't matter, provide a NULL_KEY
+    // slotNumber:
+    // In case of a menu permission: the slotNumber of the menu user
+    // if the slotNumber doesn't matter use -1 
+    
     // Syntax of the permission string:
     // The permission string is the last part of the notecard name surrounded by {}
+    // it can also be used in the change seat or unsit command
     // It contains KEYWORDS and OPERATORS.
 
     // OPERATORS (listed in order of their precedence)
@@ -155,8 +174,9 @@ integer isAllowed(key rcpt, string permissions) {
     // owner:  returns TRUE if the user is the object owner
     // group:  returns TRUE if the active group of the user is equal to the group of the object
     // seated: returns TRUE if the user is seated
-    // any integer counts as a seatNumber: returns true if the user is sitting on the seat with the specified number
-    // any other string counts as a permission registered by a plugin
+    // occupied: returns TRUE if the given slot is in use
+    // any integer counts as a seatNumber: returns true if the slot number matches the specified seat number
+    // any other string counts as a UserDefinedPermission
 
     // Examples:
     // 1~3 : is TRUE if the user is seated on seat number 1 or 3
@@ -189,17 +209,24 @@ integer isAllowed(key rcpt, string permissions) {
                     result=logicalXor(invert, llGetOwner()==rcpt);
                 }
                 else if(item==PERMISSION_SEATED) {
-                    result=logicalXor(invert, ~llListFindList(slots, [rcpt]));
+                    result=logicalXor(invert, slotNumber>=0);
+                }
+                else if(item==PERMISSION_OWNSEAT) {
+                    result=invert;
+                    integer index=llListFindList(slots, [rcpt]);
+                    if(~index) {
+                        result=logicalXor(invert, slotNumber==index/2);
+                    }
                 }
                 else if((string)((integer)item)==item){
-                    /// seat number
-                    integer slotIndex=llListFindList(slots, [rcpt]);
-                    integer z=llSubStringIndex(llList2String(slots, slotIndex + 1), "§");
-                    string seatNumber=llGetSubString(llList2String(slots, slotIndex + 1), z+5,-1);
-                    result=logicalXor(invert, item==seatNumber);
+                    result=logicalXor(invert, slotNumber+1==(integer)item);
                 }
+                else if(item==PERMISSION_OCCUPIED) {
+                    result=logicalXor(invert, llList2String(slots, slotNumber*2)!="" && llList2String(slots, slotNumber*2)!=NULL_KEY);
+                }
+
                 else {
-                    //maybe a plugin permission
+                    //maybe a user defined permission
                     integer pluginPermissionIndex=llListFindList(pluginPermissionList, [item]);
                     if(~pluginPermissionIndex) {
                         //plugin permission
@@ -209,6 +236,9 @@ integer isAllowed(key rcpt, string permissions) {
                         }
                         else if(pluginPermissionType==USER_PERMISSION_TYPE_BOOL) {
                             result=logicalXor(invert, (integer)llList2String(pluginPermissionList, pluginPermissionIndex+2));
+                        }
+                        else if(pluginPermissionType==USER_PERMISSION_TYPE_MACRO) {
+                            result=logicalXor(invert, isAllowed(rcpt, slotNumber, llList2String(pluginPermissionList, pluginPermissionIndex+2)));
                         }
                         else {
                             //error unknown plugin permission type
@@ -320,6 +350,74 @@ BuildMenus(list cardNames) {//builds the user defined menu buttons
     }
 }
 
+list getSlotbuttons(key rcpt, string permissions) {
+    //rcpt: the recipient the list is created for
+    //permissions: the permission string
+    //returns a list of buttons for the change seat or unsit (use permission="occupied") menu
+    integer length=llGetListLength(slots);
+    integer index;
+    list buttons;
+    for(; index<length; index+=2) {
+        if(isAllowed(rcpt, index/2, permissions)) {
+            key avatar=llList2Key(slots, index);
+            list temp=llParseStringKeepNulls(llList2String(slots, index+1), ["§"], []);
+            string seatName=llList2String(temp, 0);
+            string seatNumber=llList2String(temp, 1);
+            if(avatar) {
+                if(OptionUseDisplayNames) {
+                    buttons+="∙"+llGetDisplayName(avatar)+"∙";
+                }
+                else {
+                    buttons+="∙"+llKey2Name(avatar)+"∙";
+                }
+            }
+            else if(seatName) {
+                buttons+=" "+seatName;
+            }
+            else {
+                buttons+=seatNumber;
+            }
+        }
+    }
+    return buttons;
+}
+
+integer getSlotNumber(string menuResponse) {
+    //the menuResponse can be:
+    //1) seatX: where X is a number
+    //2) " " + a seat name
+    //3) "∙" + an avatar name + "∙"
+    //1 and 2 can be found in our slots list
+    //returns the slotNumber
+    string prefix=llGetSubString(menuResponse, 0, 0);
+    if (prefix=="s") {
+        //a seat number
+        return (integer)llGetSubString(menuResponse, 4, -1)-1;
+    }
+    integer length=llGetListLength(slots);
+    integer index;
+    for(; index<length; index+=2) {
+        if(prefix==" ") {
+            if(!llSubStringIndex(" " + llList2String(slots, index+1), menuResponse+"§")) {
+                return (index)/2;
+            }
+        }
+        else if(prefix=="∙") {
+            string nameInSlotList;
+            if(OptionUseDisplayNames) {
+                nameInSlotList=llGetDisplayName(llList2Key(slots, index));
+            }
+            else {
+                nameInSlotList=llKey2Name(llList2Key(slots, index));
+            }
+            if(!llSubStringIndex("∙"+nameInSlotList+"∙", menuResponse)) {
+                return index/2;
+            }
+        }
+    }
+    return -1;
+}
+
 default{
     state_entry() {
         scriptID=llGetInventoryKey(llGetScriptName());
@@ -375,13 +473,6 @@ default{
                 path += ":" + selection;
                 AdminMenu(toucherid, path, "", adminbuttons);
             }
-            else if(selection == SLOTBTN) {
-                //someone wants to change sit positionss.
-                //taking a place where someone already has that slot should do the swap regardless of how many 
-                //places are open
-                path = path + ":" + selection;
-                AdminMenu(toucherid, path,  "Where will you sit?", slotbuttons);
-            }
             else if(selection == OFFSETBTN) {
                 //give offset menu
                 path = path + ":" + selection;
@@ -400,23 +491,6 @@ default{
                 llMessageLinked(LINK_SET, DUMP, "", "");
                 AdminMenu(toucherid, path, "", adminbuttons);
             }
-            else if(selection == UNSITBTN) {
-                list buttons;
-                stop = llGetListLength(slots);
-                for(; n < stop; n+=2) {
-                    //grab all seated AV names to populate the buttons
-                    buttons += [llGetSubString(llKey2Name((key)llList2String(slots, n)), 0, 20)];
-                }
-                if(buttons != []) {
-                    //grab unsit menu if we have sitters to unsit
-                    path += ":" + selection;
-                    AdminMenu(toucherid, path, "Pick an avatar to unsit", buttons);
-                }
-                else {
-                    //just re-menu if no one is seated
-                    AdminMenu(toucherid, path, "", adminbuttons);
-                }
-            }
             else if(selection == OPTIONS) {
                 path += ":" + selection;
                 string optionsPrompt =  "Permit currently set to " + Permissions
@@ -427,43 +501,24 @@ default{
 //end admin button section
             }
             else if(llList2String(llParseString2List(path, [":"], []), -1) == SLOTBTN) {//change seats
-                if(llGetSubString(selection, 0,3)=="seat") { //clicker selected an open seat where menu is 'seat'+#
-                    n = (integer)llGetSubString(selection, 4,-1);
-                    if(n >= 0) {
-                        llMessageLinked(LINK_SET, SWAPTO, (string)n, toucherid);
-                    }
+                n=getSlotNumber(selection);
+                if(~n) {
+                    llMessageLinked(LINK_SET, SWAPTO, (string)(n+1), toucherid);
                 }
-                else { //clicker selected a name so get seat# from list
-                    n = llListFindList(slotbuttons, [selection])+1;
-                    if(n >= 0) {
-                        llMessageLinked(LINK_SET, SWAPTO, (string)n, toucherid);
-                    }
-                }
-                list pathparts = llParseString2List(path, [":"], []);
-                pathparts = llDeleteSubList(pathparts, -1, -1);
-                path = llDumpList2String(pathparts, ":");
-                DoMenu(toucherid, path,  "", 0);
+                list pathParts = llParseString2List(path, [":"], []);
+                pathParts = llDeleteSubList(pathParts, -1, -1);
+                path = llDumpList2String(pathParts, ":");
+                llMessageLinked(LINK_SET, DOMENU_CORE, path, toucherid);
             }
             else if(llList2String(llParseString2List(path, [":"], []), -1) == UNSITBTN) {
-                stop = llGetListLength(slots);
-                list buttons;
-                for(; n < stop; n+=2) {
-                    key av = llList2Key(slots, n);
-                    if(llGetSubString(llKey2Name(av), 0, 20) == selection) {
-                        llMessageLinked(LINK_SET, UNSIT, (string)av, NULL_KEY);
-                    }
-                    else {
-                        buttons += [llGetSubString(llKey2Name(av), 0, 20)];
-                    }
+                n=getSlotNumber(selection);
+                if(~n) {
+                    llMessageLinked(LINK_SET, UNSIT, (string)llList2Key(slots, n*2), toucherid);
                 }
-                if(buttons) {
-                    AdminMenu(toucherid, path, "Pick an avatar to unsit", buttons);
-                }
-                else {
-                    list pathParts = llParseString2List(path, [":"], []);
-                    pathParts = llDeleteSubList(pathParts, -1, -1);
-                    AdminMenu(toucherid, llDumpList2String(pathParts, ":"), "", adminbuttons);
-                }
+                list pathParts = llParseString2List(path, [":"], []);
+                pathParts = llDeleteSubList(pathParts, -1, -1);
+                path = llDumpList2String(pathParts, ":");
+                llMessageLinked(LINK_SET, DOMENU_CORE, path, toucherid);
             }
             else if(llList2String(llParseString2List(path, [":"], []), -1) == OFFSETBTN) {
                      if(selection ==   FWDBTN) AdjustOffsetDirection(toucherid,  (vector)<1, 0, 0>);
@@ -479,12 +534,12 @@ default{
             }
             else if(selection == SYNCBTN) {
                 llMessageLinked(LINK_SET, SYNC, "", "");
-                DoMenu(toucherid, path, "", page);                    
+                DoMenu(toucherid, path, "", page);
             }
             else {
 //begin and do the selection
                 list pathlist = llDeleteSubList(llParseStringKeepNulls(path, [":"], []), 0, 0);
-                string defaultname = llDumpList2String([DEFAULT_PREFIX] + pathlist + [selection], ":");                
+                string defaultname = llDumpList2String([DEFAULT_PREFIX] + pathlist + [selection], ":");
                 string setname = llDumpList2String([SET_PREFIX] + pathlist + [selection], ":");
                 string btnname = llDumpList2String([BTN_PREFIX] + pathlist + [selection], ":");
                 //correct the notecard name so the core can find this notecard
@@ -530,14 +585,15 @@ default{
             stop = llGetListLength(optionsToSet);
             for(; n<stop; ++n) {
                 list optionsItems = llParseString2List(llList2String(optionsToSet, n), ["="], []);
-                string optionItem = llList2String(optionsItems, 0);
-                string optionSetting = llList2String(optionsItems, 1);
+                string optionItem = llToLower(llStringTrim(llList2String(optionsItems, 0), STRING_TRIM));
+                string optionSetting = llToLower(llStringTrim(llList2String(optionsItems, 1), STRING_TRIM));
+                integer optionSettingFlag = optionSetting=="on" || (integer)optionSetting;
                 if(optionItem == "menuonsit") {curmenuonsit = optionSetting;}
                 else if(optionItem == "permit") {Permissions = llToUpper(optionSetting);}
                 else if(optionItem == "2default") {cur2default = optionSetting;}
                 else if(optionItem == "sit2getmenu") {menuReqSit = optionSetting;}
                 else if(optionItem == "menudist") {menuDistance = (float)optionSetting;}
-                else if(optionItem == "facialExp") {
+                else if(optionItem == "facialexp") {
                     Facials = optionSetting;
                     llMessageLinked(LINK_SET, FACIALS_FLAG, Facials, NULL_KEY);
                 }
@@ -545,34 +601,50 @@ default{
                     RLVenabled = optionSetting;
                     llMessageLinked(LINK_SET, -1812221819, "RLV=" + RLVenabled, NULL_KEY);
                 }
+                else if(optionItem == "usedisplaynames") {
+                    OptionUseDisplayNames = optionSettingFlag;
+                }
             }
         }
         else if(num == EXTERNAL_UTIL_REQUEST) {
-            if(str == ADMINBTN) {
-                path += ":" + str;
+            list parts=llParseStringKeepNulls(str, [","], []);
+            string cmd=llList2String(parts, 0);
+            if(cmd == ADMINBTN) {
+                path += ":" + cmd;
                 AdminMenu(id, path, "", adminbuttons);
             }
-            else if(str == SLOTBTN) {
+            else if(cmd == SLOTBTN) {
                 //someone wants to change sit positionss.
                 //taking a place where someone already has that slot should do the swap regardless of how many 
                 //places are open
-                path = path + ":" + str;
-                AdminMenu(id, path,  "Where will you sit?", slotbuttons);
+                path += ":" + cmd;
+                AdminMenu(id, path,  "Where will you sit?", getSlotbuttons(id, llList2String(parts, 1)));
             }
-            else if(str == OFFSETBTN) {
+            else if(cmd == OFFSETBTN) {
                 //give offset menu
-                path = path + ":" + str;
+                path += ":" + cmd;
                 AdminMenu(id, path,   "Adjust by " + (string)currentOffsetDelta
                  + "m, or choose another distance.", offsetbuttons);
             }
-            else if(str == SYNCBTN) {
+            else if(cmd == SYNCBTN) {
                 llMessageLinked(LINK_SET, SYNC, "", "");
                 DoMenu(id, path, "", 0);
             }
+            else if(cmd == UNSITBTN) {
+                path += ":" + cmd;
+                AdminMenu(id, path, "Pick an avatar to unsit.", getSlotbuttons(id, llList2String(parts, 1)));
+            }
         }
         else if(num == DOMENU) {
-            if(!llSubStringIndex(str, "PATH=")) str = llGetSubString(str, 5, -1);
-            DoMenu(id, str, "", 0);
+            //new str format:
+            //path[,page[,promt]]
+            list parts=llParseStringKeepNulls(str, [","], []);
+            string thePath=llList2String(parts, 0);
+            integer page=(integer)llList2String(parts, 1);
+            parts=llDeleteSubList(parts, 0, 1);
+            //next line to be backward compatible
+            if(!llSubStringIndex(thePath, "PATH=")) thePath = llGetSubString(thePath, 5, -1);
+            DoMenu(id, thePath, llDumpList2String(parts, ","), page);
         }
         else if(num == DOMENU_ACCESSCTRL) {//external call to check permissions
             DoMenu(id, ROOTMENU, "", 0);
@@ -588,9 +660,12 @@ default{
         }
         else if(num == USER_PERMISSION_UPDATE) {
             // @param str string CSV: permissionName, permissionType, permissionValue[, permissionName, permissionType, permissionValue[, ...]]
-            // permissionName: a unique name for a permission
-            // permissionType: bool|list
-            // permissionValue: 0|1 or a list with Avatar UUIDs (must not contain a ",")
+            // permissionName: a unique name for a permission. A permission name of the type macro should begin with a @
+            // permissionType: bool|list|macro
+            // permissionValue:
+            //   bool: 0|1
+            //   list: a list with Avatar UUIDs (must not contain a ",")
+            //   macro: a permission string
 
             list newPermission=llCSV2List(str);
             integer n;
@@ -609,20 +684,6 @@ default{
             slots = [];
             for(n=0; n<(llGetListLength(slotsList)/8); ++n) {
                 slots += [(key)llList2String(slotsList, n*8+4), llList2String(slotsList, n*8+7)];
-            }
-        }
-        else if (num==SEAT_BUTTONS) {
-            slotbuttons = llParseString2List(str, [","], []);
-            string strideSeat;
-            for(n = 0; n < llGetListLength(slotbuttons); ++n) { // n is the slot number
-                index = llSubStringIndex(llList2String(slotbuttons, n), "§");
-                if(!index) {
-                    strideSeat = llGetSubString(llList2String(slotbuttons, n), 1,-1);
-                }
-                else {
-                    strideSeat = llGetSubString(llList2String(slotbuttons, n), 0, index+-1);
-                }
-                slotbuttons = llListReplaceList(slotbuttons, [strideSeat], n, n);
             }
         }
         else if(num == MEMORY_USAGE) {//dump memory stats to local

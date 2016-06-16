@@ -147,20 +147,17 @@ Dialog(key recipient, string prompt, list menuitems, list utilitybuttons, intege
     menus += [recipient, id, ts, prompt, llDumpList2String(menuitems, "|"), llDumpList2String(utilitybuttons, "|"), page, path];
 }
 
-list SanitizeButtons(list in)
-{
+list SanitizeButtons(list in) {
     integer length = llGetListLength(in);
     integer n;
-    for (n = length - 1; n >= 0; n--)
-    {
-        integer type = llGetListEntryType(in, n);
-        if (llList2String(in, n) == "") //remove empty strings
-        {
+    for (n = length - 1; n >= 0; n--) {
+        //trim it to avoid shouting on Debug Channel
+        string currentButton=Utf8Trim(llList2String(in, n), 24);
+        if(currentButton) {
+            in = llListReplaceList(in, [currentButton], n, n);
+        }
+        else {
             in = llDeleteSubList(in, n, n);
-        }        
-        else if (type != TYPE_STRING)        //cast anything else to string
-        {
-            in = llListReplaceList(in, [llList2String(in, n)], n, n);
         }
     }
     return in;

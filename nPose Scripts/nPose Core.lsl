@@ -34,7 +34,9 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 #define CORERELAY 300
 #define UNSIT -222
 #define OPTIONS -240
+#define DOMENU -800
 #define DOMENU_ACCESSCTRL -801
+#define DOMENU_CORE -803
 #define HUD_REQUEST -999
 //define block end
 
@@ -453,6 +455,9 @@ default{
             else if(num == HUD_REQUEST && str == "RemoveHud") {
                 llRegionSayTo(hudId, chatchannel, "/die");
             }
+        }
+        else if(num==DOMENU_CORE) {
+            llMessageLinked(LINK_SET, DOMENU, str, id);
         }
         else if(num==OPTIONS) {
             list optionsToSet = llParseStringKeepNulls(str, ["~"], []);

@@ -237,7 +237,6 @@ default {
             slots = [];
             faceTimes = [];
             gotFaceAnim = 0;
-            string buttonStr = "";
 //            string faces = "";
             for(seatcount = 1; seatcount <= stop; ++seatcount) {
                 integer seatNum = (integer)llGetSubString(llList2String(seatsavailable, (seatcount-1)*8+7), 4,-1);
@@ -245,13 +244,6 @@ default {
                         (rotation)llList2String(seatsavailable, (seatcount-1)*8+2), llList2String(seatsavailable, (seatcount-1)*8+3), 
                         (key)llList2String(seatsavailable, (seatcount-1)*8+4), llList2String(seatsavailable, (seatcount-1)*8+5),
                         llList2String(seatsavailable, (seatcount-1)*8+6), llList2String(seatsavailable, (seatcount-1)*8+7)];
-                //menu needs the list of buttons for 'ChangeSeats'
-                if(llList2String(slots, (seatcount-1)*8+4)!="") {
-                    buttonStr += llGetSubString(llKey2Name((key)llList2String(seatsavailable, (seatcount-1)*8+4)), 0, 20)+",";
-                }
-                else {
-                    buttonStr += llList2String(seatsavailable, (seatcount-1)*8+7)+",";
-                }
                 if(llList2String(seatsavailable, (seatcount-1)*8+3) != "") {
                     //we need a list consisting of sitter key followed by each face anim and the associated time of each
                     //put face anims for this slot in a list
@@ -279,8 +271,6 @@ default {
                     faceTimes += [(key)llList2String(seatsavailable, (seatcount-1)*8+4), hasNewFaceTime, facecount] + faces;
                 }
             }
-            llMessageLinked(LINK_SET, SEAT_UPDATE+1, buttonStr, NULL_KEY);//send list of buttons to the menu
-            buttonStr = "";
             //we have our new list of AV's and positions so put them where they belong.  fire off the first seated AV and run time will do the rest.
             for(seatcount = 0; seatcount < stop; ++seatcount) {
                 if(llList2Key(slots, seatcount*8+4) != "") {
