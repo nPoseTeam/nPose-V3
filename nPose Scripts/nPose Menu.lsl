@@ -25,7 +25,7 @@ list victims;
 //TODO:
 //storing the path in global scope could lead to multiuser menu issues, because the path isn't global, but a per user var
 //this can't be fixed without changing the syntax of EXTERNAL_UTIL_REQUEST which have to contain the current path
-//in this case it will work in most cases, but it isn't nice. I would say: Even if it works, it is wrong.
+//using the path in global scope will work in most cases, but it isn't nice. I would say: Even if it works, it is wrong.
 string GlobalPath;
 list slots; //this slots list is not complete. it only contains seated AV key and seat numbers
 string defaultPoseNcName; //holds the name of the default notecard.
@@ -110,9 +110,9 @@ list pluginPermissionList;
 #define NC_READER_REQUEST 224
 #define NC_READER_RESPONSE 225
 
-//debug(list message){
-//    llOwnerSay((((llGetScriptName() + "\n##########\n#>") + llDumpList2String(message,"\n#>")) + "\n##########"));
-//}
+debug(list message){
+    llOwnerSay((((llGetScriptName() + "\n##########\n#>") + llDumpList2String(message,"\n#>")) + "\n##########"));
+}
 
 DoMenu(key rcpt, string path, integer page, string prompt, list additionalButtons) {
     list choices;
@@ -207,10 +207,13 @@ integer isAllowed(integer mode, key avatarKey, integer slotNumber, string permis
     //        mode 1: returns TRUE if the active group of the user sitting on the specified seat is equal to the group of the object
     // seated:
     //        mode 0: returns TRUE if the menu user is seated
+    //        mode 1: no usefull meaning
     // occupied:
+    //        mode 0: no usefull meaning
     //        mode 1: returns TRUE if the given slot is in use
-    // ownseat
-    //        mode 1: returns TRUE if the menu user sit in the specified slot
+    // ownseat:
+    //        mode 0: no usefull meaning
+    //        mode 1: returns TRUE if the menu user sits in the specified slot
     // any integer counts as a seatNumber:
     //        mode 0: returns TRUE if menu user sits on the seat with the number seatNumber
     //        mode 1: returns TRUE if the specified slotNumber represents the seat with the number seatNumber
@@ -229,7 +232,7 @@ integer isAllowed(integer mode, key avatarKey, integer slotNumber, string permis
     else {
         key avatarInSlot;
         if(~slotNumber) {
-            avatarInSlot=llList2Key(slots, slotNumber);
+            avatarInSlot=llList2Key(slots, slotNumber*2);
         }
         list permItemsOr=llParseString2List(llToLower(permissions), ["~"], []);
         integer indexOr=~llGetListLength(permItemsOr);
@@ -506,7 +509,7 @@ default{
                 pathParts = llDeleteSubList(pathParts, -1, -1);
                 GlobalPath = llDumpList2String(pathParts, ":");
                 //Leona:
-                //after the SLOTBTN message is sent the core gets the SLOTBTN message and generates and sends a new slots list
+                //after the SLOTBTN message is sent the core gets the SWAPTO message and generates and sends a new slots list
                 //The menu should be shown again AFTER this happens, so we send a DOMENU_CORE message (which is relayed back) instead of opening the menu with the DoMenu function
                 llMessageLinked(LINK_SET, DOMENU_CORE, GlobalPath, toucherid);
             }
