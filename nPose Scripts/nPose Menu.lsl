@@ -43,6 +43,7 @@ key scriptID;
 #define BTN_PREFIX "BTN"
 #define DEFAULT_PREFIX "DEFAULT"
 #define CARD_PREFIXES [SET_PREFIX, DEFAULT_PREFIX, BTN_PREFIX]
+
 #define DIALOG -900
 #define DIALOG_RESPONSE -901
 #define DIALOG_TIMEOUT -902
@@ -56,45 +57,37 @@ key scriptID;
 #define ADJUSTOFFSET 208
 #define SETOFFSET 209
 #define SWAPTO 210
+#define DOREMENU 220
+#define NC_READER_REQUEST 224
+#define NC_READER_RESPONSE 225
 #define UNSIT -222
 #define DOMENU -800
 #define DOMENU_ACCESSCTRL -801
 #define DOMENU_CORE -803
+#define PREPARE_REMENU -804
+#define USER_PERMISSION_UPDATE -806
+#define PLUGIN_MENU_REGISTER -810
+#define PLUGIN_MENU_SHOW -811
+#define PLUGIN_MENU_RESPONSE -812
+#define MENU_SHOW -815
 #define EXTERNAL_UTIL_REQUEST -888
 #define MEMORY_USAGE 34334
 #define SEAT_UPDATE 35353
 #define VICTIMS_LIST -238
 #define OPTIONS_NUM -240
 #define FACIALS_FLAG -241
-#define FWDBTN "forward"
-#define BKWDBTN "backward"
-#define LEFTBTN "left"
-#define RIGHTBTN "right"
-#define UPBTN "up"
-#define DOWNBTN "down"
-#define ZEROBTN "reset"
-list offsetbuttons = [FWDBTN, LEFTBTN, UPBTN, BKWDBTN, RIGHTBTN, DOWNBTN, "0.2", "0.1", "0.05", "0.01", ZEROBTN];
 
-//dialog button responses
-#define SLOTBTN "ChangeSeat"
-#define SYNCBTN "sync"
-#define OFFSETBTN "offset"
+//dialog buttons
 #define BACKBTN "^"
 #define ROOTMENU "Main"
-#define ADMINBTN "admin"
-#define ADJUSTBTN "Adjust"
-#define STOPADJUSTBTN "StopAdjust"
-#define POSDUMPBTN "PosDump"
-#define UNSITBTN "Unsit"
-#define OPTIONS "Options"
+
+//TODO: option related
 #define MENUONSIT "Menuonsit"
 #define TODEFUALT "ToDefault"
 #define PERMITBTN "Permit"
-list adminbuttons = [ADJUSTBTN, STOPADJUSTBTN, POSDUMPBTN, OPTIONS];
+
 
 // userDefinedPermissions
-#define USER_PERMISSION_UPDATE -806
-
 #define PERMISSION_GROUP "group"
 #define PERMISSION_OWNER "owner"
 #define PERMISSION_SEATED "seated"
@@ -107,8 +100,36 @@ list pluginPermissionList;
 
 //NC Reader
 #define NC_READER_CONTENT_SEPARATOR "%&§"
-#define NC_READER_REQUEST 224
-#define NC_READER_RESPONSE 225
+
+//store the plugins
+list PluginBasePathList;
+list PluginNamesList;
+list PluginParamsList;
+
+//own plugins related
+#define MY_PLUGIN_MENU_OFFSET "npose_offset"
+#define BUTTON_OFFSET_FWD "forward"
+#define BUTTON_OFFSET_BKW "backward"
+#define BUTTON_OFFSET_LEFT "left"
+#define BUTTON_OFFSET_RIGHT "right"
+#define BUTTON_OFFSET_UP "up"
+#define BUTTON_OFFSET_DOWN "down"
+#define BUTTON_OFFSET_ZERO "reset"
+list OFFSET_BUTTONS = [
+    BUTTON_OFFSET_FWD, BUTTON_OFFSET_LEFT, BUTTON_OFFSET_UP,
+    BUTTON_OFFSET_BKW, BUTTON_OFFSET_RIGHT, BUTTON_OFFSET_DOWN,
+    "0.2", "0.1", "0.05",
+    "0.01", BUTTON_OFFSET_ZERO
+];
+
+#define MY_PLUGIN_MENU_UNSIT "npose_unsit"
+#define MY_PLUGIN_MENU_CHANGE_SEAT "npose_changeseat"
+
+//TODO
+#define BUTTON_NAME_SLOT "ChangeSeat"
+#define BUTTON_NAME_OFFSET "offset"
+#define BUTTON_NAME_UNSIT "Unsit"
+
 
 debug(list message){
     llOwnerSay((((llGetScriptName() + "\n##########\n#>") + llDumpList2String(message,"\n#>")) + "\n##########"));
@@ -415,6 +436,43 @@ integer getSlotNumber(string menuResponse) {
     return -1;
 }
 
+string getNcName(string path) {
+    path = llDumpList2String(llDeleteSubList(llParseStringKeepNulls(path, [":"], []), 0, 0), ":");
+    integer permissionIndex = llListFindList(menuPermPath, [path]);
+    if(~permissionIndex) {
+        string thisPerm = llList2String(menuPermPerms, permissionIndex);
+        if(thisPerm != "") {
+            path+="{"+thisPerm+"}";
+        }
+    }
+    if(path!="") {
+        path=":"+path;
+    }
+
+    string ncName;
+    if(llGetInventoryType(ncName=DEFAULT_PREFIX + path) == INVENTORY_NOTECARD) {
+        return ncName;
+    }
+    if(llGetInventoryType(ncName=SET_PREFIX + path) == INVENTORY_NOTECARD) {
+        return ncName;
+    }
+    if(llGetInventoryType(ncName=BTN_PREFIX + path) == INVENTORY_NOTECARD) {
+        return ncName;
+    }
+    return "";
+}
+
+string deleteNode(string path, integer start, integer end) {
+    return llDumpList2String(llDeleteSubList(llParseStringKeepNulls(path, [":"], []), start, end), ":");
+}
+string buildParamSet1(string path, integer page, string prompt, list additionalButtons, string pluginName, string pluginLocalPath, string pluginParams) {
+    //We can't use colons in the promt, because they are used as a seperator in other messages
+    //replace them with a UTF Symbol
+    prompt=llDumpList2String(llParseStringKeepNulls(prompt, [","], []), "‚"); // CAUTION: the 2nd "‚" is a UTF sign!
+    string buttons=llDumpList2String(additionalButtons, ",");
+    return llDumpList2String([path, page, prompt, buttons, pluginName, pluginLocalPath, pluginParams], "|");
+}
+
 default{
     state_entry() {
         scriptID=llGetInventoryKey(llGetScriptName());
@@ -431,7 +489,9 @@ default{
         key toucherKey = llDetectedKey(0);
         vector vDelta = llDetectedPos(0) - llGetPos();
         if(toucherKey == llGetOwner() || llVecMag(vDelta) < menuDistance) {
-            DoMenu(toucherKey, ROOTMENU, 0, "", []);
+            //fake a DIALOG_RESPONSE to get the initial Menu, TODO: Leona: perhaps we should do this in the Dialog script?
+            llMessageLinked(LINK_SET, DIALOG_RESPONSE, llDumpList2String(["0", "", toucherKey, ROOTMENU], "|"), scriptID);
+            //DoMenu(toucherKey, ROOTMENU, 0, "", []);
         }
     }
     
@@ -440,149 +500,246 @@ default{
         integer n;
         integer stop;
         if(str == "menuUP") {
+            //TODO: deprecated
             llMessageLinked(LINK_SET, -802, "PATH=" + GlobalPath, id);
         }
-        if(num == DIALOG_RESPONSE && id == scriptID) { //response from menu
-            list params = llParseString2List(str, ["|"], []);  //parse the message
-            integer page = (integer)llList2String(params, 0);  //get the page number
-            string selection = llList2String(params, 1);  //get the button that was pressed from str
-            key toucherid = llList2Key(params, 2);
-            GlobalPath = llList2String(params, 3); //get the path from params list
-            if(selection == BACKBTN) {
-                //handle the back button. admin menu gets handled differently cause buttons are custom
-                list pathparts = llParseString2List(GlobalPath, [":"], []);
-                pathparts = llDeleteSubList(pathparts, -1, -1);
-                if(llList2String(pathparts, -1) == ADMINBTN) {
-                    //back button within admin menu
-                    DoMenu(toucherid, llDumpList2String(pathparts, ":"), 0, "", adminbuttons);
+        if((num == DIALOG_RESPONSE && id == scriptID )|| num==DOMENU) {
+            //the following block is to sort the paramters from the different message (to be backward compatible)
+            integer page;
+            string selection;
+            key toucherid;
+            string path;
+            string prompt;
+            if(num==DOMENU) {
+                list params = llParseStringKeepNulls(str, [","], []);  //parse the message
+                //str: path[, page[, prompt]]
+                path=llList2String(params, 0);
+                //next line to be backward compatible
+                if(!llSubStringIndex(path, "PATH=")) {
+                     path = llGetSubString(path, 5, -1);
                 }
-                //Leona: shouldn't be neccessary
-                //else if(llGetListLength(pathparts) <= 1) {
-                //    //back button leads to root menu
-                //    DoMenu(toucherid, ROOTMENU, 0, "", []);
-                //}
-                else {
-                    //just back one menu
-                    DoMenu(toucherid, llDumpList2String(pathparts, ":"), 0, "", []);
-                }
-//begin admin button section
-            }
-            else if(selection == ADMINBTN) {
-                GlobalPath += ":" + selection;
-                DoMenu(toucherid, GlobalPath, 0, "", adminbuttons);
-            }
-            else if(selection == OFFSETBTN) {
-                //give offset menu
-                GlobalPath += ":" + selection;
-                DoMenu(toucherid, GlobalPath, 0, "Adjust by " + (string)currentOffsetDelta
-                 + "m, or choose another distance.", offsetbuttons);
-            }
-            else if(selection == ADJUSTBTN) {
-                llMessageLinked(LINK_SET, ADJUST, "", "");
-                DoMenu(toucherid, GlobalPath, 0, "", adminbuttons);
-            }
-            else if(selection == STOPADJUSTBTN) {
-                llMessageLinked(LINK_SET, STOPADJUST, "", "");
-                DoMenu(toucherid, GlobalPath, 0, "", adminbuttons);
-            }
-            else if(selection == POSDUMPBTN) {
-                llMessageLinked(LINK_SET, DUMP, "", "");
-                DoMenu(toucherid, GlobalPath, 0, "", adminbuttons);
-            }
-            else if(selection == OPTIONS) {
-                //TODO Leona: This doesn't (and can't) reflect ALL Global Settings. Also old and useless Global setting are shown (UseRLVBaseRestrict)
-                //If we want all options to be shown, each script that is using a global option should be able to report it (like the memory report)
-                GlobalPath += ":" + selection;
-                string optionsPrompt =  "Permit currently set to " + Permissions
-                 + "\nMenuOnSit currently set to "+ curmenuonsit + "\nsit2GetMenu currently set to " + menuReqSit 
-                 + "\n2default currently set to "+ cur2default + "\nFacialEnable currently set to "+ Facials
-                 + "\nUseRLVBaseRestrict currently set to "+ RLVenabled + "\nmenudist currently set to "+ (string)menuDistance;
-                DoMenu(toucherid, GlobalPath, 0, optionsPrompt, []);
-//end admin button section
-            }
-            else if(llList2String(llParseString2List(GlobalPath, [":"], []), -1) == SLOTBTN) {//change seats
-                n=getSlotNumber(selection);
-                if(~n) {
-                    llMessageLinked(LINK_SET, SWAPTO, (string)(n+1), toucherid);
-                }
-                list pathParts = llParseStringKeepNulls(GlobalPath, [":"], []);
-                pathParts = llDeleteSubList(pathParts, -1, -1);
-                GlobalPath = llDumpList2String(pathParts, ":");
-                //Leona:
-                //after the SLOTBTN message is sent the core gets the SWAPTO message and generates and sends a new slots list
-                //The menu should be shown again AFTER this happens, so we send a DOMENU_CORE message (which is relayed back) instead of opening the menu with the DoMenu function
-                llMessageLinked(LINK_SET, DOMENU_CORE, GlobalPath, toucherid);
-            }
-            else if(llList2String(llParseString2List(GlobalPath, [":"], []), -1) == UNSITBTN) {
-                n=getSlotNumber(selection);
-                key avatarToUnsit=llList2Key(slots, n*2);
-                if(~n) {
-                    llMessageLinked(LINK_SET, UNSIT, (string)llList2Key(slots, n*2), toucherid);
-                }
-                if(avatarToUnsit!=toucherid) {
-                    //only remenu if the user didn't unsit himself
-                    list pathParts = llParseStringKeepNulls(GlobalPath, [":"], []);
-                    pathParts = llDeleteSubList(pathParts, -1, -1);
-                    GlobalPath = llDumpList2String(pathParts, ":");
-                    llMessageLinked(LINK_SET, DOMENU, GlobalPath, toucherid);
-                }
-            }
-            else if(llList2String(llParseString2List(GlobalPath, [":"], []), -1) == OFFSETBTN) {
-                vector direction;
-                if(selection == FWDBTN) {direction=<1, 0, 0>;}
-                else if(selection == BKWDBTN) {direction=<-1, 0, 0>;}
-                else if(selection == LEFTBTN) {direction=<0, 1, 0>;}
-                else if(selection == RIGHTBTN) {direction=<0, -1, 0>;}
-                else if(selection == UPBTN) {direction=<0, 0, 1>;}
-                else if(selection == DOWNBTN) {direction=<0, 0, -1>;}
-                else if(selection == ZEROBTN) {llMessageLinked(LINK_SET, SETOFFSET, (string)ZERO_VECTOR, toucherid);}
-                else {currentOffsetDelta = (float)selection;}
-                if(direction) {
-                    llMessageLinked(LINK_SET, ADJUSTOFFSET, (string)(direction * currentOffsetDelta), toucherid);
-                }
-                DoMenu(toucherid, GlobalPath, 0, "Adjust by " + (string)currentOffsetDelta
-                 + "m, or choose another distance.", offsetbuttons);
-            }
-            else if(selection == SYNCBTN) {
-                llMessageLinked(LINK_SET, SYNC, "", "");
-                DoMenu(toucherid, GlobalPath, page, "", []);
+                page=(integer)llList2String(params, 1);
+                prompt=llList2String(params, 2);
             }
             else {
-//begin and do the selection
-                list pathlist = llDeleteSubList(llParseStringKeepNulls(GlobalPath, [":"], []), 0, 0);
-                string defaultname = llDumpList2String([DEFAULT_PREFIX] + pathlist + [selection], ":");
-                string setname = llDumpList2String([SET_PREFIX] + pathlist + [selection], ":");
-                string btnname = llDumpList2String([BTN_PREFIX] + pathlist + [selection], ":");
-                //correct the notecard name so the core can find this notecard
+                list params = llParseStringKeepNulls(str, ["|"], []);  //parse the message
+                page = (integer)llList2String(params, 0);  //get the page number
+                selection = llList2String(params, 1);  //get the button that was pressed from str
+                toucherid = llList2Key(params, 2);
+                path = llList2String(params, 3); //get the path from params list
+            }
+            
+            if(path!="" && selection!="") {
+                path+=":";
+            }
+            path+=selection;
+            //block end
+            
+            string paramSet1=buildParamSet1(path, page, prompt, [], "", "", "");
+            //the following if..then..else statement is for performance improvement
+            //we we need some more bytes in this script, we could use the PREPARE_REMENU message regardless if there is a valid NC or not
+            string ncName=getNcName(path);
+            if(ncName) {
+                //there is a NC that should be executed
+                integer newNum=DOBUTTON;
+                if(!llSubStringIndex(ncName, DEFAULT_PREFIX) || !llSubStringIndex(ncName, SET_PREFIX)) {
+                    newNum=DOPOSE;
+                }
+                llMessageLinked(LINK_SET, newNum, ncName + NC_READER_CONTENT_SEPARATOR + paramSet1, toucherid);
+            }
+            else {
+                //no NC to be executed, initiate the remenu process without piping the messages trough the core
+                llMessageLinked(LINK_SET, PREPARE_REMENU, paramSet1, toucherid);
+            }
+        }
+        else if(num==PREPARE_REMENU) {
+            list params=llParseStringKeepNulls(str, ["|"], []);  //parse the message
+            string path=llList2String(params, 0);
+            string selection=deleteNode(path, 0, -2);
+            integer page=(integer)llList2String(params, 1);  //get the page number
 
-                integer permission = llListFindList(menuPermPath, [llDumpList2String(pathlist + [selection], ":")]);
+            //BackButton
+            if(selection==BACKBTN) {
+                path=deleteNode(path, -2, -1);
+                page=0;
+            }
 
-                if(~permission) {
-                    string thisPerm = llList2String(menuPermPerms, permission);
-                    if(thisPerm != "") {
-                        defaultname += "{"+thisPerm+"}";
-                        setname += "{"+thisPerm+"}";
-                        btnname += "{"+thisPerm+"}";
+            //plugin detection
+            integer index;
+            integer length=llGetListLength(PluginBasePathList);
+            integer foundLength;
+            string foundName;
+            string foundLocalPath=path;
+            string foundParams;
+            for(; index<length; index++) {
+                string currentBasePath=llList2String(PluginBasePathList, index);
+                if(!llSubStringIndex(path, currentBasePath)) {
+                    if(llStringLength(currentBasePath)>foundLength) {
+                        foundLength=llStringLength(currentBasePath);
+                        foundName=llList2String(PluginNamesList, index);
+                        foundParams=llList2String(PluginParamsList, index);
+                        foundLocalPath=llDeleteSubString(path, 0, foundLength);
                     }
                 }
-                if(llGetInventoryType(defaultname) == INVENTORY_NOTECARD) {
-                    llMessageLinked(LINK_SET, DOPOSE, defaultname, toucherid);
+            }
+            if(foundName) {
+                string paramSet1=buildParamSet1(path, page, llList2String(params, 2), [llList2String(params, 3)], foundName, foundLocalPath, foundParams);
+                if(selection!=BACKBTN) {
+                    llMessageLinked(LINK_SET, PLUGIN_MENU_RESPONSE, paramSet1, id);
                 }
-                if(llGetInventoryType(setname) == INVENTORY_NOTECARD) {
-                    llMessageLinked(LINK_SET, DOPOSE, setname, toucherid);
-                }
-                if(llGetInventoryType(btnname) == INVENTORY_NOTECARD) {
-                    llMessageLinked(LINK_SET, DOBUTTON, btnname, toucherid);
-                }
-                if(~llListFindList(menus, [GlobalPath + ":" + selection])) {
-                    //here is where submenu button has been clicked
-                    DoMenu(toucherid, GlobalPath + ":" + selection, 0, "", []);
-                }
-                else if(llGetSubString(selection,-1,-1) != "-") {//re-menu only if last character in selections is NOT '-'
-                    DoMenu(toucherid, GlobalPath, page, "", []);
+                else {
+                    llMessageLinked(LINK_SET, DOREMENU, getNcName(path) + NC_READER_CONTENT_SEPARATOR + paramSet1, id);
                 }
             }
-//end do the selection
+            //not inside a plugin
+            else if(~llListFindList(menus, [path])) {
+                //this is a node
+                page=0;
+                string paramSet1=buildParamSet1(path, page, llList2String(params, 2), [llList2String(params, 3)], "", "", "");
+                if(selection!=BACKBTN) {
+                    llMessageLinked(LINK_SET, MENU_SHOW, paramSet1, id);
+                }
+                else {
+                    llMessageLinked(LINK_SET, DOREMENU, getNcName(path) + NC_READER_CONTENT_SEPARATOR + paramSet1, id);
+                }
+            }
+            else if(~llListFindList(menus, [deleteNode(path, -1, -1)])) {
+                //this is a leaf
+                path=deleteNode(path, -1, -1);
+                string paramSet1=buildParamSet1(path, page, llList2String(params, 2), [llList2String(params, 3)], "", "", "");
+                llMessageLinked(LINK_SET, DOREMENU, getNcName(path) + NC_READER_CONTENT_SEPARATOR + paramSet1, id);
+            }
+            else {
+                //TODO: what is it?
+            }
+        }
+        else if(num==PLUGIN_MENU_REGISTER) {
+            list params=llParseStringKeepNulls(str, ["|"], []);
+            string basePath=llList2String(params, 0);
+            string pluginName=llToLower(llList2String(params, 1));
+            string pluginParams=llList2String(params, 2);
+            integer index=llListFindList(PluginBasePathList, [basePath]);
+            if(~index) {
+                PluginNamesList=llListReplaceList(PluginNamesList, [pluginName], index, index);
+                PluginParamsList=llListReplaceList(PluginParamsList, [pluginParams], index, index);
+            }
+            else {
+                PluginBasePathList+=basePath;
+                PluginNamesList+=pluginName;
+                PluginParamsList+=pluginParams;
+            }
+        }
+        else if(num==PLUGIN_MENU_RESPONSE) {
+            //the menu script itself contains a few menu plugins.
+            //the former admin menu is not part of it. We could simply use NCs for it.
+            list params=llParseStringKeepNulls(str, ["|"], []);
+            string pluginName=llList2String(params, 4);
+            if(pluginName==MY_PLUGIN_MENU_OFFSET) {
+                //this is the offset menu. It can be move to any other script easily.
+                string path=llList2String(params, 0);
+                string prompt=llList2String(params, 2);
+                string pluginLocalPath=llList2String(params, 5);
+
+                if(pluginLocalPath!="") {
+                    vector direction;
+                    if(pluginLocalPath == BUTTON_OFFSET_FWD) {direction=<1, 0, 0>;}
+                    else if(pluginLocalPath == BUTTON_OFFSET_BKW) {direction=<-1, 0, 0>;}
+                    else if(pluginLocalPath == BUTTON_OFFSET_LEFT) {direction=<0, 1, 0>;}
+                    else if(pluginLocalPath == BUTTON_OFFSET_RIGHT) {direction=<0, -1, 0>;}
+                    else if(pluginLocalPath == BUTTON_OFFSET_UP) {direction=<0, 0, 1>;}
+                    else if(pluginLocalPath == BUTTON_OFFSET_DOWN) {direction=<0, 0, -1>;}
+                    else if(pluginLocalPath == BUTTON_OFFSET_ZERO) {llMessageLinked(LINK_SET, SETOFFSET, (string)ZERO_VECTOR, id);}
+                    else {currentOffsetDelta = (float)pluginLocalPath;}
+                    if(direction) {
+                        llMessageLinked(LINK_SET, ADJUSTOFFSET, (string)(direction * currentOffsetDelta), id);
+                    }
+                    //one level back
+                    path=deleteNode(path, -1, -1);
+                }
+                if(prompt=="") {
+                    prompt="Adjust by " + (string)currentOffsetDelta+ "m, or choose another distance.";
+                }
+                //normaly plugins should use PLUGIN_MENU_SHOW instead MENU_SHOW it is slighly faster and
+                //there is no need to wait for any messages of the core
+                llMessageLinked(LINK_SET, MENU_SHOW, buildParamSet1(path, (integer)llList2String(params, 1), prompt, OFFSET_BUTTONS, "", "", ""), id);
+            }
+            else if(pluginName==MY_PLUGIN_MENU_CHANGE_SEAT || pluginName==MY_PLUGIN_MENU_UNSIT) {
+                //TODO: Leona: check if nested plugins could be a good
+                //idea, because both functions are something like a "pick Avatar" function
+                //and maybe a "pick Avatar" dialog may also be useful in other plugins
+                //
+                //this is the change seat menu. It should stay inside this script, because it uses the isAllowed function and the slots list. 
+                string path=llList2String(params, 0);
+                integer page=(integer)llList2String(params, 1);
+                string prompt=llList2String(params, 2);
+                string pluginLocalPath=llList2String(params, 5);
+                string pluginParams=llList2String(params, 6);
+                integer remenu=TRUE;
+                
+                if(prompt=="") {
+                    if(pluginName==MY_PLUGIN_MENU_CHANGE_SEAT) {
+                        prompt="Where will you sit?";
+                    }
+                    else {
+                        prompt="Pick an avatar to unsit.";
+                    }
+                }
+                
+                if(pluginLocalPath!="") {
+                    //a new seat is selected
+                    integer slotNumber=getSlotNumber(pluginLocalPath);
+                    if(~slotNumber) {
+                        if(pluginName==MY_PLUGIN_MENU_CHANGE_SEAT) {
+                            llMessageLinked(LINK_SET, SWAPTO, (string)(slotNumber+1), id);
+                        }
+                        else {
+                            key avatarToUnsit=llList2Key(slots, n*2);
+                            llMessageLinked(LINK_SET, UNSIT, avatarToUnsit, id);
+                            if(avatarToUnsit==id) {
+                                //don't remenu if someone unsits oneself
+                                remenu=FALSE;
+                            }
+                        }
+                    }
+                    path=deleteNode(path, -1, -1);
+                }
+                if(remenu || pluginLocalPath=="") {
+                    //build and show the menu
+                    //generate the buttons
+                    //A button will be
+                    //1) if an avatar sits on the seat: "∙" + an avatar name + "∙"
+                    //2) if the seat name is provided: " " + a seat name
+                    //3) else: seatX: where X is a number
+                    integer length=llGetListLength(slots);
+                    list buttons;
+                    for(index=0; index<length; index+=2) {
+                        if(isAllowed(1, id, index/2, pluginParams)) {
+                            key avatar=llList2Key(slots, index);
+                            list temp=llParseStringKeepNulls(llList2String(slots, index+1), ["§"], []);
+                            string seatName=llList2String(temp, 0);
+                            string seatNumber=llList2String(temp, 1);
+                            if(avatar) {
+                                if(OptionUseDisplayNames) {
+                                    buttons+="∙"+llGetDisplayName(avatar)+"∙";
+                                }
+                                else {
+                                    buttons+="∙"+llKey2Name(avatar)+"∙";
+                                }
+                            }
+                            else if(seatName) {
+                                buttons+=" "+seatName;
+                            }
+                            else {
+                                buttons+=seatNumber;
+                            }
+                        }
+                    }
+                    if(pluginLocalPath=="") {
+                        page=0;
+                    }
+                    llMessageLinked(LINK_SET, PLUGIN_MENU_SHOW, buildParamSet1(path, page, prompt, buttons, "", "", ""), id);
+                }
+            }
         }
         else if(num == DIALOG_TIMEOUT) {//menu not clicked and dialog timed out
             if((cur2default == "on") && (llGetObjectPrimCount(llGetKey()) == llGetNumberOfPrims()) && (defaultPoseNcName != "")) {
@@ -617,81 +774,16 @@ default{
                 }
             }
         }
-        else if(num == EXTERNAL_UTIL_REQUEST) {
-            list parts=llParseStringKeepNulls(str, [","], []);
-            string cmd=llList2String(parts, 0);
-            if(cmd == ADMINBTN) {
-                GlobalPath += ":" + cmd;
-                DoMenu(id, GlobalPath, 0, "", adminbuttons);
-            }
-            else if(cmd == SLOTBTN || cmd==UNSITBTN) {
-                //generate the buttons
-                //A button will be
-                //1) if an avatar sits on the seat: "∙" + an avatar name + "∙"
-                //2) if the seat name is provided: " " + a seat name
-                //3) else: seatX: where X is a number
-                string permissions=llList2String(parts, 1);
-                integer length=llGetListLength(slots);
-                list buttons;
-                for(index=0; index<length; index+=2) {
-                    if(isAllowed(1, id, index/2, permissions)) {
-                        key avatar=llList2Key(slots, index);
-                        list temp=llParseStringKeepNulls(llList2String(slots, index+1), ["§"], []);
-                        string seatName=llList2String(temp, 0);
-                        string seatNumber=llList2String(temp, 1);
-                        if(avatar) {
-                            if(OptionUseDisplayNames) {
-                                buttons+="∙"+llGetDisplayName(avatar)+"∙";
-                            }
-                            else {
-                                buttons+="∙"+llKey2Name(avatar)+"∙";
-                            }
-                        }
-                        else if(seatName) {
-                            buttons+=" "+seatName;
-                        }
-                        else {
-                            buttons+=seatNumber;
-                        }
-                    }
-                }
-
-                GlobalPath += ":" + cmd;
-                if(cmd == SLOTBTN) {
-                    DoMenu(id, GlobalPath, 0, "Where will you sit?", buttons);
-                }
-                else if(cmd==UNSITBTN) {
-                    DoMenu(id, GlobalPath, 0, "Pick an avatar to unsit.", buttons);
-                }
-            }
-            else if(cmd == OFFSETBTN) {
-                //give offset menu
-                GlobalPath += ":" + cmd;
-                DoMenu(id, GlobalPath, 0, "Adjust by " + (string)currentOffsetDelta
-                 + "m, or choose another distance.", offsetbuttons);
-            }
-            else if(cmd == SYNCBTN) {
-                llMessageLinked(LINK_SET, SYNC, "", "");
-                DoMenu(id, GlobalPath, 0, "", []);
-            }
-        }
-        else if(num == DOMENU) {
-            //TODO Leona: check if the new format is suitable
-            //new str format:
-            //path[,page[,promt]]
-            list parts=llParseStringKeepNulls(str, [","], []);
-            string path=llList2String(parts, 0);
-            integer page=(integer)llList2String(parts, 1);
-            //next line to be backward compatible
-            if(!llSubStringIndex(path, "PATH=")) {
-                 path = llGetSubString(path, 5, -1);
-            }
-            DoMenu(id, path, (integer)llList2String(parts, 1), llList2String(parts, 2), []);
+        else if(num == MENU_SHOW) {
+            list parts=llParseStringKeepNulls(str, ["|"], []);
+            DoMenu(id, llList2String(parts, 0), (integer)llList2String(parts, 1), llList2String(parts, 2), llParseString2List(llList2String(parts, 3), [","], []));
         }
         else if(num == DOMENU_ACCESSCTRL) {//external call to check permissions
+            //TODO: Deprecated?
             DoMenu(id, ROOTMENU, 0, "", []);
         }
         else if(num == VICTIMS_LIST) {
+            //TODO: Deprecated!
             victims = llCSV2List(str);
         }
         else if(num == NC_READER_RESPONSE) {

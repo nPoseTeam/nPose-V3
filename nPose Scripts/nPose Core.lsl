@@ -29,14 +29,20 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 #define DOACTION 207
 #define ADJUSTOFFSET 208
 #define SWAPTO 210
+#define DOREMENU_READER 221
 #define DOPOSE_READER 222
-#define DOACTION_READER 223
+#define DOBUTTON_READER 223
 #define CORERELAY 300
 #define UNSIT -222
 #define OPTIONS -240
 #define DOMENU -800
 #define DOMENU_ACCESSCTRL -801
 #define DOMENU_CORE -803
+#define PREPARE_REMENU -804
+#define PLUGIN_MENU_REGISTER -810
+#define PLUGIN_MENU_SHOW -811
+#define PLUGIN_MENU_RESPONSE -812
+#define MENU_SHOW -815
 #define HUD_REQUEST -999
 //define block end
 
@@ -193,11 +199,19 @@ SwapTwoSlots(integer currentseatnum, integer newseatnum) {
     llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(slots, "^"), NULL_KEY);
 }
 
-ProcessLine(string sLine, key av, string ncName, string menuName) {
+string insertPlaceholder(string sLine, key av, string ncName, string path, integer page) {
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%CARDNAME%"], []), ncName);
-    list paramsOriginal = llParseStringKeepNulls(sLine, ["|"], []);
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%AVKEY%"], []), av);
-//    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%MENUNAME%"], []), menuName);
+    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%PATH%"], []), path);
+    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%PAGE%"], []), (string)page);
+    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%DISPLAYNAME%"], []), llGetDisplayName(av));
+    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%USERNAME%"], []), llGetUsername(av));
+    return sLine;
+}
+
+ProcessLine(string sLine, key av, string ncName, string path, integer page) {
+    list paramsOriginal = llParseStringKeepNulls(sLine, ["|"], []);
+    sLine=insertPlaceholder(sLine, av, ncName, path, page);
     list params = llParseStringKeepNulls(sLine, ["|"], []);
     string action = llList2String(params, 0);
     integer slotNumber;
@@ -331,6 +345,15 @@ ProcessLine(string sLine, key av, string ncName, string menuName) {
     }
 }
 
+string buildParamSet1(string path, integer page, string prompt, list additionalButtons, string pluginName, string pluginLocalPath, string pluginParams) {
+    //We can't use colons in the promt, because they are used as a seperator in other messages
+    //replace them with a UTF Symbol
+    prompt=llDumpList2String(llParseStringKeepNulls(prompt, [","], []), "‚"); // CAUTION: the 2nd "‚" is a UTF sign!
+    string buttons=llDumpList2String(additionalButtons, ",");
+    return llDumpList2String([path, page, prompt, buttons, pluginName, pluginLocalPath, pluginParams], "|");
+}
+
+
 default{
     state_entry() {
         integer n;
@@ -358,33 +381,69 @@ default{
             //let our scripts know the chat channel for props and adjusters
             llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)chatchannel, NULL_KEY);
         }
-        else if(num == DOPOSE_READER || num == DOACTION_READER) {
+        else if(num == DOPOSE_READER || num == DOBUTTON_READER || num==DOREMENU_READER) {
             list allData=llParseStringKeepNulls(str, [NC_READER_CONTENT_SEPARATOR], []);
             str = "";
-            //allData: [ncName, alias, placeholder (currenly not used), contentLine1, contentLine2, ...]
+            //allData: [ncName, paramSet1, "", contentLine1, contentLine2, ...]
             string ncName=llList2String(allData, 0);
-            string menuName=llList2String(allData, 1);
+            list paramSet1List=llParseStringKeepNulls(llList2String(allData, 1), ["|"], []);
+            string path=llList2String(paramSet1List, 0);
+            string newPath=path;
+            integer page=(integer)llList2String(paramSet1List, 1);
+            string prompt=llList2String(paramSet1List, 2);
             
             if(num==DOPOSE_READER) {
+                //handle the Adjuster
                 lastStrideCount = slotMax;
                 slotMax = 0;
                 llRegionSay(chatchannel, "die");
             }
+            if(num==DOREMENU_READER) {
+                prompt="";
+            }
+            
+            //parse the NC content
             integer length=llGetListLength(allData);
             integer index=3;
             integer run_assignSlots;
+            integer pluginMenuTriggered;
             for(; index<length; index++) {
                 string data = llList2String(allData, index);
-                if(num==DOACTION_READER && (llSubStringIndex(data, "ANIM") != 0)) {
-                    ProcessLine(llList2String(allData, index), id, ncName, menuName);
-                    if(!llSubStringIndex(data, "SCHMOE") || !llSubStringIndex(data, "SCHMO")) {
+                if(num==DOREMENU_READER) {
+                    //do nothing
+                }
+                else {
+                    if(num==DOPOSE_READER || num==DOBUTTON_READER) {
+                        if(!llSubStringIndex(data, "REMENU|NO")) {
+                            newPath="";
+                        }
+                        if(!llSubStringIndex(data, "PLUGINMENU|")) {
+                            list parts=llParseStringKeepNulls(insertPlaceholder(data, id, ncName, path, page), ["|"], []);
+                            llMessageLinked(LINK_SET, PLUGIN_MENU_REGISTER, llDumpList2String(llListReplaceList(parts, [path], 0, 0), "|"), "");
+                            pluginMenuTriggered=TRUE;
+                        }
+                    }
+                    if(num==DOBUTTON_READER && (llSubStringIndex(data, "ANIM") != 0)) {
+                        ProcessLine(llList2String(allData, index), id, ncName, path, page);
+                        if(!llSubStringIndex(data, "SCHMOE") || !llSubStringIndex(data, "SCHMO")) {
+                            run_assignSlots = TRUE;
+                        }
+    //                }else if ((num==DOPOSE_READER) && (llSubStringIndex(data, "SCHMO") != 0 || llSubStringIndex(data, "SCHMOE") != 0)) {
+                    }
+                    else if (num==DOPOSE_READER) {
+                        ProcessLine(llList2String(allData, index), id, ncName, path, page);
                         run_assignSlots = TRUE;
                     }
-//                }else if ((num==DOPOSE_READER) && (llSubStringIndex(data, "SCHMO") != 0 || llSubStringIndex(data, "SCHMOE") != 0)) {
                 }
-                else if (num==DOPOSE_READER) {
-                    ProcessLine(llList2String(allData, index), id, ncName, menuName);
-                    run_assignSlots = TRUE;
+                //get all menu relevant data
+                if(!llSubStringIndex(data, "MENU")) {
+                    list parts=llParseStringKeepNulls(insertPlaceholder(data, id, ncName, path, page), ["|"], []);
+                    string cmd=llList2String(parts, 0);
+                    if(cmd=="MENUPROMPT") {
+                        prompt=llList2String(parts, 1);
+                        //"\n" are escaped in NC content
+                        prompt=llDumpList2String(llParseStringKeepNulls(prompt, ["\\n"], []), "\n");
+                    }
                 }
             }
             if(run_assignSlots) {
@@ -399,6 +458,28 @@ default{
                     llMessageLinked(LINK_SET, REZ_ADJUSTERS, "RezAdjuster", "");
                 }
             }
+            string paramSet1=buildParamSet1(path, page, prompt, [llList2String(paramSet1List, 3)], llList2String(paramSet1List, 4), llList2String(paramSet1List, 5), llList2String(paramSet1List, 6));
+            if(num==DOREMENU_READER) {
+                //we are ready to show the menu
+                if(llList2String(paramSet1List, 4)) {
+                    //the path is within a plugin. Call the plugin to get the menu
+                    llMessageLinked(LINK_SET, PLUGIN_MENU_RESPONSE, paramSet1, id);
+                }
+                
+                llMessageLinked(LINK_SET, MENU_SHOW, paramSet1, id);
+            }
+            else if(num==DOPOSE_READER || DOBUTTON_READER) {
+                if(llGetSubString(newPath, -1, -1)=="-" && !pluginMenuTriggered) {
+                    newPath="";
+                }
+                if(newPath!="") {
+                    llMessageLinked(LINK_SET, PREPARE_REMENU, paramSet1, id);
+                }
+            }
+        }
+        else if(num==PLUGIN_MENU_SHOW) {
+            //Only relaying to the menu script. To be sure that any slot changes are finished and the button permissions are up to date.
+            llMessageLinked(LINK_SET, MENU_SHOW, str, id);
         }
         else if(num == ADJUST) { 
             rezadjusters = TRUE;
@@ -431,8 +512,9 @@ default{
             integer oldseat = (integer)llGetSubString(strideSeat, 4,-1);
             if (oldseat <= 0) {
                 llWhisper(0, "avatar is not assigned a slot: " + (string)id);
-            }else{ 
-                    SwapTwoSlots(oldseat, (integer)str); 
+            }
+            else{ 
+                SwapTwoSlots(oldseat, (integer)str); 
             }
         }
         else if (num == (SEAT_UPDATE + 2000000)) {
@@ -455,9 +537,6 @@ default{
             else if(num == HUD_REQUEST && str == "RemoveHud") {
                 llRegionSayTo(hudId, chatchannel, "/die");
             }
-        }
-        else if(num==DOMENU_CORE) {
-            llMessageLinked(LINK_SET, DOMENU, str, id);
         }
         else if(num==OPTIONS) {
             list optionsToSet = llParseStringKeepNulls(str, ["~"], []);

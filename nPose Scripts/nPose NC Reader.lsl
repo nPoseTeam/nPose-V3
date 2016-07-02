@@ -19,9 +19,11 @@ string NC_READER_CONTENT_SEPARATOR="%&§";
 integer MEMORY_TO_BE_USED=60000;
 
 integer DOPOSE=200;
-integer DOACTIONS=207;
+integer DOBUTTON=207;
+integer DOREMENU=220;
+integer DOREMENU_READER=221;
 integer DOPOSE_READER=222;
-integer DOACTION_READER=223;
+integer DOBUTTON_READER=223;
 integer NC_READER_REQUEST=224;
 integer NC_READER_RESPONSE=225;
 integer MEM_USAGE=34334;
@@ -64,17 +66,20 @@ checkMemory() {
 //}
 
 fetchNcContent(string str, key id, integer type) {
-	//we can also use the expanded DOPOSE/DOACTIONS format:
-	//str (separated by NC_READER_CONTENT_SEPARATOR): cardname, menuname, placeholder
+	//we can also use the expanded DOPOSE/DOBUTTON format:
+	//str (separated by NC_READER_CONTENT_SEPARATOR): cardname, userDefinedData1, userDefinedData1
 	list parts=llParseStringKeepNulls(str, [NC_READER_CONTENT_SEPARATOR], []);
 	string ncName=llList2String(parts, 0);
-	string menuName=llList2String(parts, 1);
-	string placeholder=llList2String(parts, 2);
+	string param1=llList2String(parts, 1);
+	string param2=llList2String(parts, 2);
 	if(llGetInventoryType(ncName) == INVENTORY_NOTECARD) {
 		requests++;
-		responseStack+=[ncName, menuName, placeholder, id, type];
+		responseStack+=[ncName, param1, param2, id, type];
 		processResponseStack();
 		checkMemory();
+	}
+	else {
+		llMessageLinked(LINK_SET, type, str, id);
 	}
 }
 
@@ -93,7 +98,7 @@ processResponseStack() {
 		if(~index) {
 			//The data is in the cache (and therefore valid and fully read) .. send the response
 			//data Format:
-			//str (separated by the NC_READER_CONTENT_SEPARATOR: ncName, menuName, placeholder(currently not used), content
+			//str (separated by the NC_READER_CONTENT_SEPARATOR: ncName, userDefinedData1, userDefinedData1, content
 			llMessageLinked(
 				LINK_SET,
 				llList2Integer(responseStack, RESPONSE_STACK_TYPE),
@@ -128,17 +133,22 @@ processResponseStack() {
 default {
 	link_message(integer sender, integer num, string str, key id) {
 		if(num==DOPOSE) {
-			//str (separated by NC_READER_CONTENT_SEPARATOR): ncName, menuName, placeholder(currently not used)
-			//id: toucher
+			//str (separated by NC_READER_CONTENT_SEPARATOR): ncName, userDefinedData1, userDefinedData1
+			//id: userDefinedKey
 			fetchNcContent(str, id, DOPOSE_READER);
 		}
-		else if(num==DOACTIONS) {
-			//str (separated by NC_READER_CONTENT_SEPARATOR): ncName, menuName, placeholder(currently not used)
-			//id: toucher
-			fetchNcContent(str, id, DOACTION_READER);
+		else if(num==DOBUTTON) {
+			//str (separated by NC_READER_CONTENT_SEPARATOR): ncName, userDefinedData1, userDefinedData1
+			//id: userDefinedKey
+			fetchNcContent(str, id, DOBUTTON_READER);
+		}
+		else if(num==DOREMENU) {
+			//str (separated by NC_READER_CONTENT_SEPARATOR): ncName, userDefinedData1, userDefinedData1
+			//id: userDefinedKey
+			fetchNcContent(str, id, DOREMENU_READER);
 		}
 		else if(num==NC_READER_REQUEST) {
-			//str (separated by NC_READER_CONTENT_SEPARATOR): cardname, userDefinedData1, userDefinedData2
+			//str (separated by NC_READER_CONTENT_SEPARATOR): ncName, userDefinedData1, userDefinedData2
 			//id: userDefinedKey
 			fetchNcContent(str, id, NC_READER_RESPONSE);
 		}
