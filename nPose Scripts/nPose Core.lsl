@@ -539,12 +539,6 @@ default{
                     llSleep(1.0); //be sure that the NC reader script finished resetting
                     llMessageLinked(LINK_SET, DOPOSE, lastAssignSlotsCardName, lastAssignSlotsAvatarId); 
                 }
-                else {
-                    llResetScript();
-                }
-            }
-            else {
-                llResetScript();
             }
         }
         if(change & CHANGED_LINK) {
