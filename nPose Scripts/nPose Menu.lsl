@@ -65,7 +65,6 @@ key scriptID;
 #define SEAT_UPDATE 35353
 #define VICTIMS_LIST -238
 #define OPTIONS_NUM -240
-#define FACIALS_FLAG -241
 #define FWDBTN "forward"
 #define BKWDBTN "backward"
 #define LEFTBTN "left"
@@ -90,7 +89,7 @@ list offsetbuttons = [FWDBTN, LEFTBTN, UPBTN, BKWDBTN, RIGHTBTN, DOWNBTN, "0.2",
 #define MENUONSIT "Menuonsit"
 #define TODEFUALT "ToDefault"
 #define PERMITBTN "Permit"
-list adminbuttons = [ADJUSTBTN, STOPADJUSTBTN, POSDUMPBTN, OPTIONS];
+list adminbuttons = [ADJUSTBTN, STOPADJUSTBTN, POSDUMPBTN];
 
 // userDefinedPermissions
 #define USER_PERMISSION_UPDATE -806
@@ -109,10 +108,10 @@ list pluginPermissionList;
 #define NC_READER_CONTENT_SEPARATOR "%&§"
 #define NC_READER_REQUEST 224
 #define NC_READER_RESPONSE 225
-
+/*
 debug(list message){
     llOwnerSay((((llGetScriptName() + "\n##########\n#>") + llDumpList2String(message,"\n#>")) + "\n##########"));
-}
+}*/
 
 DoMenu(key rcpt, string path, integer page, string prompt, list additionalButtons) {
     list choices;
@@ -488,16 +487,6 @@ default{
             else if(selection == POSDUMPBTN) {
                 llMessageLinked(LINK_SET, DUMP, "", "");
                 DoMenu(toucherid, GlobalPath, 0, "", adminbuttons);
-            }
-            else if(selection == OPTIONS) {
-                //TODO Leona: This doesn't (and can't) reflect ALL Global Settings. Also old and useless Global setting are shown (UseRLVBaseRestrict)
-                //If we want all options to be shown, each script that is using a global option should be able to report it (like the memory report)
-                GlobalPath += ":" + selection;
-                string optionsPrompt =  "Permit currently set to " + Permissions
-                 + "\nMenuOnSit currently set to "+ curmenuonsit + "\nsit2GetMenu currently set to " + menuReqSit 
-                 + "\n2default currently set to "+ cur2default + "\nFacialEnable currently set to "+ Facials
-                 + "\nUseRLVBaseRestrict currently set to "+ RLVenabled + "\nmenudist currently set to "+ (string)menuDistance;
-                DoMenu(toucherid, GlobalPath, 0, optionsPrompt, []);
 //end admin button section
             }
             else if(llList2String(llParseString2List(GlobalPath, [":"], []), -1) == SLOTBTN) {//change seats
@@ -606,11 +595,7 @@ default{
                 else if(optionItem == "menudist") {menuDistance = (float)optionSetting;}
                 else if(optionItem == "facialexp") {
                     Facials = optionSetting;
-                    llMessageLinked(LINK_SET, FACIALS_FLAG, Facials, NULL_KEY);
-                }
-                else if(optionItem == "rlvbaser") {
-                    RLVenabled = optionSetting;
-                    llMessageLinked(LINK_SET, -1812221819, "RLV=" + RLVenabled, NULL_KEY);
+//                    llMessageLinked(LINK_SET, FACIALS_FLAG, Facials, NULL_KEY);
                 }
                 else if(optionItem == "usedisplaynames") {
                     OptionUseDisplayNames = optionSettingFlag;
