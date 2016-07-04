@@ -40,8 +40,9 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 #define DOMENU_CORE -803
 #define PREPARE_REMENU -804
 #define PLUGIN_MENU_REGISTER -810
-#define PLUGIN_MENU_SHOW -811
-#define PLUGIN_MENU_RESPONSE -812
+#define PLUGIN_MENU_RESPONSE -811
+#define PLUGIN_MENU_SHOW -812
+#define PLUGIN_MENU_CHANGE_PATH -813
 #define MENU_SHOW -815
 #define HUD_REQUEST -999
 //define block end
@@ -399,7 +400,8 @@ default{
                 llRegionSay(chatchannel, "die");
             }
             if(num==DOREMENU_READER) {
-                prompt="";
+                //TODO:check this
+                //prompt="";
             }
             
             //parse the NC content
@@ -477,9 +479,9 @@ default{
                 }
             }
         }
-        else if(num==PLUGIN_MENU_SHOW) {
-            //Only relaying to the menu script. To be sure that any slot changes are finished and the button permissions are up to date.
-            llMessageLinked(LINK_SET, MENU_SHOW, str, id);
+        else if(num==PLUGIN_MENU_CHANGE_PATH) {
+            //only relay through the core to keep messages in sync
+            llMessageLinked(LINK_SET, PREPARE_REMENU, str, id);
         }
         else if(num == ADJUST) { 
             rezadjusters = TRUE;

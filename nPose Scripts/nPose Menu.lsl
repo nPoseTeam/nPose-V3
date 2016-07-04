@@ -67,8 +67,9 @@ key scriptID;
 #define PREPARE_REMENU -804
 #define USER_PERMISSION_UPDATE -806
 #define PLUGIN_MENU_REGISTER -810
-#define PLUGIN_MENU_SHOW -811
-#define PLUGIN_MENU_RESPONSE -812
+#define PLUGIN_MENU_RESPONSE -811
+#define PLUGIN_MENU_SHOW -812
+#define PLUGIN_MENU_CHANGE_PATH -813
 #define MENU_SHOW -815
 #define EXTERNAL_UTIL_REQUEST -888
 #define MEMORY_USAGE 34334
@@ -101,13 +102,12 @@ list pluginPermissionList;
 //NC Reader
 #define NC_READER_CONTENT_SEPARATOR "%&§"
 
-//store the plugins
-list PluginBasePathList;
-list PluginNamesList;
-list PluginParamsList;
-
 //own plugins related
+#define MY_PLUGIN_MENU "npose_menu"
+#define MY_PLUGIN_MENU_UNSIT "npose_unsit"
+#define MY_PLUGIN_MENU_CHANGE_SEAT "npose_changeseat"
 #define MY_PLUGIN_MENU_OFFSET "npose_offset"
+
 #define BUTTON_OFFSET_FWD "forward"
 #define BUTTON_OFFSET_BKW "backward"
 #define BUTTON_OFFSET_LEFT "left"
@@ -122,8 +122,10 @@ list OFFSET_BUTTONS = [
     "0.01", BUTTON_OFFSET_ZERO
 ];
 
-#define MY_PLUGIN_MENU_UNSIT "npose_unsit"
-#define MY_PLUGIN_MENU_CHANGE_SEAT "npose_changeseat"
+//store plugins base paths, register myself as plugin for the rootmenu
+list PluginBasePathList=[ROOTMENU];
+list PluginNamesList=[MY_PLUGIN_MENU];
+list PluginParamsList=[""];
 
 //TODO
 #define BUTTON_NAME_SLOT "ChangeSeat"
@@ -465,12 +467,12 @@ string getNcName(string path) {
 string deleteNode(string path, integer start, integer end) {
     return llDumpList2String(llDeleteSubList(llParseStringKeepNulls(path, [":"], []), start, end), ":");
 }
-string buildParamSet1(string path, integer page, string prompt, list additionalButtons, string pluginName, string pluginLocalPath, string pluginParams) {
+string buildParamSet1(string path, integer page, string prompt, list additionalButtons, string pluginName, string pluginLocalPath, string pluginStaticParams) {
     //We can't use colons in the promt, because they are used as a seperator in other messages
     //replace them with a UTF Symbol
     prompt=llDumpList2String(llParseStringKeepNulls(prompt, [","], []), "‚"); // CAUTION: the 2nd "‚" is a UTF sign!
     string buttons=llDumpList2String(additionalButtons, ",");
-    return llDumpList2String([path, page, prompt, buttons, pluginName, pluginLocalPath, pluginParams], "|");
+    return llDumpList2String([path, page, prompt, buttons, pluginName, pluginLocalPath, pluginStaticParams], "|");
 }
 
 default{
@@ -536,8 +538,6 @@ default{
             //block end
             
             string paramSet1=buildParamSet1(path, page, prompt, [], "", "", "");
-            //the following if..then..else statement is for performance improvement
-            //we we need some more bytes in this script, we could use the PREPARE_REMENU message regardless if there is a valid NC or not
             string ncName=getNcName(path);
             if(ncName) {
                 //there is a NC that should be executed
@@ -557,6 +557,8 @@ default{
             string path=llList2String(params, 0);
             string selection=deleteNode(path, 0, -2);
             integer page=(integer)llList2String(params, 1);  //get the page number
+            string prompt=llList2String(params, 2);
+            string additionalButtons=llList2String(params, 3);
 
             //BackButton
             if(selection==BACKBTN) {
@@ -565,68 +567,64 @@ default{
             }
 
             //plugin detection
-            integer index;
-            integer length=llGetListLength(PluginBasePathList);
-            integer foundLength;
-            string foundName;
-            string foundLocalPath=path;
-            string foundParams;
-            for(; index<length; index++) {
-                string currentBasePath=llList2String(PluginBasePathList, index);
-                if(!llSubStringIndex(path, currentBasePath)) {
-                    if(llStringLength(currentBasePath)>foundLength) {
-                        foundLength=llStringLength(currentBasePath);
-                        foundName=llList2String(PluginNamesList, index);
-                        foundParams=llList2String(PluginParamsList, index);
-                        foundLocalPath=llDeleteSubString(path, 0, foundLength);
-                    }
-                }
-            }
-            if(foundName) {
-                string paramSet1=buildParamSet1(path, page, llList2String(params, 2), [llList2String(params, 3)], foundName, foundLocalPath, foundParams);
-                if(selection!=BACKBTN) {
-                    llMessageLinked(LINK_SET, PLUGIN_MENU_RESPONSE, paramSet1, id);
+            string pluginName;
+            string pluginLocalPath;
+            string pluginStaticParams;
+            string pluginBasePath=path;
+            while(pluginBasePath!="" && pluginName=="") {
+                integer index=llListFindList(PluginBasePathList, [pluginBasePath]);
+                if(~index) {
+                    pluginName=llList2String(PluginNamesList, index);
+                    pluginStaticParams=llList2String(PluginParamsList, index);
+                    pluginLocalPath=llDeleteSubString(path, 0, llStringLength(pluginBasePath));
                 }
                 else {
-                    llMessageLinked(LINK_SET, DOREMENU, getNcName(path) + NC_READER_CONTENT_SEPARATOR + paramSet1, id);
+                    pluginBasePath=deleteNode(pluginBasePath, -1, -1);
                 }
             }
-            //not inside a plugin
-            else if(~llListFindList(menus, [path])) {
-                //this is a node
-                page=0;
-                string paramSet1=buildParamSet1(path, page, llList2String(params, 2), [llList2String(params, 3)], "", "", "");
-                if(selection!=BACKBTN) {
-                    llMessageLinked(LINK_SET, MENU_SHOW, paramSet1, id);
+
+            if(pluginName==MY_PLUGIN_MENU) {
+            //inside my own plugin
+                if(~llListFindList(menus, [path])) {
+                    //this is a node
+                    page=0;
+                    string paramSet1=buildParamSet1(path, page, prompt, [additionalButtons], "", "", "");
+                    llMessageLinked(LINK_SET, DOREMENU, getNcName(path) + NC_READER_CONTENT_SEPARATOR + paramSet1, id);
+                }
+                else if(~llListFindList(menus, [deleteNode(path, -1, -1)])) {
+                    //this is a leaf
+                    path=deleteNode(path, -1, -1);
+                    string paramSet1=buildParamSet1(path, page, prompt, [additionalButtons], "", "", "");
+                    llMessageLinked(LINK_SET, PREPARE_REMENU, paramSet1, id);
                 }
                 else {
-                    llMessageLinked(LINK_SET, DOREMENU, getNcName(path) + NC_READER_CONTENT_SEPARATOR + paramSet1, id);
+                    //TODO: what is it?
                 }
-            }
-            else if(~llListFindList(menus, [deleteNode(path, -1, -1)])) {
-                //this is a leaf
-                path=deleteNode(path, -1, -1);
-                string paramSet1=buildParamSet1(path, page, llList2String(params, 2), [llList2String(params, 3)], "", "", "");
-                llMessageLinked(LINK_SET, DOREMENU, getNcName(path) + NC_READER_CONTENT_SEPARATOR + paramSet1, id);
             }
             else {
-                //TODO: what is it?
+                //inside a foreign plugin
+                string paramSet1=buildParamSet1(path, page, prompt, [additionalButtons], pluginName, pluginLocalPath, pluginStaticParams);
+                llMessageLinked(LINK_SET, PLUGIN_MENU_RESPONSE, paramSet1, id);
             }
+        }
+        else if(num==PLUGIN_MENU_SHOW) {
+            string path=llList2String(llParseStringKeepNulls(str, ["|"], []), 0);
+            llMessageLinked(LINK_SET, DOREMENU, getNcName(path) + NC_READER_CONTENT_SEPARATOR + str, id);
         }
         else if(num==PLUGIN_MENU_REGISTER) {
             list params=llParseStringKeepNulls(str, ["|"], []);
             string basePath=llList2String(params, 0);
             string pluginName=llToLower(llList2String(params, 1));
-            string pluginParams=llList2String(params, 2);
+            string pluginStaticParams=llList2String(params, 2);
             integer index=llListFindList(PluginBasePathList, [basePath]);
             if(~index) {
                 PluginNamesList=llListReplaceList(PluginNamesList, [pluginName], index, index);
-                PluginParamsList=llListReplaceList(PluginParamsList, [pluginParams], index, index);
+                PluginParamsList=llListReplaceList(PluginParamsList, [pluginStaticParams], index, index);
             }
             else {
                 PluginBasePathList+=basePath;
                 PluginNamesList+=pluginName;
-                PluginParamsList+=pluginParams;
+                PluginParamsList+=pluginStaticParams;
             }
         }
         else if(num==PLUGIN_MENU_RESPONSE) {
@@ -637,7 +635,6 @@ default{
             if(pluginName==MY_PLUGIN_MENU_OFFSET) {
                 //this is the offset menu. It can be move to any other script easily.
                 string path=llList2String(params, 0);
-                string prompt=llList2String(params, 2);
                 string pluginLocalPath=llList2String(params, 5);
 
                 if(pluginLocalPath!="") {
@@ -656,37 +653,31 @@ default{
                     //one level back
                     path=deleteNode(path, -1, -1);
                 }
-                if(prompt=="") {
-                    prompt="Adjust by " + (string)currentOffsetDelta+ "m, or choose another distance.";
-                }
-                //normaly plugins should use PLUGIN_MENU_SHOW instead MENU_SHOW it is slighly faster and
-                //there is no need to wait for any messages of the core
-                llMessageLinked(LINK_SET, MENU_SHOW, buildParamSet1(path, (integer)llList2String(params, 1), prompt, OFFSET_BUTTONS, "", "", ""), id);
+                string prompt="Adjust by " + (string)currentOffsetDelta+ "m, or choose another distance.";
+                llMessageLinked(LINK_SET, PLUGIN_MENU_SHOW, buildParamSet1(path, 0, prompt, OFFSET_BUTTONS, "", "", ""), id);
             }
             else if(pluginName==MY_PLUGIN_MENU_CHANGE_SEAT || pluginName==MY_PLUGIN_MENU_UNSIT) {
                 //TODO: Leona: check if nested plugins could be a good
-                //idea, because both functions are something like a "pick Avatar" function
-                //and maybe a "pick Avatar" dialog may also be useful in other plugins
+                //idea, because both functions are something like a "pick Seat" function
+                //and maybe a "pick Seat" dialog may also be useful in other plugins
                 //
                 //this is the change seat menu. It should stay inside this script, because it uses the isAllowed function and the slots list. 
                 string path=llList2String(params, 0);
                 integer page=(integer)llList2String(params, 1);
-                string prompt=llList2String(params, 2);
+                string prompt;
                 string pluginLocalPath=llList2String(params, 5);
-                string pluginParams=llList2String(params, 6);
-                integer remenu=TRUE;
+                string pluginStaticParams=llList2String(params, 6);
                 
-                if(prompt=="") {
-                    if(pluginName==MY_PLUGIN_MENU_CHANGE_SEAT) {
-                        prompt="Where will you sit?";
-                    }
-                    else {
-                        prompt="Pick an avatar to unsit.";
-                    }
+                if(pluginName==MY_PLUGIN_MENU_CHANGE_SEAT) {
+                    prompt="Where will you sit?";
+                }
+                else {
+                    prompt="Pick an avatar to unsit.";
                 }
                 
                 if(pluginLocalPath!="") {
                     //a new seat is selected
+                    integer remenu=TRUE;
                     integer slotNumber=getSlotNumber(pluginLocalPath);
                     if(~slotNumber) {
                         if(pluginName==MY_PLUGIN_MENU_CHANGE_SEAT) {
@@ -701,9 +692,13 @@ default{
                             }
                         }
                     }
-                    path=deleteNode(path, -1, -1);
+                    if(remenu) {
+                        path=deleteNode(path, -1, -1);
+                        llMessageLinked(LINK_SET, PLUGIN_MENU_CHANGE_PATH, buildParamSet1(path, 0, "", [], "", "", ""), id);
+                    }
+                    
                 }
-                if(remenu || pluginLocalPath=="") {
+                if(pluginLocalPath=="") {
                     //build and show the menu
                     //generate the buttons
                     //A button will be
@@ -713,7 +708,7 @@ default{
                     integer length=llGetListLength(slots);
                     list buttons;
                     for(index=0; index<length; index+=2) {
-                        if(isAllowed(1, id, index/2, pluginParams)) {
+                        if(isAllowed(1, id, index/2, pluginStaticParams)) {
                             key avatar=llList2Key(slots, index);
                             list temp=llParseStringKeepNulls(llList2String(slots, index+1), ["§"], []);
                             string seatName=llList2String(temp, 0);
