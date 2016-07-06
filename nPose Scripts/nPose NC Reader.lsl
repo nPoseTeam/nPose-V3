@@ -20,13 +20,14 @@ integer MEMORY_TO_BE_USED=60000;
 
 integer DOPOSE=200;
 integer DOBUTTON=207;
-integer DOREMENU=220;
-integer DOREMENU_READER=221;
+integer PREPARE_MENU_STEP3_READER=221;
 integer DOPOSE_READER=222;
 integer DOBUTTON_READER=223;
 integer NC_READER_REQUEST=224;
 integer NC_READER_RESPONSE=225;
 integer MEM_USAGE=34334;
+
+integer PREPARE_MENU_STEP3=-822;
 
 list cacheNcNames;
 list cacheContent;
@@ -142,10 +143,10 @@ default {
 			//id: userDefinedKey
 			fetchNcContent(str, id, DOBUTTON_READER);
 		}
-		else if(num==DOREMENU) {
+		else if(num==PREPARE_MENU_STEP3) {
 			//str (separated by NC_READER_CONTENT_SEPARATOR): ncName, userDefinedData1, userDefinedData1
 			//id: userDefinedKey
-			fetchNcContent(str, id, DOREMENU_READER);
+			fetchNcContent(str, id, PREPARE_MENU_STEP3_READER);
 		}
 		else if(num==NC_READER_REQUEST) {
 			//str (separated by NC_READER_CONTENT_SEPARATOR): ncName, userDefinedData1, userDefinedData2
