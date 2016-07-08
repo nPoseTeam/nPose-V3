@@ -8,8 +8,8 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 "Full perms" means having the modify, copy, and transfer permissions enabled in Second Life and/or other virtual world platforms derived from Second Life (such as OpenSim).  If the platform should allow more fine-grained permissions, then "full perms" will mean the most permissive possible set of permissions allowed by the platform.
 */
 
-list slots;
-integer chatchannel;
+list Slots;
+integer ChatChannel;
 integer SEAT_UPDATE = 35353;//we gonna do satmsg and notsatmsg
 integer STRIDE = 8;
 integer MEMORY_USAGE = 34334;
@@ -23,8 +23,12 @@ string str_replace(string str, string search, string replace) {
 //Returns an integer TRUE if the lists are equal, FALSE if not.
 integer ListCompare(list a, list b) {
     integer aL = a != [];
-    if(aL != (b != [])) return 0;
-    if((aL == 0) && (b == [])) return 1;
+    if(aL != (b != [])) {
+        return 0;
+    }
+    if((aL == 0) && (b == [])) {
+        return 1;
+    }
  
     return !llListFindList((a = []) + a, (b = []) + b);
 }
@@ -39,8 +43,8 @@ processMessages(list message, integer index) {
         list parts = llParseString2List(llList2String(smsgs,ndx), ["|"], []);
         llMessageLinked(LINK_SET, (integer)llList2String(parts, 0), llList2String(parts, 1),
             (key)llList2String(message, 4));
-        if (chatchannel != 0) {
-            llRegionSay(chatchannel,llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
+        if (ChatChannel != 0) {
+            llRegionSay(ChatChannel,llDumpList2String(["LINKMSG",(string)llList2String(parts, 0),
                 llList2String(parts, 1), llList2String(message, 4)], "|"));
         }
     }
@@ -52,24 +56,25 @@ default {
     }
     
     link_message(integer sender, integer num, string str, key id) {
-        if(num == SEND_CHATCHANNEL) {  //got chatchannel from the core.
-            chatchannel = (integer)str;
+        if(num == SEND_CHATCHANNEL) {  //got ChatChannel from the core.
+            ChatChannel = (integer)str;
         }
         if(num == SEAT_UPDATE) {
-            list oldSlots = slots;
-            slots = llParseStringKeepNulls(str, ["^"], []);
+            list oldSlots = Slots;
+            Slots = llParseStringKeepNulls(str, ["^"], []);
             list oldstride;
             list currentstride;
-        //notsatmsg things
+            
+//notsatmsg things
             integer n;
             integer stop = llGetListLength(oldSlots)/STRIDE;
             for(n = 0; n < stop; ++n) {
                 oldstride = llList2List(oldSlots, n*STRIDE, n*STRIDE+6);
-//                currentstride = llList2List(slots, n*STRIDE, n*STRIDE+6);
+//                currentstride = llList2List(Slots, n*STRIDE, n*STRIDE+6);
                 //check if we have an existing NOTSATMSG and if there was a sitter in this seat
                 if((llList2String(oldstride, 6) != "" && llList2String(oldstride, 4) != "")) {
-                    integer curStrideIndex = llListFindList(slots, [llList2String(oldstride, 4)])-4;
-                    currentstride = llList2List(slots, curStrideIndex, curStrideIndex+6);
+                    integer curStrideIndex = llListFindList(Slots, [llList2String(oldstride, 4)])-4;
+                    currentstride = llList2List(Slots, curStrideIndex, curStrideIndex+6);
                     //if this sitter is no longer in this seat
                     // or the pose set has changed
                     integer listsEqual = ListCompare(llList2List(oldstride, 0, 4), llList2List(currentstride, 0, 4));
@@ -78,11 +83,11 @@ default {
                     }
                 }
             }//finished looping all strides
-            stop = llGetListLength(slots)/STRIDE;
+            stop = llGetListLength(Slots)/STRIDE;
             for(n = 0; n < stop; ++n) {
                 //this is a slot change so do some work
                 oldstride = llList2List(oldSlots, n*STRIDE, n*STRIDE+5);
-                currentstride = llList2List(slots, n*STRIDE, n*STRIDE+5);
+                currentstride = llList2List(Slots, n*STRIDE, n*STRIDE+5);
                 //if existing sitter and new pose set and has SATMSG
                 // or if new sitter and same pose set and SATMSG
                 integer listsEqual = ListCompare(llList2List(oldstride, 0, 4), llList2List(currentstride, 0, 4));
@@ -95,7 +100,7 @@ default {
                       && listsEqual == FALSE) || (llList2String(currentstride, 4) != llList2String(oldstride, 4) 
                       && llList2String(currentstride, 4) != "")) {
                     
-            //satmsg things
+//satmsg things
                         //we have a sitter and satmsg so add it to the current list
                         processMessages(currentstride, 5);
                     }
