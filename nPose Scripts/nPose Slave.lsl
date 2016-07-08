@@ -323,9 +323,12 @@ default {
         }
         else if(num == DOPOSE_READER) {
             //TODO Leona: I guess this isn't correct. We can also use a DOBUTTON with SCHMO(E) lines.
+            //Think about a build that only contains ANIM lines in the DEFAULT NC and all the animation switchung is done by SCHMO(E) lines
+            //You will see that the animations in our Slots list may also come from different NCs
+            //So maybe we shouldn't even try to guess the correct NC
             list allData=llParseStringKeepNulls(str, [NC_READER_CONTENT_SEPARATOR], []);
             if(llGetInventoryType(llList2String(allData, 0))==INVENTORY_NOTECARD) {
-                //now we are sure that we got a valid NC name. DOPOSE may also called with invalid NC names without any harm
+                //now we are sure that we got a valid NC name. DOPOSE may also be called with invalid NC names without any harm
                 NcName = llList2String(allData, 0);
             }
         }
