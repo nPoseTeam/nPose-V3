@@ -42,7 +42,6 @@ integer Seatcount;
 integer NextAvatarOffset;
 integer AVATAR_OFFSETS_LENGTH = 20;
 list AvatarOffsets;
-string NcName;
 
 list Adjusters = [];
 list AnimsList; //[string command, string animation name]  use a list to layer multiple animations.
@@ -321,17 +320,6 @@ default {
             llSay(Chatchannel, "adjuster_die"); 
             Adjusters = [];
         }
-        else if(num == DOPOSE_READER) {
-            //TODO Leona: I guess this isn't correct. We can also use a DOBUTTON with SCHMO(E) lines.
-            //Think about a build that only contains ANIM lines in the DEFAULT NC and all the animation switchung is done by SCHMO(E) lines
-            //You will see that the animations in our Slots list may also come from different NCs
-            //So maybe we shouldn't even try to guess the correct NC
-            list allData=llParseStringKeepNulls(str, [NC_READER_CONTENT_SEPARATOR], []);
-            if(llGetInventoryType(llList2String(allData, 0))==INVENTORY_NOTECARD) {
-                //now we are sure that we got a valid NC name. DOPOSE may also be called with invalid NC names without any harm
-                NcName = llList2String(allData, 0);
-            }
-        }
         else if(num == OPTIONS) {
             list optionsToSet = llParseStringKeepNulls(str, ["~"], []);
             integer stop = llGetListLength(optionsToSet);
@@ -394,7 +382,6 @@ default {
             string primName = llGetObjectName();
             llSetObjectName(llGetLinkName(1));
             llRegionSayTo(llGetOwner(), 0, "SCHMOE and SCHMO lines will be reported as ANIM.  Be sure to replace if needed.");
-            llRegionSayTo(llGetOwner(), 0, "\n"+NcName);
             for(n = 0; n < llGetListLength(Slots)/8; ++n) {
                 list temp=llParseStringKeepNulls(llList2String(Slots, n*8+7), ["§"], []);
                 string seatName;
