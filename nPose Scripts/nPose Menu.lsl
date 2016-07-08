@@ -10,27 +10,22 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 
 //default options settings.  Change these to suit personal preferences
 string Permissions = "PUBLIC"; //default permit option Pubic, Locked, Group
-string curmenuonsit = "off"; //default menuonsit option
-string cur2default = "off";  //default action to revert back to default pose when last sitter has stood
-string Facials = "on";
-string menuReqSit = "off";  //required to be seated to get a menu
-string RLVenabled = "on";   //default RLV enabled state  on or no
-
-integer OptionUseDisplayNames;
+integer Cur2default;  //default action to revert back to default pose when last sitter has stood
+integer Sit2GetMenu;  //required to be seated to get a menu
+float MenuDistance = 30.0;
+integer OptionUseDisplayNames; //use display names instead of usernames in changeSeat/unsit menu
 //
 
-list victims;
-list slots; //this slots list is not complete. it only contains seated AV key and seat numbers
-string defaultPoseNcName; //holds the name of the default notecard.
-string menuNC = ".Change Menu Order"; //holds the name of the menu order notecard to read.
+list Slots; //this Slots list is not complete. it only contains seated AV key and seat numbers
+string DefaultPoseNcName; //holds the name of the default notecard.
+string MenuNc = ".Change Menu Order"; //holds the name of the menu order notecard to read.
 //key toucherid;
-list menus;
-list menuPermPath;
-list menuPermPerms;
-float currentOffsetDelta = 0.2;
-float menuDistance = 30.0;
+list Menus;
+list MenuPermPath;
+list MenuPermPerms;
+float CurrentOffsetDelta = 0.2;
 
-key scriptID;
+key ScriptId;
 
 #define SET_PREFIX "SET"
 #define BTN_PREFIX "BTN"
@@ -133,9 +128,9 @@ debug(list message){
 
 DoMenu(key rcpt, string path, integer page, string prompt, list additionalButtons) {
     list choices;
-    integer index = llListFindList(menus, [path]);
+    integer index = llListFindList(Menus, [path]);
     if(~index) {
-        choices=llParseStringKeepNulls(llList2String(menus, index+1), ["|"], []);
+        choices=llParseStringKeepNulls(llList2String(Menus, index+1), ["|"], []);
     }
     choices+=additionalButtons;
     
@@ -143,22 +138,20 @@ DoMenu(key rcpt, string path, integer page, string prompt, list additionalButton
     if(
         //the whole if statement only exists for backward compability, because all this (and more) could be done via button permissions on root level
         (rcpt == llGetOwner() || Permissions == "GROUP" && llSameGroup(rcpt) || Permissions == "PUBLIC") &&
-        (rcpt == llGetOwner() || menuReqSit == "off" || ~llListFindList(slots, [rcpt])) &&
-        // old RLV plugin, (Lenoa: This behaves like gecko release)
-        (rcpt == llGetOwner() || !~llListFindList(victims, [(string)rcpt]))
+        (rcpt == llGetOwner() || !Sit2GetMenu || ~llListFindList(Slots, [rcpt]))
     ) {
         list thisMenuPath=llDeleteSubList(llParseStringKeepNulls(path , [":"], []), 0, 0);
         //check button permission for this path up to the root
         //this also means that button permissions are inheritable
         list tempPath=thisMenuPath;
-        integer rcptSlotNumber=llListFindList(slots, [rcpt]);
+        integer rcptSlotNumber=llListFindList(Slots, [rcpt]);
         if(~rcptSlotNumber) {
             rcptSlotNumber=rcptSlotNumber/2;
         }
         do {
-            integer indexc=llListFindList(menuPermPath, [llDumpList2String(tempPath, ":")]);
+            integer indexc=llListFindList(MenuPermPath, [llDumpList2String(tempPath, ":")]);
             if(~indexc) {
-                if(!isAllowed(0, rcpt, rcptSlotNumber, llList2String(menuPermPerms, indexc))) {
+                if(!isAllowed(0, rcpt, rcptSlotNumber, llList2String(MenuPermPerms, indexc))) {
                     return;
                 }
             }
@@ -167,9 +160,9 @@ DoMenu(key rcpt, string path, integer page, string prompt, list additionalButton
         integer stopc = llGetListLength(choices);
         integer nc;
         for(; nc < stopc; ++nc) {
-            integer indexc = llListFindList(menuPermPath, [llDumpList2String(thisMenuPath + llList2String(choices, nc), ":")]);
+            integer indexc = llListFindList(MenuPermPath, [llDumpList2String(thisMenuPath + llList2String(choices, nc), ":")]);
             if(indexc != -1) {
-                if(!isAllowed(0, rcpt, rcptSlotNumber, llList2String(menuPermPerms, indexc))) {
+                if(!isAllowed(0, rcpt, rcptSlotNumber, llList2String(MenuPermPerms, indexc))) {
                     choices = llDeleteSubList(choices, nc, nc);
                     --nc;
                     --stopc;
@@ -190,7 +183,7 @@ DoMenu(key rcpt, string path, integer page, string prompt, list additionalButton
             llDumpList2String(choices, "`"),
             llDumpList2String(utilitybuttons, "`"),
             path
-        ], "|"), scriptID);
+        ], "|"), ScriptId);
     }
 }
 
@@ -249,7 +242,7 @@ integer isAllowed(integer mode, key avatarKey, integer slotNumber, string permis
     else {
         key avatarInSlot;
         if(~slotNumber) {
-            avatarInSlot=llList2Key(slots, slotNumber*2);
+            avatarInSlot=llList2Key(Slots, slotNumber*2);
         }
         list permItemsOr=llParseString2List(llToLower(permissions), ["~"], []);
         integer indexOr=~llGetListLength(permItemsOr);
@@ -285,7 +278,7 @@ integer isAllowed(integer mode, key avatarKey, integer slotNumber, string permis
                     result=logicalXor(invert, slotNumber>=0);
                 }
                 else if(item==PERMISSION_OCCUPIED) {
-                    result=logicalXor(invert, llList2String(slots, slotNumber*2)!="" && llList2String(slots, slotNumber*2)!=NULL_KEY);
+                    result=logicalXor(invert, llList2String(Slots, slotNumber*2)!="" && llList2String(Slots, slotNumber*2)!=NULL_KEY);
                 }
                 else if(item==PERMISSION_OWNSEAT) {
                     result=logicalXor(invert, avatarKey==avatarInSlot);
@@ -332,9 +325,9 @@ integer logicalXor(integer conditionA, integer conditionB) {
 }
 
 BuildMenus(list cardNames) {//builds the user defined menu buttons
-    menus = [];
-    menuPermPath = [];
-    menuPermPerms = [];
+    Menus = [];
+    MenuPermPath = [];
+    MenuPermPerms = [];
     integer stop = llGetListLength(cardNames);
     integer fromContents;
     if(!stop) {
@@ -359,36 +352,36 @@ BuildMenus(list cardNames) {//builds the user defined menu buttons
         string prefix = llList2String(pathParts, 0);
         if((!defaultSet && prefix == SET_PREFIX) | (prefix == DEFAULT_PREFIX)) {
             if(!fromContents) {
-                defaultPoseNcName = llList2String(cardNames, n);
+                DefaultPoseNcName = llList2String(cardNames, n);
             }
             else {
-                defaultPoseNcName = llGetInventoryName(INVENTORY_NOTECARD, n);
+                DefaultPoseNcName = llGetInventoryName(INVENTORY_NOTECARD, n);
             }
             defaultSet = TRUE;
         }
         pathParts = llListReplaceList(pathParts, [ROOTMENU], 0, 0);
         if(menuPerms) {
-            menuPermPath += llDumpList2String(llDeleteSubList(pathParts, 0, 0), ":");
-            menuPermPerms += menuPerms;
+            MenuPermPath += llDumpList2String(llDeleteSubList(pathParts, 0, 0), ":");
+            MenuPermPerms += menuPerms;
         }
         if(~llListFindList(CARD_PREFIXES, [prefix])) { // found
             pathParts = llDeleteSubList(pathParts, 0, 0);            
             while(llGetListLength(pathParts)) {
                 string last = llList2String(pathParts, -1);
                 string parentpath = llDumpList2String([ROOTMENU] + llDeleteSubList(pathParts, -1, -1), ":");
-                integer index = llListFindList(menus, [parentpath]);
+                integer index = llListFindList(Menus, [parentpath]);
                 if(~index && !(index & 1)) {
-                    list children = llParseStringKeepNulls(llList2String(menus, index + 1), ["|"], []);
+                    list children = llParseStringKeepNulls(llList2String(Menus, index + 1), ["|"], []);
                     if(!~llListFindList(children, [last])) {
                         children += [last];
-                        if(llGetInventoryType(menuNC) != INVENTORY_NOTECARD) {
+                        if(llGetInventoryType(MenuNc) != INVENTORY_NOTECARD) {
                             children = llListSort(children, 1, 1);
                         }
-                        menus = llListReplaceList(menus, [llDumpList2String(children, "|")], index + 1, index + 1);
+                        Menus = llListReplaceList(Menus, [llDumpList2String(children, "|")], index + 1, index + 1);
                     }
                 }
                 else {
-                    menus += [parentpath, last];
+                    Menus += [parentpath, last];
                 }
                 pathParts = llDeleteSubList(pathParts, -1, -1);
             }
@@ -398,9 +391,9 @@ BuildMenus(list cardNames) {//builds the user defined menu buttons
 
 string getNcName(string path) {
     path = llDumpList2String(llDeleteSubList(llParseStringKeepNulls(path, [":"], []), 0, 0), ":");
-    integer permissionIndex = llListFindList(menuPermPath, [path]);
+    integer permissionIndex = llListFindList(MenuPermPath, [path]);
     if(~permissionIndex) {
-        string thisPerm = llList2String(menuPermPerms, permissionIndex);
+        string thisPerm = llList2String(MenuPermPerms, permissionIndex);
         if(thisPerm != "") {
             path+="{"+thisPerm+"}";
         }
@@ -436,20 +429,20 @@ string buildParamSet1(string path, integer page, string prompt, list additionalB
 
 default{
     state_entry() {
-        scriptID=llGetInventoryKey(llGetScriptName());
-        if(llGetInventoryType(menuNC) != INVENTORY_NOTECARD) {
+        ScriptId=llGetInventoryKey(llGetScriptName());
+        if(llGetInventoryType(MenuNc) != INVENTORY_NOTECARD) {
             BuildMenus([]);
         }
         else {
             llSleep(1.0); //be sure that the NC reader script finished resetting
-            llMessageLinked(LINK_SET, NC_READER_REQUEST, menuNC, scriptID);
+            llMessageLinked(LINK_SET, NC_READER_REQUEST, MenuNc, ScriptId);
         }
     }
     
     touch_start(integer total_number) {
         key toucherKey = llDetectedKey(0);
         vector vDelta = llDetectedPos(0) - llGetPos();
-        if(toucherKey == llGetOwner() || llVecMag(vDelta) < menuDistance) {
+        if(toucherKey == llGetOwner() || llVecMag(vDelta) < MenuDistance) {
             llMessageLinked(LINK_SET, DOMENU, llDumpList2String([ROOTMENU, 0, ""], ","), toucherKey);
         }
     }
@@ -463,7 +456,7 @@ default{
 //            //TODO: deprecated
 //            llMessageLinked(LINK_SET, -802, "PATH=" + GlobalPath, id);
 //        }
-        if((num == DIALOG_RESPONSE && id == scriptID )|| num==DOMENU || num==DOMENU_ACCESSCTRL) {
+        if((num == DIALOG_RESPONSE && id == ScriptId )|| num==DOMENU || num==DOMENU_ACCESSCTRL) {
             //the following block is to sort the paramters from the different message (to be backward compatible)
             integer page;
             string selection;
@@ -547,13 +540,13 @@ default{
 
             if(pluginName==MY_PLUGIN_MENU) {
             //inside my own plugin
-                if(~llListFindList(menus, [path])) {
+                if(~llListFindList(Menus, [path])) {
                     //this is a node
                     page=0;
                     string paramSet1=buildParamSet1(path, page, prompt, [additionalButtons], "", "", "");
                     llMessageLinked(LINK_SET, PREPARE_MENU_STEP3, getNcName(path) + NC_READER_CONTENT_SEPARATOR + paramSet1, id);
                 }
-                else if(~llListFindList(menus, [deleteNode(path, -1, -1)])) {
+                else if(~llListFindList(Menus, [deleteNode(path, -1, -1)])) {
                     //this is a leaf
                     path=deleteNode(path, -1, -1);
                     string paramSet1=buildParamSet1(path, page, prompt, [additionalButtons], "", "", "");
@@ -621,9 +614,9 @@ default{
                         else if(pluginLocalPath == BUTTON_OFFSET_UP) {direction=<0, 0, 1>;}
                         else if(pluginLocalPath == BUTTON_OFFSET_DOWN) {direction=<0, 0, -1>;}
                         else if(pluginLocalPath == BUTTON_OFFSET_ZERO) {llMessageLinked(LINK_SET, SETOFFSET, (string)ZERO_VECTOR, id);}
-                        else if((float)pluginLocalPath) {currentOffsetDelta = (float)pluginLocalPath;}
+                        else if((float)pluginLocalPath) {CurrentOffsetDelta = (float)pluginLocalPath;}
                         if(direction!=ZERO_VECTOR) {
-                            llMessageLinked(LINK_SET, ADJUSTOFFSET, (string)(direction * currentOffsetDelta), id);
+                            llMessageLinked(LINK_SET, ADJUSTOFFSET, (string)(direction * CurrentOffsetDelta), id);
                         }
                         //one level back
                         path=deleteNode(path, -1, -1);
@@ -634,7 +627,7 @@ default{
                     // 1) set a prompt if needed
                     // 2) generate your buttons if needed
                     // 3) finish with a PLUGIN_MENU_DONE call
-                    string prompt="Adjust by " + (string)currentOffsetDelta+ "m, or choose another distance.";
+                    string prompt="Adjust by " + (string)CurrentOffsetDelta+ "m, or choose another distance.";
                     llMessageLinked(LINK_SET, PLUGIN_MENU_DONE, buildParamSet1(path, 0, prompt, OFFSET_BUTTONS, "", "", ""), id);
                 }
             }
@@ -643,7 +636,7 @@ default{
                 //idea, because both functions are something like a "pick Seat" function
                 //and maybe a "pick Seat" dialog may also be useful in other plugins
                 //
-                //this is the change seat menu. It should stay inside this script, because it uses the isAllowed function and the slots list. 
+                //this is the change seat menu. It should stay inside this script, because it uses the isAllowed function and the Slots list. 
 
                 if(num==PLUGIN_ACTION) {
                     // 1) Do the action if needed
@@ -658,7 +651,7 @@ default{
                         //2) " " + a seat name
                         //3) seatX: where X is a number
     
-                        //2 and 3 can be found in our slots list
+                        //2 and 3 can be found in our Slots list
                         
                         integer slotNumber=-1;
                         string prefix=llGetSubString(pluginLocalPath, 0, 0);
@@ -667,21 +660,21 @@ default{
                             slotNumber=(integer)llGetSubString(pluginLocalPath, 4, -1)-1;
                         }
                         else {
-                            integer length=llGetListLength(slots);
+                            integer length=llGetListLength(Slots);
                             integer index;
                             while(index<length && !~slotNumber) {
                                 if(prefix==" ") {
-                                    if(!llSubStringIndex(prefix + llList2String(slots, index+1), pluginLocalPath+"§")) {
+                                    if(!llSubStringIndex(prefix + llList2String(Slots, index+1), pluginLocalPath+"§")) {
                                         slotNumber=index/2;
                                     }
                                 }
                                 else if(prefix=="·" || prefix=="•") {
                                     string nameInSlotList;
                                     if(OptionUseDisplayNames) {
-                                        nameInSlotList=llGetDisplayName(llList2Key(slots, index));
+                                        nameInSlotList=llGetDisplayName(llList2Key(Slots, index));
                                     }
                                     else {
-                                        nameInSlotList=llKey2Name(llList2Key(slots, index));
+                                        nameInSlotList=llKey2Name(llList2Key(Slots, index));
                                     }
                                     if(!llSubStringIndex(prefix + nameInSlotList + prefix, pluginLocalPath)) {
                                         slotNumber=index/2;
@@ -695,7 +688,7 @@ default{
                                 llMessageLinked(LINK_SET, SWAPTO, (string)(slotNumber+1), id);
                             }
                             else {
-                                key avatarToUnsit=llList2Key(slots, n*2);
+                                key avatarToUnsit=llList2Key(Slots, n*2);
                                 llMessageLinked(LINK_SET, UNSIT, avatarToUnsit, id);
                                 if(avatarToUnsit==id) {
                                     //don't remenu if someone unsits oneself
@@ -726,12 +719,12 @@ default{
                     //1) if an avatar sits on the seat: "·" + an avatar name + "·"
                     //2) if the seat name is provided: " " + a seat name
                     //3) else: seatX: where X is a number
-                    integer length=llGetListLength(slots);
+                    integer length=llGetListLength(Slots);
                     list buttons;
                     for(index=0; index<length; index+=2) {
                         if(isAllowed(1, id, index/2, pluginStaticParams)) {
-                            key avatar=llList2Key(slots, index);
-                            list temp=llParseStringKeepNulls(llList2String(slots, index+1), ["§"], []);
+                            key avatar=llList2Key(Slots, index);
+                            list temp=llParseStringKeepNulls(llList2String(Slots, index+1), ["§"], []);
                             string seatName=llList2String(temp, 0);
                             string seatNumber=llList2String(temp, 1);
                             if(avatar) {
@@ -759,8 +752,8 @@ default{
             }
         }
         else if(num == DIALOG_TIMEOUT) {//menu not clicked and dialog timed out
-            if((cur2default == "on") && (llGetObjectPrimCount(llGetKey()) == llGetNumberOfPrims()) && (defaultPoseNcName != "")) {
-                llMessageLinked(LINK_SET, DOPOSE, defaultPoseNcName, NULL_KEY);
+            if(Cur2default && (llGetObjectPrimCount(llGetKey()) == llGetNumberOfPrims()) && (DefaultPoseNcName != "")) {
+                llMessageLinked(LINK_SET, DOPOSE, DefaultPoseNcName, NULL_KEY);
             }
 //begin handle link message inputs
         }
@@ -773,15 +766,11 @@ default{
                 string optionItem = llToLower(llStringTrim(llList2String(optionsItems, 0), STRING_TRIM));
                 string optionSetting = llToLower(llStringTrim(llList2String(optionsItems, 1), STRING_TRIM));
                 integer optionSettingFlag = optionSetting=="on" || (integer)optionSetting;
-                if(optionItem == "menuonsit") {curmenuonsit = optionSetting;}
+
                 else if(optionItem == "permit") {Permissions = llToUpper(optionSetting);}
-                else if(optionItem == "2default") {cur2default = optionSetting;}
-                else if(optionItem == "sit2getmenu") {menuReqSit = optionSetting;}
-                else if(optionItem == "menudist") {menuDistance = (float)optionSetting;}
-                else if(optionItem == "facialexp") {
-                    Facials = optionSetting;
-//                    llMessageLinked(LINK_SET, FACIALS_FLAG, Facials, NULL_KEY);
-                }
+                else if(optionItem == "2default") {Cur2default = optionSettingFlag;}
+                else if(optionItem == "sit2getmenu") {Sit2GetMenu = optionSettingFlag;}
+                else if(optionItem == "menudist") {MenuDistance = (float)optionSetting;}
                 else if(optionItem == "usedisplaynames") {
                     OptionUseDisplayNames = optionSettingFlag;
                 }
@@ -791,12 +780,8 @@ default{
             list parts=llParseStringKeepNulls(str, ["|"], []);
             DoMenu(id, llList2String(parts, 0), (integer)llList2String(parts, 1), llList2String(parts, 2), llParseString2List(llList2String(parts, 3), [","], []));
         }
-        else if(num == VICTIMS_LIST) {
-            //TODO: Deprecated!
-            victims = llCSV2List(str);
-        }
         else if(num == NC_READER_RESPONSE) {
-            if(id==scriptID) {
+            if(id==ScriptId) {
                 BuildMenus(llList2List(llParseStringKeepNulls(str, [NC_READER_CONTENT_SEPARATOR], []), 3, -1));
                 str = "";
             }
@@ -824,9 +809,9 @@ default{
         }
         else if(num==SEAT_UPDATE) {
             list slotsList = llParseStringKeepNulls(str, ["^"], []);
-            slots = [];
+            Slots = [];
             for(n=0; n<(llGetListLength(slotsList)/8); ++n) {
-                slots += [(key)llList2String(slotsList, n*8+4), llList2String(slotsList, n*8+7)];
+                Slots += [(key)llList2String(slotsList, n*8+4), llList2String(slotsList, n*8+7)];
             }
         }
         else if(num == MEMORY_USAGE) {//dump memory stats to local
@@ -838,22 +823,22 @@ default{
 
     changed(integer change) {
         if(change & CHANGED_INVENTORY) {
-            scriptID=llGetInventoryKey(llGetScriptName());
-            if(llGetInventoryType(menuNC) != INVENTORY_NOTECARD) {
+            ScriptId=llGetInventoryKey(llGetScriptName());
+            if(llGetInventoryType(MenuNc) != INVENTORY_NOTECARD) {
                 BuildMenus([]);
             }
             else {
                 llSleep(1.0); //be sure that the NC reader script finished resetting
-                llMessageLinked(LINK_SET, NC_READER_REQUEST, menuNC, scriptID);
+                llMessageLinked(LINK_SET, NC_READER_REQUEST, MenuNc, ScriptId);
             }
         }
         if(change & CHANGED_OWNER) {
             llResetScript();
         }
-        if((change & CHANGED_LINK) && (cur2default == "on")
+        if((change & CHANGED_LINK) && Cur2default)
          && (llGetObjectPrimCount(llGetKey()) == llGetNumberOfPrims())
-         && (defaultPoseNcName != "")) {
-            llMessageLinked(LINK_SET, DOPOSE, defaultPoseNcName, NULL_KEY);
+         && (DefaultPoseNcName != "")) {
+            llMessageLinked(LINK_SET, DOPOSE, DefaultPoseNcName, NULL_KEY);
         }
     }
 
