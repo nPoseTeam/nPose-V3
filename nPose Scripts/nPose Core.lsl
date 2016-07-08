@@ -36,7 +36,6 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 #define UNSIT -222
 #define OPTIONS -240
 #define DOMENU -800
-#define DOMENU_ACCESSCTRL -801
 #define PLUGIN_MENU_REGISTER -810
 #define MENU_SHOW -815
 #define PREPARE_MENU_STEP1 -820
@@ -158,7 +157,7 @@ assignSlots(){
             }
             if(newAvatar) {
                 if(curmenuonsit == "on") {
-                    llMessageLinked(LINK_SET, DOMENU_ACCESSCTRL, "", newAvatar);
+                    llMessageLinked(LINK_SET, DOMENU, "", newAvatar);
                 }
             }
         }
@@ -446,14 +445,17 @@ default{
                     llMessageLinked(LINK_SET, REZ_ADJUSTERS, "RezAdjuster", "");
                 }
             }
-            string paramSet1=buildParamSet1(path, page, prompt, [llList2String(paramSet1List, 3)], llList2String(paramSet1List, 4), llList2String(paramSet1List, 5), llList2String(paramSet1List, 6));
-            if(num==PREPARE_MENU_STEP3_READER) {
-                //we are ready to show the menu
-                llMessageLinked(LINK_SET, MENU_SHOW, paramSet1, id);
-            }
-            else if(num==DOPOSE_READER || DOBUTTON_READER) {
-                if(llGetSubString(path, -1, -1)!="-" || pluginMenuTriggered) {
-                    llMessageLinked(LINK_SET, PREPARE_MENU_STEP1, paramSet1, id);
+            if(llGetListLength(paramSet1List)) {
+                //only try to remenu if there are parameters to do so
+                string paramSet1=buildParamSet1(path, page, prompt, [llList2String(paramSet1List, 3)], llList2String(paramSet1List, 4), llList2String(paramSet1List, 5), llList2String(paramSet1List, 6));
+                if(num==PREPARE_MENU_STEP3_READER) {
+                    //we are ready to show the menu
+                    llMessageLinked(LINK_SET, MENU_SHOW, paramSet1, id);
+                }
+                else if(num==DOPOSE_READER || DOBUTTON_READER) {
+                    if(llGetSubString(path, -1, -1)!="-" || pluginMenuTriggered) {
+                        llMessageLinked(LINK_SET, PREPARE_MENU_STEP1, paramSet1, id);
+                    }
                 }
             }
         }

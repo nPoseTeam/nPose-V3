@@ -20,13 +20,6 @@ integer OptionUseDisplayNames;
 //
 
 list victims;
-//Leona:
-//renamed the global var "path" to "GlobalPath" to avoid confusion
-//TODO:
-//storing the path in global scope could lead to multiuser menu issues, because the path isn't global, but a per user var
-//this can't be fixed without changing the syntax of EXTERNAL_UTIL_REQUEST which have to contain the current path
-//using the path in global scope will work in most cases, but it isn't nice. I would say: Even if it works, it is wrong.
-string GlobalPath;
 list slots; //this slots list is not complete. it only contains seated AV key and seat numbers
 string defaultPoseNcName; //holds the name of the default notecard.
 string menuNC = ".Change Menu Order"; //holds the name of the menu order notecard to read.
@@ -433,6 +426,7 @@ string getNcName(string path) {
 string deleteNode(string path, integer start, integer end) {
     return llDumpList2String(llDeleteSubList(llParseStringKeepNulls(path, [":"], []), start, end), ":");
 }
+
 string buildParamSet1(string path, integer page, string prompt, list additionalButtons, string pluginName, string pluginLocalPath, string pluginStaticParams) {
     //We can't use colons in the promt, because they are used as a seperator in other messages
     //replace them with a UTF Symbol
@@ -457,9 +451,7 @@ default{
         key toucherKey = llDetectedKey(0);
         vector vDelta = llDetectedPos(0) - llGetPos();
         if(toucherKey == llGetOwner() || llVecMag(vDelta) < menuDistance) {
-            //fake a DIALOG_RESPONSE to get the initial Menu, TODO: Leona: perhaps we should do this in the Dialog script?
-            llMessageLinked(LINK_SET, DIALOG_RESPONSE, llDumpList2String(["0", "", toucherKey, ROOTMENU], "|"), scriptID);
-            //DoMenu(toucherKey, ROOTMENU, 0, "", []);
+            llMessageLinked(LINK_SET, DOMENU, llDumpList2String([ROOTMENU, 0, ""], ","), toucherKey);
         }
     }
     
@@ -467,27 +459,32 @@ default{
         integer index;
         integer n;
         integer stop;
-        if(str == "menuUP") {
-            //TODO: deprecated
-            llMessageLinked(LINK_SET, -802, "PATH=" + GlobalPath, id);
-        }
-        if((num == DIALOG_RESPONSE && id == scriptID )|| num==DOMENU) {
+// This will not work anymore
+//        if(str == "menuUP") {
+//            //TODO: deprecated
+//            llMessageLinked(LINK_SET, -802, "PATH=" + GlobalPath, id);
+//        }
+        if((num == DIALOG_RESPONSE && id == scriptID )|| num==DOMENU || num==DOMENU_ACCESSCTRL) {
             //the following block is to sort the paramters from the different message (to be backward compatible)
             integer page;
             string selection;
             key toucherid;
             string path;
             string prompt;
-            if(num==DOMENU) {
+            if(num==DOMENU || num==DOMENU_ACCESSCTRL) {
                 list params = llParseStringKeepNulls(str, [","], []);  //parse the message
                 //str: path[, page[, prompt]]
                 path=llList2String(params, 0);
-                //next line to be backward compatible
+                //next lines to be backward compatible with the "PATH=" syntax
                 if(!llSubStringIndex(path, "PATH=")) {
                      path = llGetSubString(path, 5, -1);
                 }
+                if(path=="") {
+                    path=ROOTMENU;
+                }
                 page=(integer)llList2String(params, 1);
                 prompt=llList2String(params, 2);
+                toucherid=id;
             }
             else {
                 list params = llParseStringKeepNulls(str, ["|"], []);  //parse the message
@@ -673,9 +670,9 @@ default{
                         else {
                             integer length=llGetListLength(slots);
                             integer index;
-                            while(index<length && ~slotNumber) {
+                            while(index<length && !~slotNumber) {
                                 if(prefix==" ") {
-                                    if(!llSubStringIndex(" " + llList2String(slots, index+1), pluginLocalPath+"§")) {
+                                    if(!llSubStringIndex(prefix + llList2String(slots, index+1), pluginLocalPath+"§")) {
                                         slotNumber=index/2;
                                     }
                                 }
@@ -695,7 +692,6 @@ default{
                             }
                         }
                         if(~slotNumber) {
-                            path=deleteNode(path, -1, -1);
                             if(pluginName==MY_PLUGIN_MENU_CHANGE_SEAT) {
                                 llMessageLinked(LINK_SET, SWAPTO, (string)(slotNumber+1), id);
                             }
@@ -708,6 +704,7 @@ default{
                                 }
                             }
                         }
+                        path=deleteNode(path, -1, -1);
                     }
                     if(remenu) {
                         llMessageLinked(LINK_SET, PLUGIN_ACTION_DONE, buildParamSet1(path, 0, "", [], "", "", ""), id);
@@ -798,10 +795,6 @@ default{
         else if(num == MENU_SHOW) {
             list parts=llParseStringKeepNulls(str, ["|"], []);
             DoMenu(id, llList2String(parts, 0), (integer)llList2String(parts, 1), llList2String(parts, 2), llParseString2List(llList2String(parts, 3), [","], []));
-        }
-        else if(num == DOMENU_ACCESSCTRL) {//external call to check permissions
-            //TODO: Deprecated?
-            DoMenu(id, ROOTMENU, 0, "", []);
         }
         else if(num == VICTIMS_LIST) {
             //TODO: Deprecated!

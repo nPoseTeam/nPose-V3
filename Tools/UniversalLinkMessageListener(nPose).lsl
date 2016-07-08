@@ -41,7 +41,7 @@ list REPLACE_NUM=[
 	34333, "SLOT_UPDATE (deprecated)", "from the core when PosDump is clicked to save new positions to memory of the in memory plugin.", 
 	34334, "MEMORY_USAGE", "Sends out a request to all script so they can report their memory stats.", 
 	35353, "SEAT_UPDATE", " core sends out to update everyone when the slots list has changed in any way.  changed seats or new pose.", 
-	35354, "SEAT_BUTTONS", "menu received seat buttons list", 
+	35354, "SEAT_BUTTONS (Deprecated)", "menu received seat buttons list", 
 	999999, "REQUEST_CHATCHANNEL", "slave sent request to core to get chatChannel", 
 	69696969, "myChannel", "adjuster hud is on this channel and communicates with the receiver/sender script in the adjuster prim.", 
 	
@@ -49,25 +49,20 @@ list REPLACE_NUM=[
 	-240, "OPTIONS", "a global option string", 
 	-241, "FACIALS_FLAG", "any string received by the slave with arb number -241 will be assigned to the permissions.  This should either be 'on' or 'off'.", 
 	-800, "DOMENU", "call to menu to pull menu dialog.", 
-	-801, "DOMENU_ACCESSCTRL", "all to menu to check authorizations currently from the core", 
+	-801, "DOMENU_ACCESSCTRL (Deprecated)", "Instead use DOMENU", 
 	-802, "arbNum (Deprecated)", "used to send out the current path to be used when a plugin menu returns to nPose menu.  This path can be used to bring back the same menu that called the plugin's menu in the beginning.", 
-	-803, "DOMENU_CORE", "to keep things in sync it is sometimes necessary to relay a DOMENU message through the core",
-
 	-806, "USER_PERMISSION_UPDATE", "Used by menu script. A plugin such as RLV can send a list used for button permissions.",
 	-810, "PLUGIN_MENU_REGISTER", "A method to inject menus created by a plugin into the nPose menu tree.",
-	-815, "MENU_SHOW", "The improved DOMENU call. Used internally. Use the DOMENU for calling from NCs. Use PLUGIN_MENU_SHOW for calling from a menu plugin.",
-
+	-815, "MENU_SHOW", "The final step in the creation of a menu.",
 	-820, "PREPARE_MENU_STEP1", "internal message for menu creation.",
 	-821, "PREPARE_MENU_STEP2", "internal message for menu creation.",
 	-822, "PREPARE_MENU_STEP3", "internal message for menu creation.",
-
 	-830, "PLUGIN_ACTION", "This message is used to inform a plugin to do its actions.",
 	-831, "PLUGIN_ACTION_DONE", "Plugin did its actions.",
 	-832, "PLUGIN_MENU", "This message is used to inform a plugin to generate its menu.",
 	-833, "PLUGIN_MENU_DONE", "Plugin menu is generated.",
-
 	-888, "EXTERNAL_UTIL_REQUEST", "menu functions such as ChangeSeats, Sync, Offsets, Admin menu.  See Utilities notecards for usage.", 
-	-900, "DIALOG", "dialog script call  to and from menu", 
+	-900, "DIALOG", "dialog script call to and from menu", 
 	-901, "DIALOG_RESPONSE", "dialog script call to menu to deliver user clicked response", 
 	-902, "DIALOG_TIMEOUT", "dialog call to menu when dialog has timed out with no response from user", 
 	-999, "HUD_REQUEST", "rez or detach admin hud",
