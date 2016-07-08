@@ -13,57 +13,55 @@ integer DIALOG = -900;
 integer DIALOG_RESPONSE = -901;
 integer DIALOG_TIMEOUT = -902;
 
-integer pagesize = 12;
-integer memusage = 34334;
+integer PAGE_SIZE = 12;
+integer MEMORY_USAGE = 34334;
 string MORE = "More";
 //string BACKBTN = "^";
 //string SWAPBTN = "swap";
 //string SYNCBTN = "sync";
 string BLANK = " ";
-integer timeout = 60;
-integer repeat = 5;//how often the timer will go off, in seconds
-integer channel;
-integer listener = -1;
+integer TIMEOUT = 60;
+integer REPEAT = 5;//how often the timer will go off, in seconds
+integer Channel;
+integer Listener = -1;
 
-list menus;//8-strided list in form [recipient, dialogid, starttime, prompt, list buttons, page buttons, currentpage, path]
+list Menus;//8-strided list in form [recipient, dialogid, starttime, prompt, list buttons, page buttons, currentpage, path]
 //where "list buttons" means the big list of choices presented to the user
 //and "page buttons" means utility buttons that will appear on every page, such as one saying "go up one level"
 //and "currentpage" is an integer meaning which page of the menu the user is currently viewing
 
-integer stridelength = 8;
+integer STRIDE_LENGTH = 8;
 
-list avs;//fill this on start and update on changed_link.  leave dialogs open until avs stand
+list Avs;//fill this on start and update on changed_link.  leave dialogs open until avs stand
 
-string Utf8Trim(string s, integer iLen)
-// This trims a string to iLen bytes interpreted as utf8 (not utf16).
-// The string returned will be utf16, but when interpreted as utf8,
-// it will be iLen bytes (not characters) or shorter.  Also, because
-// of the use of base64, it's best if iLen is a multiple of 3.  If
-// it's not, it will be rounded down to a multiple of 3 if trimming
-// is needed.  If trimming isn't needed, it will be unchanged regardless
-// of original length.
-{
+string Utf8Trim(string s, integer iLen) {
+    // This trims a string to iLen bytes interpreted as utf8 (not utf16).
+    // The string returned will be utf16, but when interpreted as utf8,
+    // it will be iLen bytes (not characters) or shorter.  Also, because
+    // of the use of base64, it's best if iLen is a multiple of 3.  If
+    // it's not, it will be rounded down to a multiple of 3 if trimming
+    // is needed.  If trimming isn't needed, it will be unchanged regardless
+    // of original length.
     string s2 = llStringToBase64(s);
     iLen = (iLen / 3) * 4; // This winds up being a multiple of 4, rounded down.
-    if (llStringLength(s2) > iLen) return llBase64ToString(llGetSubString(s2, 0, --iLen));
+    if (llStringLength(s2) > iLen) {
+        return llBase64ToString(llGetSubString(s2, 0, --iLen));
+    }
     return s;
 }
 
-list SeatedAvs()
-{//like AvCount() but returns a list of seated avs, starting with lowest link number and moving up from there
+list SeatedAvs() {
+    //like AvCount() but returns a list of seated avs, starting with lowest link number and moving up from there
     list avs;
     integer linkcount = llGetNumberOfPrims();
     integer n;
-    for (n = linkcount; n >= 0; n--)
-    {
+    for (n = linkcount; n >= 0; n--) {
         key id = llGetLinkKey(n);
-        if (llGetAgentSize(id) != ZERO_VECTOR)
-        {
+        if (llGetAgentSize(id) != ZERO_VECTOR) {
             //it's a real av. add to list
             avs = [id] + avs;//adding it this way prevents having to reverse the av list later
         }
-        else
-        {
+        else {
             //we've gotten down to a regular prim.  Break loop and return list
             return avs;
         }
@@ -72,18 +70,15 @@ list SeatedAvs()
     return [];
 }
 
-integer RandomUniqueChannel()
-{
+integer RandomUniqueChannel() {
     integer out = llRound(llFrand(10000000)) + 100000;
-    if (out == channel)
-    {
+    if (out == Channel) {
         out = RandomUniqueChannel();
     }
     return out;
 }
 
-Dialog(key recipient, string prompt, list menuitems, list utilitybuttons, integer page, key id, string path)
-{
+Dialog(key recipient, string prompt, list menuitems, list utilitybuttons, integer page, key id, string path) {
     prompt = Utf8Trim(prompt, 483);
     string thisprompt = prompt + "(Timeout in 60 seconds.)\n";
     list buttons;
@@ -91,60 +86,55 @@ Dialog(key recipient, string prompt, list menuitems, list utilitybuttons, intege
     integer numitems = llGetListLength(menuitems + utilitybuttons);
     integer start;
     integer mypagesize;
-    if (llList2CSV(utilitybuttons) != ""){
-        mypagesize = pagesize - llGetListLength(utilitybuttons);
-    }else{
-        mypagesize = pagesize;
+    if (llList2CSV(utilitybuttons) != "") {
+        mypagesize = PAGE_SIZE - llGetListLength(utilitybuttons);
     }
-        
+    else{
+        mypagesize = PAGE_SIZE;
+    }
+
     //slice the menuitems by page
-    if (numitems > pagesize)
-    {
+    if (numitems > PAGE_SIZE) {
         mypagesize--;//we'll use one slot for the MORE button, so shrink the page accordingly
         start = page * mypagesize;
         integer end = start + mypagesize - 1;
         //multi page menu
         currentitems = llList2List(menuitems, start, end);
     }
-    else
-    {
+    else {
         start = 0;
         currentitems = menuitems;
     }
     
     integer stop = llGetListLength(currentitems);
     integer n;
-    for (n = 0; n < stop; n++)
-    {
+    for (n = 0; n < stop; n++) {
         string name = llList2String(menuitems, start + n);
         buttons += [name];
     }
     buttons = SanitizeButtons(buttons);
     utilitybuttons = SanitizeButtons(utilitybuttons);
-    
-    integer menusIndex = llListFindList(menus, [recipient]);
+
+    integer menusIndex = llListFindList(Menus, [recipient]);
     if(menusIndex >= 0) {
-        menus = RemoveMenuStride(menus, menusIndex);
+        Menus = RemoveMenuStride(Menus, menusIndex);
     }
-    if(!~listener) {
-        listener = llListen(channel, "", NULL_KEY, "");
-        llSetTimerEvent(repeat);
+    if(!~Listener) {
+        Listener = llListen(Channel, "", NULL_KEY, "");
+        llSetTimerEvent(REPEAT);
     }
-    if (numitems > pagesize)
-    {
-        llDialog(recipient, thisprompt, PrettyButtons(buttons, utilitybuttons + [MORE]), channel);      
+    if (numitems > PAGE_SIZE) {
+        llDialog(recipient, thisprompt, PrettyButtons(buttons, utilitybuttons + [MORE]), Channel);
     }
-    else
-    {
-        llDialog(recipient, thisprompt, PrettyButtons(buttons, utilitybuttons), channel);
-    }    
+    else {
+        llDialog(recipient, thisprompt, PrettyButtons(buttons, utilitybuttons), Channel);
+    }
     integer ts = -1;
-    if (llListFindList(avs, [recipient]) == -1)
-    {
+    if (llListFindList(Avs, [recipient]) == -1) {
         ts = llGetUnixTime();
     }
-    
-    menus += [recipient, id, ts, prompt, llDumpList2String(menuitems, "|"), llDumpList2String(utilitybuttons, "|"), page, path];
+
+    Menus += [recipient, id, ts, prompt, llDumpList2String(menuitems, "|"), llDumpList2String(utilitybuttons, "|"), page, path];
 }
 
 list SanitizeButtons(list in) {
@@ -163,100 +153,87 @@ list SanitizeButtons(list in) {
     return in;
 }
 
-list PrettyButtons(list options, list utilitybuttons)
-{//returns a list formatted to that "options" will start in the top left of a dialog, and "utilitybuttons" will start in the bottom right
+list PrettyButtons(list options, list utilitybuttons) {
+    //returns a list formatted to that "options" will start in the top left of a dialog, and "utilitybuttons" will start in the bottom right
     list spacers;
     list combined = options + utilitybuttons;
-    while (llGetListLength(combined) % 3 != 0 && llGetListLength(combined) < 12)    
-    {
+    while (llGetListLength(combined) % 3 != 0 && llGetListLength(combined) < 12) {
         spacers += [BLANK];
         combined = options + spacers + utilitybuttons;
-    }    
+    }
     
     list out = llList2List(combined, 9, 11);
     out += llList2List(combined, 6, 8);
-    out += llList2List(combined, 3, 5);    
-    out += llList2List(combined, 0, 2);    
-    return out;    
+    out += llList2List(combined, 3, 5);
+    out += llList2List(combined, 0, 2);
+    return out;
 }
 
 
-list RemoveMenuStride(list menu, integer index)
-{
+list RemoveMenuStride(list menu, integer index) {
     //tell this function the menu you wish to remove, identified by list index
     //it will remove the menu's entry from the list, and return the new list
     //should be called in the listen event, and on menu timeout    
-    return llDeleteSubList(menu, index, index + stridelength - 1);
+    return llDeleteSubList(menu, index, index + STRIDE_LENGTH - 1);
 }
 
-CleanList()
-{
+CleanList() {
     debug("cleaning list");
-    //loop through menus, check their start times against current time, remove any that are more than <timeout> seconds old
+    //loop through Menus, check their start times against current time, remove any that are more than <timeout> seconds old
     //start at end of list and loop down so that indexes don't get messed up as we remove items
-    integer length = llGetListLength(menus);
+    integer length = llGetListLength(Menus);
     integer n;
-    for (n = length - stridelength; n >= 0; n -= stridelength)
-    {
-        integer starttime = llList2Integer(menus, n + 2);
+    for (n = length - STRIDE_LENGTH; n >= 0; n -= STRIDE_LENGTH) {
+        integer starttime = llList2Integer(Menus, n + 2);
         debug("starttime: " + (string)starttime);
-        if (starttime == -1)
-        {          
+        if (starttime == -1) {  
             //menu was for seated av.  close if they're not seated anymore
-            key av = (key)llList2String(menus, n);
-            if (llListFindList(avs, [av]) == -1)
-            {
+            key av = (key)llList2String(Menus, n);
+            if (llListFindList(Avs, [av]) == -1) {
                 debug("mainmenu stood");
-                menus = RemoveMenuStride(menus, n);
+                Menus = RemoveMenuStride(Menus, n);
             }
         }
-        else
-        {//was a plain old non-seated menu, most likely for owner.  Do timeouts normally
+        else {
+            //was a plain old non-seated menu, most likely for owner.  Do timeouts normally
             integer age = llGetUnixTime() - starttime;
-            if (age > timeout)
-            {
-                debug("mainmenu timeout");                
-                key id = llList2Key(menus, n + 1);
+            if (age > TIMEOUT) {
+                debug("mainmenu timeout");
+                key id = llList2Key(Menus, n + 1);
                 llMessageLinked(LINK_SET, DIALOG_TIMEOUT, "", id);
-                menus = RemoveMenuStride(menus, n);
-            }            
+                Menus = RemoveMenuStride(Menus, n);
+            }
         }
     }
 }
 
-debug(string str)
-{
+debug(string str) {
     //llOwnerSay(llGetScriptName() + ": " + str);
 }
 
-default
-{    
-    on_rez(integer param)
-    {
+default {
+    on_rez(integer param) {
         llResetScript();
     }
 
-    state_entry()
-    {
-        channel = RandomUniqueChannel();
-        avs = SeatedAvs();
+    state_entry() {
+        Channel = RandomUniqueChannel();
+        Avs = SeatedAvs();
     }
     
-    changed(integer change)
-    {
-        if (change & CHANGED_LINK)
-        {
-            avs = SeatedAvs();
+    changed(integer change) {
+        if (change & CHANGED_LINK) {
+            Avs = SeatedAvs();
             //loop through dialogs and close any for avs that aren't seated.  except for obj owner
         }
     }
 
-    link_message(integer sender, integer num, string str, key id)
-    {
-        if (num == memusage) {
+    link_message(integer sender, integer num, string str, key id) {
+        if (num == MEMORY_USAGE) {
             llSay(0,"Memory Used by " + llGetScriptName() + ": " + (string)llGetUsedMemory() + " of " + (string)llGetMemoryLimit() + ", Leaving " + (string)llGetFreeMemory() + " memory free.");
-        } else if (num == DIALOG)
-        {//give a dialog with the options on the button labels
+        }
+        else if (num == DIALOG) {
+            //give a dialog with the options on the button labels
             //str will be pipe-delimited list with rcpt|prompt|page|backtick-delimited-list-buttons|backtick-delimited-utility-buttons
             debug(str);
             list params = llParseStringKeepNulls(str, ["|"], []);
@@ -265,57 +242,49 @@ default
             integer page = (integer)llList2String(params, 2);
             string path = llList2String(params, 5);
             list lbuttons = llParseStringKeepNulls(llList2String(params, 3), ["`"], []);
-            list ubuttons = llParseStringKeepNulls(llList2String(params, 4), ["`"], []);            
+            list ubuttons = llParseStringKeepNulls(llList2String(params, 4), ["`"], []);
             Dialog(rcpt, prompt, lbuttons, ubuttons, page, id, path);
         }
     }
-    
-    listen(integer channel, string name, key id, string message)
-    {
-        integer menuindex = llListFindList(menus, [id]);
-        if (~menuindex)
-        {
-            key menuid = llList2Key(menus, menuindex + 1);
-            string prompt = llList2String(menus, menuindex + 3);            
-            list items = llParseStringKeepNulls(llList2String(menus, menuindex + 4), ["|"], []);
-            list ubuttons = llParseStringKeepNulls(llList2String(menus, menuindex + 5), ["|"], []);
-            integer page = llList2Integer(menus, menuindex + 6);
-            string path = llList2String(menus, menuindex + 7);
-            menus = RemoveMenuStride(menus, menuindex);              
-            if (message == MORE)
-            {
+
+    listen(integer channel, string name, key id, string message) {
+        integer menuindex = llListFindList(Menus, [id]);
+        if (~menuindex) {
+            key menuid = llList2Key(Menus, menuindex + 1);
+            string prompt = llList2String(Menus, menuindex + 3);
+            list items = llParseStringKeepNulls(llList2String(Menus, menuindex + 4), ["|"], []);
+            list ubuttons = llParseStringKeepNulls(llList2String(Menus, menuindex + 5), ["|"], []);
+            integer page = llList2Integer(Menus, menuindex + 6);
+            string path = llList2String(Menus, menuindex + 7);
+            Menus = RemoveMenuStride(Menus, menuindex);
+            if (message == MORE) {
                 debug((string)page);
                 //increase the page num and give new menu
                 page++;
-                integer thispagesize = pagesize - llGetListLength(ubuttons) - 1;
-                if (page * thispagesize > llGetListLength(items))
-                {
+                integer thispagesize = PAGE_SIZE - llGetListLength(ubuttons) - 1;
+                if (page * thispagesize > llGetListLength(items)) {
                     page = 0;
                 }
                 Dialog(id, prompt, items, ubuttons, page, menuid, path);
             }
-            else if (message == BLANK)
-            {
+            else if (message == BLANK) {
                 //give the same menu back
                 Dialog(id, prompt, items, ubuttons, page, menuid, path);
-            }            
-            else
-            {
+            }
+            else {
                 llMessageLinked(LINK_SET, DIALOG_RESPONSE, (string)page + "|" + message + "|" + (string)id + "|" + path, menuid);
-            }       
+            }
         }
     }
     
-    timer()
-    {
-        CleanList();    
+    timer() {
+        CleanList();
         
         //if list is empty after that, then stop timer
         
-        if (!llGetListLength(menus))
-        {
-            llListenRemove(listener);
-            listener = -1;
+        if (!llGetListLength(Menus)) {
+            llListenRemove(Listener);
+            Listener = -1;
             llSetTimerEvent(0.0);
         }
     }
