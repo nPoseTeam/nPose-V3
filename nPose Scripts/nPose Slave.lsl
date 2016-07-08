@@ -26,6 +26,10 @@ integer nextAvatarOffset;
 integer avatarOffsetsLength = 20;
 list avatarOffsets;
 integer stride = 8;
+string NC_READER_CONTENT_SEPARATOR="%&§";
+string ncName;
+#define DOPOSE_READER 222
+#define OPTIONS -240
 
 integer SEAT_UPDATE = 35353;
 integer MENU_USAGE = 34334;
@@ -46,6 +50,8 @@ integer DUMP = 204;
 integer STOPADJUST = 205;
 integer FACIALS_FLAG = -241;
 string facialEnable = "on";
+string quietadjusters = "off";
+string adjustrefroot = "off";
 
 
 
@@ -132,8 +138,18 @@ SetAvatarOffset(key avatar, vector offset) {
 RezNextAdjuster(integer slotnum) {
     if(llGetInventoryType("Adjuster") == INVENTORY_OBJECT) {
         integer index = slotnum * stride;
-        vector pos = llGetRootPosition() + llList2Vector(slots, index + 1) * llGetRootRotation();
-        rotation rot = llList2Rot(slots, index + 2) * llGetRootRotation();
+        vector posToUse;
+        rotation rotToUse;
+        if (adjustrefroot == "off") {
+            posToUse = llGetPos();
+            rotToUse = llGetRot();
+        }
+        else {
+            posToUse = llGetRootPosition();
+            rotToUse = llGetRootRotation();
+        }
+        vector pos = posToUse + llList2Vector(slots, index + 1) * rotToUse;
+        rotation rot = llList2Rot(slots, index + 2) * rotToUse;
 
         llRezObject("Adjuster", pos, ZERO_VECTOR, rot, chatchannel);
     }
@@ -228,9 +244,6 @@ default {
             SetAvatarOffset(id, (vector)str);
             llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(slots, "^"), NULL_KEY);
         }
-        else if(num == FACIALS_FLAG) {
-            facialEnable = str;
-        }
         else if(num == SEAT_UPDATE){
             list seatsavailable = llParseStringKeepNulls(str, ["^"], []);
             integer stop = llGetListLength(seatsavailable)/8;
@@ -308,20 +321,61 @@ default {
             llSay(chatchannel, "adjuster_die"); 
             adjusters = [];
         }
+        else if(num == DOPOSE_READER) {
+            list allData=llParseStringKeepNulls(str, [NC_READER_CONTENT_SEPARATOR], []);
+            ncName = llList2String(allData, 0);
+        }
+        else if(num == OPTIONS) {
+            list optionsToSet = llParseStringKeepNulls(str, ["~"], []);
+            integer stop = llGetListLength(optionsToSet);
+            integer n;
+            for(; n<stop; ++n) {
+                list optionsItems = llParseString2List(llList2String(optionsToSet, n), ["="], []);
+                string optionItem = llToLower(llStringTrim(llList2String(optionsItems, 0), STRING_TRIM));
+                string optionSetting = llToLower(llStringTrim(llList2String(optionsItems, 1), STRING_TRIM));
+                integer optionSettingFlag = optionSetting=="on" || (integer)optionSetting;
+                if(optionItem == "quietadjusters") {
+                    quietadjusters = optionSetting;
+                }
+                if(optionItem == "adjustrefroot") {
+                    adjustrefroot = optionSetting;
+                }
+                else if(optionItem == "facialexp") {
+                    facialEnable = optionSetting;
+                }
+            }
+        }
         else if(num == ADJUSTER_REPORT) {    //heard from an adjuster so a new position must be used, upate slots and chat out new position.
             integer index = llListFindList(adjusters, [id]);
             if(index != -1) {
                 string primName = llGetObjectName();
                 llSetObjectName(llGetLinkName(1));
                 list params = llParseString2List(str, ["|"], []);
-                vector newpos = (vector)llList2String(params, 0) - llGetRootPosition();
-                newpos = newpos / llGetRootRotation();
+                vector posToUse;
+                rotation rotToUse;
+                if (adjustrefroot == "off") {
+                    posToUse = llGetPos();
+                    rotToUse = llGetRot();
+                }
+                else {
+                    posToUse = llGetRootPosition();
+                    rotToUse = llGetRootRotation();
+                }
+                vector newpos = (vector)llList2String(params, 0) - posToUse;
+                newpos = newpos / rotToUse;
                 integer slotsindex = index * stride;
-                rotation newrot = (rotation)llList2String(params, 1) / llGetRootRotation();
+                rotation newrot = (rotation)llList2String(params, 1) / rotToUse;
                 slots = llListReplaceList(slots, [newpos, newrot], slotsindex + 1, slotsindex + 2);
-                llRegionSayTo(llGetOwner(), 0, "SCHMOE and SCHMO lines will be reported as ANIM.  Be sure to replace if needed.");
-                llRegionSayTo(llGetOwner(), 0, "\nANIM|" + llList2String(slots, slotsindex) + "|" + (string)newpos + "|" +
-                    (string)(llRot2Euler(newrot) * RAD_TO_DEG) + "|" + llList2String(slots, slotsindex + 3));
+                if (quietadjusters == "off") {
+                    list temp=llParseStringKeepNulls(llList2String(slots, slotsindex+7), ["§"], []);
+                    string seatName;
+                    if(llList2String(temp, 0)) {
+                        seatName = llList2String(temp, 0);
+                    }
+                    llRegionSayTo(llGetOwner(), 0, "SCHMOE and SCHMO lines will be reported as ANIM.  Be sure to replace if needed.");
+                    llRegionSayTo(llGetOwner(), 0, "\nANIM|" + llList2String(slots, slotsindex) + "|" + (string)newpos + "|" +
+                        (string)(llRot2Euler(newrot) * RAD_TO_DEG) + "|" + llList2String(slots, slotsindex + 3) + "|" + seatName);
+                }
                 llSetObjectName(primName);
                 llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(slots, "^"), NULL_KEY);
                 //gotta send a message back to the core other than with SEAT_UPDATE so the core knows it came from here and updates slots list there.
@@ -333,10 +387,16 @@ default {
             string primName = llGetObjectName();
             llSetObjectName(llGetLinkName(1));
             llRegionSayTo(llGetOwner(), 0, "SCHMOE and SCHMO lines will be reported as ANIM.  Be sure to replace if needed.");
+            llRegionSayTo(llGetOwner(), 0, "\n"+ncName);
             for(n = 0; n < llGetListLength(slots)/8; ++n) {
+                list temp=llParseStringKeepNulls(llList2String(slots, n*8+7), ["§"], []);
+                string seatName;
+                if(llList2String(temp, 0)) {
+                    seatName = llList2String(temp, 0);
+                }
                 list slice = llList2List(slots, n*stride, n*stride + 3);
                 slice = llListReplaceList(slice, [RAD_TO_DEG * llRot2Euler(llList2Rot(slice, 2))], 2, 2);
-                string sendSTR = "ANIM|" + llDumpList2String(slice, "|");
+                string sendSTR = "ANIM|" + llDumpList2String(slice, "|") + "|" + seatName;
                 llRegionSayTo(llGetOwner(), 0, "\n"+sendSTR);
             }
             llRegionSay(chatchannel, "posdump");

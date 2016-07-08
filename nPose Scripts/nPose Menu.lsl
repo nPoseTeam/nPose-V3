@@ -71,7 +71,6 @@ key scriptID;
 #define SEAT_UPDATE 35353
 #define VICTIMS_LIST -238
 #define OPTIONS_NUM -240
-#define FACIALS_FLAG -241
 
 //dialog buttons
 #define BACKBTN "^"
@@ -781,11 +780,7 @@ default{
                 else if(optionItem == "menudist") {menuDistance = (float)optionSetting;}
                 else if(optionItem == "facialexp") {
                     Facials = optionSetting;
-                    llMessageLinked(LINK_SET, FACIALS_FLAG, Facials, NULL_KEY);
-                }
-                else if(optionItem == "rlvbaser") {
-                    RLVenabled = optionSetting;
-                    llMessageLinked(LINK_SET, -1812221819, "RLV=" + RLVenabled, NULL_KEY);
+//                    llMessageLinked(LINK_SET, FACIALS_FLAG, Facials, NULL_KEY);
                 }
                 else if(optionItem == "usedisplaynames") {
                     OptionUseDisplayNames = optionSettingFlag;
