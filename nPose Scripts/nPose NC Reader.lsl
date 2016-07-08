@@ -29,19 +29,19 @@ integer MEM_USAGE=34334;
 
 integer PREPARE_MENU_STEP3=-822;
 
-list cacheNcNames;
-list cacheContent;
+list CacheNcNames;
+list CacheContent;
 //the cache lists contains only fully read (valid) content
 
-list ncReadStackNcNames;
-list ncReadStack;
+list NcReadStackNcNames;
+list NcReadStack;
 //this is the working list, it contains partly read content
 integer NC_READ_STACK_LINE_ID=0;
 integer NC_READ_STACK_CURRENT_LINE=1;
 integer NC_READ_STACK_CONTENT=2;
 integer NC_READ_STACK_STRIDE=3;
 
-list responseStack;
+list ResponseStack;
 //this is used to ensure that the requests are servered in the right order
 integer RESPONSE_STACK_NC_NAME=0;
 integer RESPONSE_STACK_MENU_NAME=1;
@@ -50,14 +50,14 @@ integer RESPONSE_STACK_AVATAR_KEY=3;
 integer RESPONSE_STACK_TYPE=4;
 integer RESPONSE_STACK_STRIDE=5;
 
-integer cacheMiss; //only used for statistical data
-integer requests; //only used for statistical data
+integer CacheMiss; //only used for statistical data
+integer Requests; //only used for statistical data
 
 checkMemory() {
 	//if memory is low, discard the oldest cache entry
 	while(llGetUsedMemory()>MEMORY_TO_BE_USED) {
-		cacheNcNames=llDeleteSubList(cacheNcNames, 0, 0);
-		cacheContent=llDeleteSubList(cacheContent, 0, 0);
+		CacheNcNames=llDeleteSubList(CacheNcNames, 0, 0);
+		CacheContent=llDeleteSubList(CacheContent, 0, 0);
 	}
 }
 
@@ -74,8 +74,8 @@ fetchNcContent(string str, key id, integer type) {
 	string param1=llList2String(parts, 1);
 	string param2=llList2String(parts, 2);
 	if(llGetInventoryType(ncName) == INVENTORY_NOTECARD) {
-		requests++;
-		responseStack+=[ncName, param1, param2, id, type];
+		Requests++;
+		ResponseStack+=[ncName, param1, param2, id, type];
 		processResponseStack();
 		checkMemory();
 	}
@@ -86,45 +86,45 @@ fetchNcContent(string str, key id, integer type) {
 
 processResponseStack() {
 	do{
-		if(!llGetListLength(responseStack)) {
+		if(!llGetListLength(ResponseStack)) {
 			//there are no pending Requests: nothing to do
 			return;
 		}
-		string ncName=llList2String(responseStack, RESPONSE_STACK_NC_NAME);
-		if(~llListFindList(ncReadStackNcNames, [ncName])) {
+		string ncName=llList2String(ResponseStack, RESPONSE_STACK_NC_NAME);
+		if(~llListFindList(NcReadStackNcNames, [ncName])) {
 			// the reader is running, we cant do anything
 			return;
 		}
-		integer index=llListFindList(cacheNcNames, [ncName]);
+		integer index=llListFindList(CacheNcNames, [ncName]);
 		if(~index) {
 			//The data is in the cache (and therefore valid and fully read) .. send the response
 			//data Format:
 			//str (separated by the NC_READER_CONTENT_SEPARATOR: ncName, userDefinedData1, userDefinedData1, content
 			llMessageLinked(
 				LINK_SET,
-				llList2Integer(responseStack, RESPONSE_STACK_TYPE),
-				llDumpList2String(llList2List(responseStack, 0, 2), NC_READER_CONTENT_SEPARATOR) + llList2String(cacheContent, index),
-				llList2Key(responseStack, RESPONSE_STACK_AVATAR_KEY)
+				llList2Integer(ResponseStack, RESPONSE_STACK_TYPE),
+				llDumpList2String(llList2List(ResponseStack, 0, 2), NC_READER_CONTENT_SEPARATOR) + llList2String(CacheContent, index),
+				llList2Key(ResponseStack, RESPONSE_STACK_AVATAR_KEY)
 			);
 			//we serverd the response, so we can delete it from the stack and check if there is more to do
-			responseStack=llDeleteSubList(responseStack, 0, RESPONSE_STACK_STRIDE - 1);
+			ResponseStack=llDeleteSubList(ResponseStack, 0, RESPONSE_STACK_STRIDE - 1);
 			//sort it to the end to keep it for a longer time
-			cacheNcNames=llDeleteSubList(cacheNcNames, index, index) + llList2List(cacheNcNames, index, index);
-			cacheContent=llDeleteSubList(cacheContent, index, index) + llList2List(cacheContent, index, index);
+			CacheNcNames=llDeleteSubList(CacheNcNames, index, index) + llList2List(CacheNcNames, index, index);
+			CacheContent=llDeleteSubList(CacheContent, index, index) + llList2List(CacheContent, index, index);
 		}
 		else {
 			//we need to start the reader
 			//sanity: check the presense of the nc once more. It should be almost impossible that the NC is deleted meanwhile, because
-			//if it is deleted, all the lists (esp. the responseStack) is also deleted in the changed event and we should not be here
+			//if it is deleted, all the lists (esp. the ResponseStack) is also deleted in the changed event and we should not be here
 			if(llGetInventoryType(ncName) == INVENTORY_NOTECARD) {
-				cacheMiss++;
-				ncReadStackNcNames+=[ncName];
-				ncReadStack+=[llGetNotecardLine(ncName, 0), 0, ""];
+				CacheMiss++;
+				NcReadStackNcNames+=[ncName];
+				NcReadStack+=[llGetNotecardLine(ncName, 0), 0, ""];
 				return;
 			}
 			else {
 				//we should remove this entry from the response stack, even if we expect all the lists to be deleted in the expected changed event
-				responseStack=llDeleteSubList(responseStack, 0, RESPONSE_STACK_STRIDE - 1);
+				ResponseStack=llDeleteSubList(ResponseStack, 0, RESPONSE_STACK_STRIDE - 1);
 			}
 		}
 	}
@@ -155,42 +155,42 @@ default {
 		}
 		else if (num == MEM_USAGE){
 			float hitRate;
-			if(requests) {
-				hitRate=100.0 - (float)cacheMiss / (float)requests * 100.0;
+			if(Requests) {
+				hitRate=100.0 - (float)CacheMiss / (float)Requests * 100.0;
 			}
 			llSay(0,
 				"Memory Used by " + llGetScriptName() + ": " + (string)llGetUsedMemory() + 
 				" of " + (string)llGetMemoryLimit() + 
 				", Leaving " + (string)llGetFreeMemory() + " memory free.\nWe served " +
-				(string)requests + " requests with a cache hit rate of " + 
+				(string)Requests + " requests with a cache hit rate of " + 
 				(string)llRound(hitRate) + "%."
 			);
 		}
 	}
 	dataserver(key queryid, string data) {
-		integer ncReadStackIndex=llListFindList(ncReadStack, [queryid]);
+		integer ncReadStackIndex=llListFindList(NcReadStack, [queryid]);
 		if(~ncReadStackIndex) {
 			//its for us
-			string ncName=llList2String(ncReadStackNcNames, ncReadStackIndex);
+			string ncName=llList2String(NcReadStackNcNames, ncReadStackIndex);
 			//do a sanity check: If the NC is deleted from the prims inventory while we read it, it may/will happen that the
 			//dataserver event from the last line reading will trigger BEFORE the changed event. This will lead to a
 			//shout on debug channel
 			if(llGetInventoryType(ncName) != INVENTORY_NOTECARD) {
 				//there should be a changed event inside the eventqueue, but nevertheless we clean up the stuff
-				cacheNcNames=[];
-				cacheContent=[];
-				ncReadStackNcNames=[];
-				ncReadStack=[];
-				responseStack=[];
+				CacheNcNames=[];
+				CacheContent=[];
+				NcReadStackNcNames=[];
+				NcReadStack=[];
+				ResponseStack=[];
 				return;
 			}
 			checkMemory();
 			if(data==EOF) {
 				//move the stuff to the cache and process the response stack
-				cacheNcNames+=ncName;
-				cacheContent+=llList2String(ncReadStack, ncReadStackIndex + NC_READ_STACK_CONTENT);
-				ncReadStackNcNames=llDeleteSubList(ncReadStackNcNames, ncReadStackIndex, ncReadStackIndex);
-				ncReadStack=llDeleteSubList(ncReadStack, ncReadStackIndex, ncReadStackIndex + NC_READ_STACK_STRIDE - 1);
+				CacheNcNames+=ncName;
+				CacheContent+=llList2String(NcReadStack, ncReadStackIndex + NC_READ_STACK_CONTENT);
+				NcReadStackNcNames=llDeleteSubList(NcReadStackNcNames, ncReadStackIndex, ncReadStackIndex);
+				NcReadStack=llDeleteSubList(NcReadStack, ncReadStackIndex, ncReadStackIndex + NC_READ_STACK_STRIDE - 1);
 				processResponseStack();
 			}
 			else {
@@ -202,22 +202,22 @@ default {
 				if(data) {
 					data=NC_READER_CONTENT_SEPARATOR + data;
 				}
-				integer nextLine=llList2Integer(ncReadStack, ncReadStackIndex + NC_READ_STACK_CURRENT_LINE) + 1;
-				ncReadStack=llListReplaceList(ncReadStack, [
+				integer nextLine=llList2Integer(NcReadStack, ncReadStackIndex + NC_READ_STACK_CURRENT_LINE) + 1;
+				NcReadStack=llListReplaceList(NcReadStack, [
 					llGetNotecardLine(ncName, nextLine),
 					nextLine,
-					llList2String(ncReadStack, ncReadStackIndex + NC_READ_STACK_CONTENT) + data
+					llList2String(NcReadStack, ncReadStackIndex + NC_READ_STACK_CONTENT) + data
 				], ncReadStackIndex, ncReadStackIndex + NC_READ_STACK_STRIDE -1);
 			}
 		} 
 	}
 	changed(integer change) {
 		if(change & CHANGED_INVENTORY) {
-			cacheNcNames=[];
-			cacheContent=[];
-			ncReadStackNcNames=[];
-			ncReadStack=[];
-			responseStack=[];
+			CacheNcNames=[];
+			CacheContent=[];
+			NcReadStackNcNames=[];
+			NcReadStack=[];
+			ResponseStack=[];
 		}
 	}
 }
