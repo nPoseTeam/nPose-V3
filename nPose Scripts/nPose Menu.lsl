@@ -9,7 +9,7 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 */
 
 //default options settings.  Change these to suit personal preferences
-string Permissions = "PUBLIC"; //default permit option Pubic, Locked, Group
+string Permissions = "public"; //default permit option Pubic, Locked, Group
 integer Cur2default;  //default action to revert back to default pose when last sitter has stood
 integer Sit2GetMenu;  //required to be seated to get a menu
 float MenuDistance = 30.0;
@@ -23,7 +23,6 @@ string MenuNc = ".Change Menu Order"; //holds the name of the menu order notecar
 list Menus;
 list MenuPermPath;
 list MenuPermPerms;
-float CurrentOffsetDelta = 0.2;
 
 key ScriptId;
 
@@ -95,21 +94,6 @@ list pluginPermissionList;
 #define MY_PLUGIN_MENU "npose_menu"
 #define MY_PLUGIN_MENU_UNSIT "npose_unsit"
 #define MY_PLUGIN_MENU_CHANGE_SEAT "npose_changeseat"
-#define MY_PLUGIN_MENU_OFFSET "npose_offset"
-
-#define BUTTON_OFFSET_FWD "forward"
-#define BUTTON_OFFSET_BKW "backward"
-#define BUTTON_OFFSET_LEFT "left"
-#define BUTTON_OFFSET_RIGHT "right"
-#define BUTTON_OFFSET_UP "up"
-#define BUTTON_OFFSET_DOWN "down"
-#define BUTTON_OFFSET_ZERO "reset"
-list OFFSET_BUTTONS = [
-    BUTTON_OFFSET_FWD, BUTTON_OFFSET_LEFT, BUTTON_OFFSET_UP,
-    BUTTON_OFFSET_BKW, BUTTON_OFFSET_RIGHT, BUTTON_OFFSET_DOWN,
-    "0.2", "0.1", "0.05",
-    "0.01", BUTTON_OFFSET_ZERO
-];
 
 //store plugins base paths, register myself as plugin for the rootmenu
 list PluginBasePathList=[ROOTMENU];
@@ -137,7 +121,7 @@ DoMenu(key rcpt, string path, integer page, string prompt, list additionalButton
     //check menu permissions
     if(
         //the whole if statement only exists for backward compability, because all this (and more) could be done via button permissions on root level
-        (rcpt == llGetOwner() || Permissions == "GROUP" && llSameGroup(rcpt) || Permissions == "PUBLIC") &&
+        (rcpt == llGetOwner() || Permissions == "group" && llSameGroup(rcpt) || Permissions == "public") &&
         (rcpt == llGetOwner() || !Sit2GetMenu || ~llListFindList(Slots, [rcpt]))
     ) {
         list thisMenuPath=llDeleteSubList(llParseStringKeepNulls(path , [":"], []), 0, 0);
@@ -599,39 +583,7 @@ default{
             string pluginLocalPath=llList2String(params, 5);
             string pluginStaticParams=llList2String(params, 6);
 
-            if(pluginName==MY_PLUGIN_MENU_OFFSET) {
-                //this is the offset menu. It can be move to any other script easily.
-                if(num==PLUGIN_ACTION) {
-                    // 1) Do the action if needed
-                    // 2) correct the path if needed
-                    // 3) finish with a PLUGIN_ACTION_DONE call
-                    if(pluginLocalPath!="") {
-                        vector direction;
-                        if(pluginLocalPath == BUTTON_OFFSET_FWD) {direction=<1, 0, 0>;}
-                        else if(pluginLocalPath == BUTTON_OFFSET_BKW) {direction=<-1, 0, 0>;}
-                        else if(pluginLocalPath == BUTTON_OFFSET_LEFT) {direction=<0, 1, 0>;}
-                        else if(pluginLocalPath == BUTTON_OFFSET_RIGHT) {direction=<0, -1, 0>;}
-                        else if(pluginLocalPath == BUTTON_OFFSET_UP) {direction=<0, 0, 1>;}
-                        else if(pluginLocalPath == BUTTON_OFFSET_DOWN) {direction=<0, 0, -1>;}
-                        else if(pluginLocalPath == BUTTON_OFFSET_ZERO) {llMessageLinked(LINK_SET, SETOFFSET, (string)ZERO_VECTOR, id);}
-                        else if((float)pluginLocalPath) {CurrentOffsetDelta = (float)pluginLocalPath;}
-                        if(direction!=ZERO_VECTOR) {
-                            llMessageLinked(LINK_SET, ADJUSTOFFSET, (string)(direction * CurrentOffsetDelta), id);
-                        }
-                        //one level back
-                        path=deleteNode(path, -1, -1);
-                    }
-                    llMessageLinked(LINK_SET, PLUGIN_ACTION_DONE, buildParamSet1(path, 0, "", [], "", "", ""), id);
-                }
-                else if(num==PLUGIN_MENU) {
-                    // 1) set a prompt if needed
-                    // 2) generate your buttons if needed
-                    // 3) finish with a PLUGIN_MENU_DONE call
-                    string prompt="Adjust by " + (string)CurrentOffsetDelta+ "m, or choose another distance.";
-                    llMessageLinked(LINK_SET, PLUGIN_MENU_DONE, buildParamSet1(path, 0, prompt, OFFSET_BUTTONS, "", "", ""), id);
-                }
-            }
-            else if(pluginName==MY_PLUGIN_MENU_CHANGE_SEAT || pluginName==MY_PLUGIN_MENU_UNSIT) {
+            if(pluginName==MY_PLUGIN_MENU_CHANGE_SEAT || pluginName==MY_PLUGIN_MENU_UNSIT) {
                 //TODO: Leona: check if nested plugins could be a good
                 //idea, because both functions are something like a "pick Seat" function
                 //and maybe a "pick Seat" dialog may also be useful in other plugins
@@ -767,13 +719,11 @@ default{
                 string optionSetting = llToLower(llStringTrim(llList2String(optionsItems, 1), STRING_TRIM));
                 integer optionSettingFlag = optionSetting=="on" || (integer)optionSetting;
 
-                else if(optionItem == "permit") {Permissions = llToUpper(optionSetting);}
+                if(optionItem == "permit") {Permissions = optionSetting;}
                 else if(optionItem == "2default") {Cur2default = optionSettingFlag;}
                 else if(optionItem == "sit2getmenu") {Sit2GetMenu = optionSettingFlag;}
                 else if(optionItem == "menudist") {MenuDistance = (float)optionSetting;}
-                else if(optionItem == "usedisplaynames") {
-                    OptionUseDisplayNames = optionSettingFlag;
-                }
+                else if(optionItem == "usedisplaynames") {OptionUseDisplayNames = optionSettingFlag;}
             }
         }
         else if(num == MENU_SHOW) {
@@ -835,9 +785,11 @@ default{
         if(change & CHANGED_OWNER) {
             llResetScript();
         }
-        if((change & CHANGED_LINK) && Cur2default)
-         && (llGetObjectPrimCount(llGetKey()) == llGetNumberOfPrims())
-         && (DefaultPoseNcName != "")) {
+        if(
+            (change & CHANGED_LINK) && Cur2default
+            && (llGetObjectPrimCount(llGetKey()) == llGetNumberOfPrims())
+            && (DefaultPoseNcName != "")
+         ) {
             llMessageLinked(LINK_SET, DOPOSE, DefaultPoseNcName, NULL_KEY);
         }
     }

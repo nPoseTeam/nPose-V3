@@ -21,12 +21,20 @@ integer ADJUSTOFFSET = 208;
 integer SETOFFSET = 209;
 integer DOPOSE_READER = 222;
 integer OPTIONS = -240;
+integer PLUGIN_ACTION = -830;
+integer PLUGIN_ACTION_DONE = -831;
+integer PLUGIN_MENU = -832;
+integer PLUGIN_MENU_DONE = -833;
+
 integer MENU_USAGE = 34334;
 integer SEAT_UPDATE = 35353;
 integer REQUEST_CHATCHANNEL = 999999;
 
 string NC_READER_CONTENT_SEPARATOR="%&§";
 integer STRIDE = 8;
+string MY_PLUGIN_MENU_OFFSET="npose_offset";
+
+float CurrentOffsetDelta = 0.2;
 
 integer Chatchannel;
 string Currentanim;
@@ -53,7 +61,32 @@ integer FacialEnable = TRUE;
 integer QuietAdjusters;
 integer AdjustRefRoot;
 
+string BUTTON_OFFSET_FWD = "forward";
+string BUTTON_OFFSET_BKW = "backward";
+string BUTTON_OFFSET_LEFT = "left";
+string BUTTON_OFFSET_RIGHT = "right";
+string BUTTON_OFFSET_UP = "up";
+string BUTTON_OFFSET_DOWN = "down";
+string BUTTON_OFFSET_ZERO = "reset";
+list OFFSET_BUTTONS = [
+    BUTTON_OFFSET_FWD, BUTTON_OFFSET_LEFT, BUTTON_OFFSET_UP,
+    BUTTON_OFFSET_BKW, BUTTON_OFFSET_RIGHT, BUTTON_OFFSET_DOWN,
+    "0.2", "0.1", "0.05",
+    "0.01", BUTTON_OFFSET_ZERO
+];
 
+
+string deleteNode(string path, integer start, integer end) {
+    return llDumpList2String(llDeleteSubList(llParseStringKeepNulls(path, [":"], []), start, end), ":");
+}
+
+string buildParamSet1(string path, integer page, string prompt, list additionalButtons, string pluginName, string pluginLocalPath, string pluginStaticParams) {
+    //We can't use colons in the promt, because they are used as a seperator in other messages
+    //replace them with a UTF Symbol
+    prompt=llDumpList2String(llParseStringKeepNulls(prompt, [","], []), "‚"); // CAUTION: the 2nd "‚" is a UTF sign!
+    string buttons=llDumpList2String(additionalButtons, ",");
+    return llDumpList2String([path, page, prompt, buttons, pluginName, pluginLocalPath, pluginStaticParams], "|");
+}
 
 doSeats(integer slotNum, key avKey) {
     llSetTimerEvent(0.0);
@@ -121,6 +154,7 @@ SetAvatarOffset(key avatar, vector offset) {
     integer avatarOffsetsIndex = llListFindList(AvatarOffsets, [avatar]); 
     if(offset == ZERO_VECTOR && avatarOffsetsIndex >= 0) {
         AvatarOffsets = llDeleteSubList(AvatarOffsets, avatarOffsetsIndex, avatarOffsetsIndex+1);
+        llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(Slots, "^"), NULL_KEY);
         return;
     }
     if(avatarOffsetsIndex < 0) { 
@@ -128,9 +162,10 @@ SetAvatarOffset(key avatar, vector offset) {
         NextAvatarOffset = (NextAvatarOffset + 2) % AVATAR_OFFSETS_LENGTH;
     }
     else { 
-            offset = llList2Vector(AvatarOffsets, avatarOffsetsIndex+1) + offset;
+        offset = llList2Vector(AvatarOffsets, avatarOffsetsIndex+1) + offset;
     }
     AvatarOffsets = llListReplaceList(AvatarOffsets, [avatar, offset], avatarOffsetsIndex, avatarOffsetsIndex+1);
+    llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(Slots, "^"), NULL_KEY);
 }
 
 
@@ -235,13 +270,8 @@ default {
             }
 //            llSay(0, "anim list:\n" + llList2CSV(llGetAnimationList(av)));
         }
-        else if(num == ADJUSTOFFSET) {
+        else if(num == ADJUSTOFFSET || num == SETOFFSET) {
             SetAvatarOffset(id, (vector)str);
-            llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(Slots, "^"), NULL_KEY);
-        }
-        else if(num == SETOFFSET) {
-            SetAvatarOffset(id, (vector)str);
-            llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(Slots, "^"), NULL_KEY);
         }
         else if(num == SEAT_UPDATE){
             list seatsavailable = llParseStringKeepNulls(str, ["^"], []);
@@ -348,13 +378,13 @@ default {
                 list params = llParseString2List(str, ["|"], []);
                 vector posToUse;
                 rotation rotToUse;
-                if (AdjustRefRoot == "off") {
-                    posToUse = llGetPos();
-                    rotToUse = llGetRot();
-                }
-                else {
+                if (AdjustRefRoot) {
                     posToUse = llGetRootPosition();
                     rotToUse = llGetRootRotation();
+                }
+                else {
+                    posToUse = llGetPos();
+                    rotToUse = llGetRot();
                 }
                 vector newpos = (vector)llList2String(params, 0) - posToUse;
                 newpos = newpos / rotToUse;
@@ -395,6 +425,49 @@ default {
             }
             llRegionSay(Chatchannel, "posdump");
             llSetObjectName(primName);
+        }
+        else if(num==PLUGIN_ACTION || num==PLUGIN_MENU) {
+            //offset menu
+            list params=llParseStringKeepNulls(str, ["|"], []);
+            string path=llList2String(params, 0);
+            integer page=(integer)llList2String(params, 1);
+            string prompt=llList2String(params, 2);
+            string additionalButtons=llList2String(params, 3);
+            string pluginName=llList2String(params, 4);
+            string pluginLocalPath=llList2String(params, 5);
+            string pluginStaticParams=llList2String(params, 6);
+
+            if(pluginName==MY_PLUGIN_MENU_OFFSET) {
+                //this is the offset menu. It can be move to any other script easily.
+                if(num==PLUGIN_ACTION) {
+                    // 1) Do the action if needed
+                    // 2) correct the path if needed
+                    // 3) finish with a PLUGIN_ACTION_DONE call
+                    if(pluginLocalPath!="") {
+                        vector direction;
+                        if(pluginLocalPath == BUTTON_OFFSET_FWD) {direction=<1, 0, 0>;}
+                        else if(pluginLocalPath == BUTTON_OFFSET_BKW) {direction=<-1, 0, 0>;}
+                        else if(pluginLocalPath == BUTTON_OFFSET_LEFT) {direction=<0, 1, 0>;}
+                        else if(pluginLocalPath == BUTTON_OFFSET_RIGHT) {direction=<0, -1, 0>;}
+                        else if(pluginLocalPath == BUTTON_OFFSET_UP) {direction=<0, 0, 1>;}
+                        else if(pluginLocalPath == BUTTON_OFFSET_DOWN) {direction=<0, 0, -1>;}
+                        else if((float)pluginLocalPath) {CurrentOffsetDelta = (float)pluginLocalPath;}
+                        if(direction!=ZERO_VECTOR || pluginLocalPath==BUTTON_OFFSET_ZERO) {
+                            SetAvatarOffset(id, direction * CurrentOffsetDelta);
+                        }
+                        //one level back
+                        path=deleteNode(path, -1, -1);
+                    }
+                    llMessageLinked(LINK_SET, PLUGIN_ACTION_DONE, buildParamSet1(path, 0, "", [], "", "", ""), id);
+                }
+                else if(num==PLUGIN_MENU) {
+                    // 1) set a prompt if needed
+                    // 2) generate your buttons if needed
+                    // 3) finish with a PLUGIN_MENU_DONE call
+                    string prompt="\nAdjust by " + (string)CurrentOffsetDelta+ "m, or choose another distance.\n";
+                    llMessageLinked(LINK_SET, PLUGIN_MENU_DONE, buildParamSet1(path, 0, prompt, OFFSET_BUTTONS, "", "", ""), id);
+                }
+            }
         }
         else if(num == MENU_USAGE) {
             llSay(0,"Memory Used by " + llGetScriptName() + ": " + (string)llGetUsedMemory() + " of " + (string)llGetMemoryLimit()
