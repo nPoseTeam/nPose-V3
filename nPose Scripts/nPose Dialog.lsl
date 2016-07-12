@@ -469,6 +469,7 @@ default {
                 string optionSetting = llToLower(llStringTrim(llList2String(optionsItems, 1), STRING_TRIM));
                 integer optionSettingFlag = optionSetting=="on" || (integer)optionSetting;
                 if(optionItem == "dialogtimeout") {OptionDialogTimeout = (integer)optionSetting;}
+                if(optionItem == "dialogbackward") {OptionUsePageBackward = (integer)optionSetting;}
             }
         }
     }

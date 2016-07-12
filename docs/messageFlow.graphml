@@ -716,7 +716,7 @@ avatarKey<y:LabelModel>
       <data key="d5"/>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.process">
-          <y:Geometry height="40.0" width="80.0" x="440.0" y="-2810.0"/>
+          <y:Geometry height="40.0" width="80.0" x="440.0" y="-1670.0"/>
           <y:Fill color="#E8EEF7" color2="#B7C9E3" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="18.701171875" modelName="custom" textColor="#000000" visible="true" width="71.365234375" x="4.3173828125" y="10.6494140625">Do whatever<y:LabelModel>
@@ -733,7 +733,7 @@ avatarKey<y:LabelModel>
       <data key="d5"/>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.userMessage">
-          <y:Geometry height="60.0" width="180.0" x="1200.0" y="-2820.0"/>
+          <y:Geometry height="60.0" width="180.0" x="1200.0" y="-1680.0"/>
           <y:Fill color="#E8EEF7" color2="#B7C9E3" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="18.701171875" modelName="custom" textColor="#000000" visible="true" width="49.345703125" x="65.3271484375" y="20.6494140625">DIALOG<y:LabelModel>
@@ -791,7 +791,7 @@ path [| page [| prompt [| additionalButtons(CSV) [| pluginName |  pluginLocalPat
       <data key="d5"/>
       <data key="d6">
         <y:GenericNode configuration="com.yworks.flowchart.networkMessage">
-          <y:Geometry height="60.0" width="180.0" x="-209.99999999999997" y="-2820.0"/>
+          <y:Geometry height="60.0" width="180.0" x="-209.99999999999997" y="-1680.0"/>
           <y:Fill color="#E8EEF7" color2="#B7C9E3" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="2.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="48.103515625" modelName="custom" textColor="#000000" visible="true" width="83.3359375" x="48.33203125" y="5.9482421875">MENU_SHOW
