@@ -275,6 +275,7 @@ default {
         }
         else if(num == SEAT_UPDATE){
             list seatsavailable = llParseStringKeepNulls(str, ["^"], []);
+            str = "";
             integer stop = llGetListLength(seatsavailable)/8;
             Slots = [];
             FaceTimes = [];
@@ -464,7 +465,7 @@ default {
                     // 1) set a prompt if needed
                     // 2) generate your buttons if needed
                     // 3) finish with a PLUGIN_MENU_DONE call
-                    string prompt="\nAdjust by " + (string)CurrentOffsetDelta+ "m, or choose another distance.\n";
+                    string prompt="Adjust by " + (string)CurrentOffsetDelta+ "m, or choose another distance.";
                     llMessageLinked(LINK_SET, PLUGIN_MENU_DONE, buildParamSet1(path, 0, prompt, OFFSET_BUTTONS, "", "", ""), id);
                 }
             }

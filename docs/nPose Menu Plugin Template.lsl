@@ -27,7 +27,7 @@ string deleteNode(string path, integer start, integer end) {
 string buildParamSet1(string path, integer page, string prompt, list additionalButtons, string pluginName, string pluginLocalPath, string pluginStaticParams) {
 	//We can't use colons in the promt, because they are used as a seperator in other messages
 	//replace them with a UTF Symbol
-	prompt=llDumpList2String(llParseStringKeepNulls(prompt, [","], []), "â€š"); // CAUTION: the 2nd "â€š" is a UTF sign!
+	prompt=llDumpList2String(llParseStringKeepNulls(prompt, [","], []), "‚"); // CAUTION: the 2nd "‚" is a UTF sign!
 	string buttons=llDumpList2String(additionalButtons, ",");
 	return llDumpList2String([path, page, prompt, buttons, pluginName, pluginLocalPath, pluginStaticParams], "|");
 }

@@ -7,32 +7,102 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 
 "Full perms" means having the modify, copy, and transfer permissions enabled in Second Life and/or other virtual world platforms derived from Second Life (such as OpenSim).  If the platform should allow more fine-grained permissions, then "full perms" will mean the most permissive possible set of permissions allowed by the platform.
 */
-//an adaptation of Schmobag Hogfather's SchmoDialog script
+//started as an adaptation of Schmobag Hogfather's SchmoDialog script
 
 integer DIALOG = -900;
 integer DIALOG_RESPONSE = -901;
 integer DIALOG_TIMEOUT = -902;
+integer OPTIONS = -240;
 
 integer PAGE_SIZE = 12;
 integer MEMORY_USAGE = 34334;
-string MORE = "More";
-//string BACKBTN = "^";
-//string SWAPBTN = "swap";
-//string SYNCBTN = "sync";
+string PAGE_FORWARD = "▶";
+string PAGE_BACKWARD = "◀";
+string PAGE_FORWARD_LAST_PAGE = "▷";
+string PAGE_BACKWARD_FIRST_PAGE = "◁";
+string BACK_BUTTON_DISPLAY="▲";
+string BACK_BUTTON_REPORT="^";
 string BLANK = " ";
-integer TIMEOUT = 60;
-integer REPEAT = 5;//how often the timer will go off, in seconds
+integer REPEAT = 10;//how often the timer will go off, in seconds
 integer Channel;
 integer Listener = -1;
 
-list Menus;//8-strided list in form [recipient, dialogid, starttime, prompt, list buttons, page buttons, currentpage, path]
-//where "list buttons" means the big list of choices presented to the user
-//and "page buttons" means utility buttons that will appear on every page, such as one saying "go up one level"
-//and "currentpage" is an integer meaning which page of the menu the user is currently viewing
-
-integer STRIDE_LENGTH = 8;
+list Menus;
+//9-strided list in form [recipient, caller id, starttime, prompt, menu buttons, utility buttons, page, path, lookupTable]
+//where "menu buttons" means the big list of choices presented to the user
+//and "utility buttons" means buttons that will appear on every page, such as one saying "go up one level"
+//and "page" is an integer meaning which page of the menu the user is currently viewing
+integer MENUS_PARAM_RECIPTIENT=0;
+integer MENUS_PARAM_CALLER_ID=1;
+integer MENUS_PARAM_TIMEOUTTIME=2;
+integer MENUS_PARAM_PROMPT=3;
+integer MENUS_PARAM_MENU_BUTTONS=4;
+integer MENUS_PARAM_UTILITY_BUTTONS=5;
+integer MENUS_PARAM_PAGE=6;
+integer MENUS_PARAM_PATH=7;
+integer MENUS_PARAM_LOOKUP_TABLE=8;
+integer MENUS_STRIDE=9;
 
 list Avs;//fill this on start and update on changed_link.  leave dialogs open until avs stand
+
+
+list ZERO_WIDTH_UTF_CHARACTERS_BASE64=[
+    "4oCL", // U+200b, ZERO WIDTH SPACE
+    "4oCM", // U+200c, ZERO WIDTH NON-JOINER
+    "4oCN", // U+200d, ZERO WIDTH JOINER
+    "4oCO", // U+200e, LEFT-TO-RIGHT MARK,
+    "4oCP", // U+200f, RIGHT-TO-LEFT MARK
+    "4oCq", // U+202a, LEFT-TO-RIGHT
+    "4oCr", // U+202b, RIGHT-TO-LEFT
+    "4oCs", // U+202c, POP DIRECTIONAL
+    "4oCt", // U+202d, LEFT-TO-RIGHT OVERRIDE
+    "4oCu", // U+202e, RIGHT-TO-LEFT OVERRIDE
+    "4oGg", // U+2060, WORD JOINER,
+    "4oGh", // U+2061, FUNCTION APPLICATION
+    "4oGh", // U+2062, INVISIBLE TIMES
+    "4oGi", // U+2063, INVISIBLE SEPARATOR
+    "4oGj" // U+2064, INVISIBLE PLUS
+];
+list CodingCharacterSet;
+integer CodingBase;
+
+string MARKER_COMMENT_START="/*";
+string MARKER_COMMENT_END="*/";
+string MARKER_BASE64_START="/$";
+string MARKER_BASE64_END="$/";
+
+string TemplateDialogPrompt="%PROMPT%\nPath: %NICE_PATH%\nPage: %CURRENT_PAGE%/%TOTAL_PAGES%%DIALOG_TIMEOUT_TEXT%";
+string TemplateDialogTimeoutText="\n(Timeout in %TIMEOUT% seconds.)";
+integer OptionDialogTimeout=120;
+integer OptionUsePageBackward=FALSE;
+
+/*
+debug(list message){
+    llOwnerSay((((llGetScriptName() + "\n##########\n#>") + llDumpList2String(message,"\n#>")) + "\n##########"));
+}
+*/
+
+string integer2Invisible(integer num) {
+    //converts an integer into a string with invisible (zero width) characters
+    string str;
+    do {
+        str=llList2String(CodingCharacterSet, num%CodingBase)+str;
+        num=num/CodingBase;
+    } while(num);
+    return str;
+}
+integer invisible2Integer(string str) {
+    //converts the leading invisible characters of a string back to an integer
+    integer num;
+    integer currentFigure;
+    do {
+        num=num * CodingBase + currentFigure;
+        string character=llGetSubString(str, 0, 0);
+        str=llDeleteSubString(str, 0,0);
+        currentFigure=llListFindList(CodingCharacterSet, [character]);
+    } while (~currentFigure);
+    return num;
+}
 
 string Utf8Trim(string s, integer iLen) {
     // This trims a string to iLen bytes interpreted as utf8 (not utf16).
@@ -78,65 +148,115 @@ integer RandomUniqueChannel() {
     return out;
 }
 
-Dialog(key recipient, string prompt, list menuitems, list utilitybuttons, integer page, key id, string path) {
-    prompt = Utf8Trim(prompt, 483);
-    string thisprompt = prompt + "(Timeout in 60 seconds.)\n";
-    list buttons;
-    list currentitems;
-    integer numitems = llGetListLength(menuitems + utilitybuttons);
-    integer start;
-    integer mypagesize;
-    if (llList2CSV(utilitybuttons) != "") {
-        mypagesize = PAGE_SIZE - llGetListLength(utilitybuttons);
-    }
-    else{
-        mypagesize = PAGE_SIZE;
-    }
-
-    //slice the menuitems by page
-    if (numitems > PAGE_SIZE) {
-        mypagesize--;//we'll use one slot for the MORE button, so shrink the page accordingly
-        start = page * mypagesize;
-        integer end = start + mypagesize - 1;
-        //multi page menu
-        currentitems = llList2List(menuitems, start, end);
-    }
-    else {
-        start = 0;
-        currentitems = menuitems;
+Dialog(key recipient, string prompt, list menuButtons, list utilityButtons, integer page, key id, string path, string lookupTable) {
+    //menuButtons and utilityButtons ready to insert
+    //the promt has to be sanitized
+    
+    integer backButtonNeeded;
+    if(~llSubStringIndex(path, ":")) {
+        backButtonNeeded=TRUE;
     }
     
-    integer stop = llGetListLength(currentitems);
-    integer n;
-    for (n = 0; n < stop; n++) {
-        string name = llList2String(menuitems, start + n);
-        buttons += [name];
+    //correct page size
+    integer numberOfMenuButtons=llGetListLength(menuButtons);
+    integer myPageSize=PAGE_SIZE - llGetListLength(utilityButtons) - backButtonNeeded;
+    integer pageSizeExceeded=numberOfMenuButtons>myPageSize;
+    myPageSize = myPageSize - pageSizeExceeded - (pageSizeExceeded && OptionUsePageBackward);
+    integer numberOfPages=llCeil((float)numberOfMenuButtons/(float)myPageSize);
+    if(!numberOfPages) {
+        numberOfPages=1;
     }
-    buttons = SanitizeButtons(buttons);
-    utilitybuttons = SanitizeButtons(utilitybuttons);
 
-    integer menusIndex = llListFindList(Menus, [recipient]);
-    if(menusIndex >= 0) {
-        Menus = RemoveMenuStride(Menus, menusIndex);
+    //correct page if out of bounds
+    while(page<0) {
+        page=numberOfPages+page;
     }
+    page=page%numberOfPages;
+    
+    //add page backward button
+    list currentUtilityButtons=utilityButtons;
+    if(pageSizeExceeded && OptionUsePageBackward) {
+        if(page) {
+            currentUtilityButtons+=[PAGE_BACKWARD];
+        }
+        else {
+            currentUtilityButtons+=[PAGE_BACKWARD_FIRST_PAGE];
+        }
+    }
+    //add back button
+    if(backButtonNeeded) {
+        currentUtilityButtons+=[BACK_BUTTON_DISPLAY];
+    }
+    //add page forward button
+    if(pageSizeExceeded) {
+        if(page<numberOfPages-1) {
+            currentUtilityButtons+=[PAGE_FORWARD];
+        }
+        else {
+            currentUtilityButtons+=[PAGE_FORWARD_LAST_PAGE];
+        }
+    }
+    
+    //build and sanitize promt
+    string dialogPrompt=TemplateDialogPrompt;
+    integer flagRecipientSitting=~llListFindList(Avs, [recipient]);
+    if(flagRecipientSitting) {
+        dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%DIALOG_TIMEOUT_TEXT%"], []), "");
+    }
+    else {
+        dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%DIALOG_TIMEOUT_TEXT%"], []), TemplateDialogTimeoutText);
+    }
+    if(prompt) {
+        dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%PROMPT%"], []), "\n" + prompt + "\n");
+    }
+    else {
+        dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%PROMPT%"], []), "");
+    }
+    dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%PATH%"], []), path);
+    dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%NICE_PATH%"], []), resolveButtonText(path));
+    dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%CURRENT_PAGE%"], []), (string)(page+1));
+    dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%TOTAL_PAGES%"], []), (string)numberOfPages);
+    dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%TIMEOUT%"], []), (string)OptionDialogTimeout);
+    dialogPrompt=Utf8Trim(dialogPrompt, 512);
+    if(dialogPrompt=="") {
+        dialogPrompt="\n";
+    }
+    
+    //slice the menuButtons by page
+    list currentMenuButtons=llList2List(menuButtons, page * myPageSize, (page + 1) * myPageSize - 1);
+
+    //open the listener if neccesary
     if(!~Listener) {
         Listener = llListen(Channel, "", NULL_KEY, "");
         llSetTimerEvent(REPEAT);
     }
-    if (numitems > PAGE_SIZE) {
-        llDialog(recipient, thisprompt, PrettyButtons(buttons, utilitybuttons + [MORE]), Channel);
-    }
-    else {
-        llDialog(recipient, thisprompt, PrettyButtons(buttons, utilitybuttons), Channel);
-    }
-    integer ts = -1;
-    if (llListFindList(Avs, [recipient]) == -1) {
-        ts = llGetUnixTime();
+    
+    //open the dialog
+    llDialog(recipient, dialogPrompt, sortButtonsForDialog(currentMenuButtons, currentUtilityButtons), Channel);
+
+    //remove old entrys from the Menus list
+    integer index = llListFindList(Menus, [recipient]);
+    if(~index) {
+        Menus = RemoveMenuStride(Menus, index);
     }
 
-    Menus += [recipient, id, ts, prompt, llDumpList2String(menuitems, "|"), llDumpList2String(utilitybuttons, "|"), page, path];
+    //generate a new Menus list entry
+    integer timeoutTime = llGetUnixTime() + OptionDialogTimeout;
+
+    Menus += [
+        recipient,
+        id,
+        llGetUnixTime() + OptionDialogTimeout,
+        prompt,
+        llDumpList2String(menuButtons, "`"),
+        llDumpList2String(utilityButtons, "`"),
+        page,
+        path,
+        lookupTable
+    ];
 }
 
+/*
 list SanitizeButtons(list in) {
     integer length = llGetListLength(in);
     integer n;
@@ -152,14 +272,107 @@ list SanitizeButtons(list in) {
     }
     return in;
 }
+*/
 
-list PrettyButtons(list options, list utilitybuttons) {
-    //returns a list formatted to that "options" will start in the top left of a dialog, and "utilitybuttons" will start in the bottom right
+list sanitizeButtons(string buttons, string lookupTable) {
+    //returns a list with 2 strings
+    // - the sanitized button names concentrated into a string
+    // - the modified lookupTable
+    list buttonsList=llParseString2List(buttons, ["`"], []);
+    list sanitizedButtonsList;
+    integer index;
+    integer length=llGetListLength(buttonsList);
+    for(; index<length; index++) {
+        string currentButton=llList2String(buttonsList, index);
+        if(currentButton!="") {
+            list temp=sanitizeButton(currentButton, lookupTable);
+            sanitizedButtonsList+=llList2String(temp, 0);
+            lookupTable=llList2String(temp, 1);
+        }
+    }
+    return [llDumpList2String(sanitizedButtonsList, "`"), lookupTable];
+}
+
+list sanitizeButton(string button, string lookupTable) {
+    //returns a list with 2 strings
+    // - the button name ready for use in the dialog
+    // - the modified lookupTable
+    string niceButton=Utf8Trim(resolveButtonText(button), 24);
+    if(button==niceButton) {
+        //nothing to do
+        return [button, lookupTable];
+    }
+    else if(niceButton=="") {
+        //the resolved button name is empty -> generate a BLANK button which should be handled by the dialog script
+        return [BLANK, lookupTable];
+    }
+    else {
+        //store the original Button text in the lookup table
+        //prefix the nice Button text with the current index of the lookup table and trim it again
+        list lookupTableList=llParseStringKeepNulls(lookupTable, ["`"], []);
+        integer nextIndex=llGetListLength(lookupTableList);
+        niceButton=Utf8Trim(integer2Invisible(nextIndex) + niceButton, 24);
+        return [niceButton, llDumpList2String(lookupTableList + [button], "`")];
+    }
+}
+
+string resolveButtonText(string text) {
+    //this function removes comments [#thisIsAComment#]
+    //and replaces the base64 coded text [$thisIsABase64EncodedText$]
+    //don't support nesting.
+    //from a text
+    //TODO: Test this
+    list tempList=llParseStringKeepNulls(text, [], [MARKER_COMMENT_START, MARKER_COMMENT_END, MARKER_BASE64_START, MARKER_BASE64_END]);
+    integer index;
+    integer length=llGetListLength(tempList);
+    text="";
+    integer remove;
+    integer decode;
+    for(; index<length; index++) {
+        string tempString=llList2String(tempList, index);
+        if(tempString==MARKER_COMMENT_START) {
+            remove=TRUE;
+        }
+        else if(tempString==MARKER_BASE64_START) {
+            decode=TRUE;
+        }
+
+        if(tempString!=MARKER_COMMENT_START && tempString!=MARKER_COMMENT_END && tempString!=MARKER_BASE64_START && tempString!=MARKER_BASE64_END) {
+            if(!remove) {
+                if(decode) {
+                    text+=llBase64ToString(tempString);
+                }
+                else {
+                    text+=tempString;
+                }
+            }
+        }
+
+        if(tempString==MARKER_BASE64_END) {
+            decode=FALSE;
+        }
+        else if(tempString==MARKER_COMMENT_END) {
+            remove=FALSE;
+        }
+    }
+    return text;
+}
+
+string buttonLookup(string dialogAnswer, string lookupTable) {
+    if(!~llListFindList(CodingCharacterSet, [llGetSubString(dialogAnswer, 0, 0)])) {
+        return dialogAnswer;
+    }
+    list lookupTableList=llParseStringKeepNulls(lookupTable, ["`"], []);
+    return llList2String(lookupTableList, invisible2Integer(dialogAnswer));
+}
+
+list sortButtonsForDialog(list menuButtons, list utilityButtons) {
+    //returns a list formatted to that "menuButtons" will start in the top left of a dialog, and "utilityButtons" will start in the bottom right
     list spacers;
-    list combined = options + utilitybuttons;
-    while (llGetListLength(combined) % 3 != 0 && llGetListLength(combined) < 12) {
+    list combined = menuButtons + utilityButtons;
+    while (llGetListLength(combined) % 3) {
         spacers += [BLANK];
-        combined = options + spacers + utilitybuttons;
+        combined = menuButtons + spacers + utilityButtons;
     }
     
     list out = llList2List(combined, 9, 11);
@@ -174,41 +387,27 @@ list RemoveMenuStride(list menu, integer index) {
     //tell this function the menu you wish to remove, identified by list index
     //it will remove the menu's entry from the list, and return the new list
     //should be called in the listen event, and on menu timeout    
-    return llDeleteSubList(menu, index, index + STRIDE_LENGTH - 1);
+    return llDeleteSubList(menu, index, index + MENUS_STRIDE - 1);
 }
 
 CleanList() {
-    debug("cleaning list");
-    //loop through Menus, check their start times against current time, remove any that are more than <timeout> seconds old
+    //loop through Menus, check their timeout times against current time
+    //menus of sitting avatars never expire
     //start at end of list and loop down so that indexes don't get messed up as we remove items
+    integer currentTime=llGetUnixTime();
     integer length = llGetListLength(Menus);
-    integer n;
-    for (n = length - STRIDE_LENGTH; n >= 0; n -= STRIDE_LENGTH) {
-        integer starttime = llList2Integer(Menus, n + 2);
-        debug("starttime: " + (string)starttime);
-        if (starttime == -1) {  
-            //menu was for seated av.  close if they're not seated anymore
-            key av = (key)llList2String(Menus, n);
-            if (llListFindList(Avs, [av]) == -1) {
-                debug("mainmenu stood");
-                Menus = RemoveMenuStride(Menus, n);
-            }
+    integer index = length - MENUS_STRIDE;
+    for (; index >= 0; index -= MENUS_STRIDE) {
+        key recipient = (key)llList2String(Menus, index);
+        if(~llListFindList(Avs, [recipient])) {
+            //menus of sitting avatars never expire
+            Menus=llListReplaceList(Menus, [currentTime + OptionDialogTimeout], index + MENUS_PARAM_TIMEOUTTIME, index + MENUS_PARAM_TIMEOUTTIME);
         }
-        else {
-            //was a plain old non-seated menu, most likely for owner.  Do timeouts normally
-            integer age = llGetUnixTime() - starttime;
-            if (age > TIMEOUT) {
-                debug("mainmenu timeout");
-                key id = llList2Key(Menus, n + 1);
-                llMessageLinked(LINK_SET, DIALOG_TIMEOUT, "", id);
-                Menus = RemoveMenuStride(Menus, n);
-            }
+        else if(llList2Integer(Menus, index + MENUS_PARAM_TIMEOUTTIME)<currentTime) {
+            Menus = RemoveMenuStride(Menus, index);
+            llMessageLinked(LINK_SET, DIALOG_TIMEOUT, recipient, llList2Key(Menus, index + MENUS_PARAM_CALLER_ID));
         }
     }
-}
-
-debug(string str) {
-    //llOwnerSay(llGetScriptName() + ": " + str);
 }
 
 default {
@@ -219,6 +418,12 @@ default {
     state_entry() {
         Channel = RandomUniqueChannel();
         Avs = SeatedAvs();
+        //init our invisible character set
+        CodingBase=llGetListLength(ZERO_WIDTH_UTF_CHARACTERS_BASE64);
+        integer index;
+        for(; index<CodingBase; index++) {
+            CodingCharacterSet+=llBase64ToString(llList2String(ZERO_WIDTH_UTF_CHARACTERS_BASE64, index));
+        }
     }
     
     changed(integer change) {
@@ -234,45 +439,75 @@ default {
         }
         else if (num == DIALOG) {
             //give a dialog with the options on the button labels
-            //str will be pipe-delimited list with rcpt|prompt|page|backtick-delimited-list-buttons|backtick-delimited-utility-buttons
-            debug(str);
+            //str will be pipe-delimited list with rcpt|prompt|page|backtick-delimited-menu-buttons|backtick-delimited-utility-buttons|path
             list params = llParseStringKeepNulls(str, ["|"], []);
+            str="";
             key rcpt = (key)llList2String(params, 0);
             string prompt = llList2String(params, 1);
             integer page = (integer)llList2String(params, 2);
             string path = llList2String(params, 5);
-            list lbuttons = llParseStringKeepNulls(llList2String(params, 3), ["`"], []);
-            list ubuttons = llParseStringKeepNulls(llList2String(params, 4), ["`"], []);
-            Dialog(rcpt, prompt, lbuttons, ubuttons, page, id, path);
+            string lookupTable;
+            //get the buttons and create the lookup table
+            //MENU_BUTTONS
+            list temp=sanitizeButtons(llList2String(params, 3), lookupTable); 
+            list menuButtons=llParseString2List(llList2String(temp, 0), ["`"], []);
+            lookupTable=llList2String(temp, 1);
+            //Utility buttons
+            temp=sanitizeButtons(llList2String(params, 4), lookupTable);
+            list utilityButtons=llParseString2List(llList2String(temp, 0), ["`"], []);
+            lookupTable=llList2String(temp, 1);
+            //prepare the dialog
+            Dialog(rcpt, prompt, menuButtons, utilityButtons, page, id, path, lookupTable);
+        }
+        else if(num == OPTIONS) {
+            list optionsToSet = llParseStringKeepNulls(str, ["~"], []);
+            integer stop = llGetListLength(optionsToSet);
+            integer n;
+            for(; n<stop; ++n) {
+                list optionsItems = llParseString2List(llList2String(optionsToSet, n), ["="], []);
+                string optionItem = llToLower(llStringTrim(llList2String(optionsItems, 0), STRING_TRIM));
+                string optionSetting = llToLower(llStringTrim(llList2String(optionsItems, 1), STRING_TRIM));
+                integer optionSettingFlag = optionSetting=="on" || (integer)optionSetting;
+                if(optionItem == "dialogtimeout") {OptionDialogTimeout = (integer)optionSetting;}
+            }
         }
     }
 
     listen(integer channel, string name, key id, string message) {
-        integer menuindex = llListFindList(Menus, [id]);
-        if (~menuindex) {
-            key menuid = llList2Key(Menus, menuindex + 1);
-            string prompt = llList2String(Menus, menuindex + 3);
-            list items = llParseStringKeepNulls(llList2String(Menus, menuindex + 4), ["|"], []);
-            list ubuttons = llParseStringKeepNulls(llList2String(Menus, menuindex + 5), ["|"], []);
-            integer page = llList2Integer(Menus, menuindex + 6);
-            string path = llList2String(Menus, menuindex + 7);
-            Menus = RemoveMenuStride(Menus, menuindex);
-            if (message == MORE) {
-                debug((string)page);
+        integer index = llListFindList(Menus, [id]);
+        if (~index) {
+            key callerId = llList2Key(Menus, index + MENUS_PARAM_CALLER_ID);
+            string prompt = llList2String(Menus, index + MENUS_PARAM_PROMPT);
+            list menuButtons = llParseString2List(llList2String(Menus, index + MENUS_PARAM_MENU_BUTTONS), ["`"], []);
+            list utilityButtons = llParseString2List(llList2String(Menus, index + MENUS_PARAM_UTILITY_BUTTONS), ["`"], []);
+            integer page = llList2Integer(Menus, index + MENUS_PARAM_PAGE);
+            string path = llList2String(Menus, index + MENUS_PARAM_PATH);
+            string lookupTable=llList2String(Menus, index + MENUS_PARAM_LOOKUP_TABLE);
+            
+            Menus = RemoveMenuStride(Menus, index);
+            
+            if (message == PAGE_FORWARD || message == PAGE_FORWARD_LAST_PAGE) {
                 //increase the page num and give new menu
                 page++;
-                integer thispagesize = PAGE_SIZE - llGetListLength(ubuttons) - 1;
-                if (page * thispagesize > llGetListLength(items)) {
-                    page = 0;
-                }
-                Dialog(id, prompt, items, ubuttons, page, menuid, path);
+                Dialog(id, prompt, menuButtons, utilityButtons, page, callerId, path, lookupTable);
+            }
+            else if (message == PAGE_BACKWARD || message == PAGE_BACKWARD_FIRST_PAGE) {
+                //decrease the page num and give new menu
+                page--;
+                Dialog(id, prompt, menuButtons, utilityButtons, page, callerId, path, lookupTable);
             }
             else if (message == BLANK) {
                 //give the same menu back
-                Dialog(id, prompt, items, ubuttons, page, menuid, path);
+                Dialog(id, prompt, menuButtons, utilityButtons, page, callerId, path, lookupTable);
             }
             else {
-                llMessageLinked(LINK_SET, DIALOG_RESPONSE, (string)page + "|" + message + "|" + (string)id + "|" + path, menuid);
+                if(message == BACK_BUTTON_DISPLAY) {
+                    message=BACK_BUTTON_REPORT;
+                }
+                else {
+                    message=buttonLookup(message, lookupTable);
+                }
+                llMessageLinked(LINK_SET, DIALOG_RESPONSE, (string)page + "|" + message + "|" + (string)id + "|" + path, callerId);
             }
         }
     }

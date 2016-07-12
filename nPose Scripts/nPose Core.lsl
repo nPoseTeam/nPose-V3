@@ -502,6 +502,7 @@ default{
         else if (num == (SEAT_UPDATE + 2000000)) {
             //slave sent Slots list after adjuster moved the AV.  we need to keep our Slots list up to date. replace Slots list
             list tempList = llParseStringKeepNulls(str, ["^"], []);
+            str = "";
             integer listStop = llGetListLength(tempList)/STRIDE;
             integer slotNum;
             for(; slotNum < listStop; ++slotNum) {
