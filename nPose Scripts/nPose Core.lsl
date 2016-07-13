@@ -445,7 +445,7 @@ default{
                     llMessageLinked(LINK_SET, REZ_ADJUSTERS, "RezAdjuster", "");
                 }
             }
-            if(llGetListLength(paramSet1List)) {
+            if(path!="") {
                 //only try to remenu if there are parameters to do so
                 string paramSet1=buildParamSet1(path, page, prompt, [llList2String(paramSet1List, 3)], llList2String(paramSet1List, 4), llList2String(paramSet1List, 5), llList2String(paramSet1List, 6));
                 if(num==PREPARE_MENU_STEP3_READER) {

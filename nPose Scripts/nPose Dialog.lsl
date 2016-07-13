@@ -241,8 +241,6 @@ Dialog(key recipient, string prompt, list menuButtons, list utilityButtons, inte
     }
 
     //generate a new Menus list entry
-    integer timeoutTime = llGetUnixTime() + OptionDialogTimeout;
-
     Menus += [
         recipient,
         id,
@@ -317,11 +315,10 @@ list sanitizeButton(string button, string lookupTable) {
 }
 
 string resolveButtonText(string text) {
-    //this function removes comments [#thisIsAComment#]
-    //and replaces the base64 coded text [$thisIsABase64EncodedText$]
-    //don't support nesting.
+    //this function removes comments /*thisIsAComment*/
+    //and replaces the base64 coded text /$thisIsABase64EncodedText$/
     //from a text
-    //TODO: Test this
+    //don't support nesting.
     list tempList=llParseStringKeepNulls(text, [], [MARKER_COMMENT_START, MARKER_COMMENT_END, MARKER_BASE64_START, MARKER_BASE64_END]);
     integer index;
     integer length=llGetListLength(tempList);

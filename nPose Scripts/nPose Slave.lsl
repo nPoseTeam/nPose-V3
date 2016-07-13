@@ -282,7 +282,6 @@ default {
             GotFaceAnim = 0;
 //            string faces = "";
             for(Seatcount = 1; Seatcount <= stop; ++Seatcount) {
-                integer seatNum = (integer)llGetSubString(llList2String(seatsavailable, (Seatcount-1)*8+7), 4,-1);
                 Slots = Slots + [llList2String(seatsavailable, (Seatcount-1)*8), (vector)llList2String(seatsavailable, (Seatcount-1)*8+1), 
                         (rotation)llList2String(seatsavailable, (Seatcount-1)*8+2), llList2String(seatsavailable, (Seatcount-1)*8+3), 
                         (key)llList2String(seatsavailable, (Seatcount-1)*8+4), llList2String(seatsavailable, (Seatcount-1)*8+5),
