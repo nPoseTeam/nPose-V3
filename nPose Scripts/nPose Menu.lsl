@@ -9,12 +9,12 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 */
 
 //default options settings.  Change these to suit personal preferences
-string Permissions = "public"; //default permit option Pubic, Locked, Group
+string Permissions = "public"; //default permit option Public, Locked, Group
 integer Cur2default;  //default action to revert back to default pose when last sitter has stood
 integer Sit2GetMenu;  //required to be seated to get a menu
 float MenuDistance = 30.0;
 integer OptionUseDisplayNames; //use display names instead of usernames in changeSeat/unsit menu
-//
+
 
 list Slots; //this Slots list is not complete. it only contains seated AV key and seat numbers
 string DefaultPoseNcName; //holds the name of the default notecard.
@@ -70,12 +70,6 @@ key ScriptId;
 #define BACKBTN "^"
 #define ROOTMENU "Main"
 
-//TODO: option related
-#define MENUONSIT "Menuonsit"
-#define TODEFUALT "ToDefault"
-#define PERMITBTN "Permit"
-
-
 // userDefinedPermissions
 #define PERMISSION_GROUP "group"
 #define PERMISSION_OWNER "owner"
@@ -99,11 +93,6 @@ list pluginPermissionList;
 list PluginBasePathList=[ROOTMENU];
 list PluginNamesList=[MY_PLUGIN_MENU];
 list PluginParamsList=[""];
-
-//TODO
-#define BUTTON_NAME_SLOT "ChangeSeat"
-#define BUTTON_NAME_OFFSET "offset"
-#define BUTTON_NAME_UNSIT "Unsit"
 
 //Button comments marker
 #define MARKER_COMMENT_START "/*"
@@ -214,6 +203,13 @@ integer isAllowed(integer mode, key avatarKey, integer slotNumber, string permis
     //        mode 0: returns TRUE if menu user sits on the seat with the number seatNumber
     //        mode 1: returns TRUE if the specified slotNumber represents the seat with the number seatNumber
     // any other string counts as a UserDefinedPermission
+    //        type list:
+    //            mode 0: returns TRUE if the menu user is within the list
+    //            mode 1: returns TRUE if the user sitting on the specified seat is within the list
+    //        type bool:
+    //            all modes: returns the value of the UserDefinedPermission
+    //        type macro:
+    //            all modes: recursively parses the value
 
     // Examples:
     // mode 0:
@@ -280,7 +276,12 @@ integer isAllowed(integer mode, key avatarKey, integer slotNumber, string permis
                         //plugin permission
                         string pluginPermissionType=llList2String(pluginPermissionList, pluginPermissionIndex+1);
                         if(pluginPermissionType==USER_PERMISSION_TYPE_LIST) {
-                            result=logicalXor(invert, ~llSubStringIndex(llList2String(pluginPermissionList, pluginPermissionIndex+2), (string)avatarKey));
+                            if(!mode) {
+                                result=logicalXor(invert, ~llSubStringIndex(llList2String(pluginPermissionList, pluginPermissionIndex+2), (string)avatarKey));
+                            }
+                            else {
+                                result=logicalXor(invert, ~llSubStringIndex(llList2String(pluginPermissionList, pluginPermissionIndex+2), (string)avatarInSlot));
+                            }
                         }
                         else if(pluginPermissionType==USER_PERMISSION_TYPE_BOOL) {
                             result=logicalXor(invert, (integer)llList2String(pluginPermissionList, pluginPermissionIndex+2));
@@ -290,7 +291,6 @@ integer isAllowed(integer mode, key avatarKey, integer slotNumber, string permis
                         }
                         else {
                             //error unknown plugin permission type
-                            //maybe a message to the owner?
                             result=invert;
                         }
                     }
@@ -462,13 +462,27 @@ default{
 //            //TODO: deprecated
 //            llMessageLinked(LINK_SET, -802, "PATH=" + GlobalPath, id);
 //        }
-        if((num == DIALOG_RESPONSE && id == ScriptId )|| num==DOMENU || num==DOMENU_ACCESSCTRL) {
-            //the following block is to sort the paramters from the different message (to be backward compatible)
+        if(
+            (num==DIALOG_RESPONSE && id == ScriptId ) ||
+            num==DOMENU ||
+            num==DOMENU_ACCESSCTRL ||
+            num==PREPARE_MENU_STEP1 ||
+            num==PREPARE_MENU_STEP2 ||
+            num==PLUGIN_MENU_DONE ||
+            num==MENU_SHOW
+        ) {
+            string path;
             integer page;
+            string prompt;
+            string additionalButtons;
+            string pluginName;
+            string pluginLocalPath;
+            string pluginStaticParams;
             string selection;
             key toucherid;
-            string path;
-            string prompt;
+
+            //the following block is to sort the paramters from the different message (to be backward compatible)
+            //a better way would be to harmonize these parameters
             if(num==DOMENU || num==DOMENU_ACCESSCTRL) {
                 list params = llParseStringKeepNulls(str, [","], []);  //parse the message
                 //str: path[, page[, prompt]]
@@ -484,91 +498,94 @@ default{
                 prompt=llList2String(params, 2);
                 toucherid=id;
             }
-            else {
+            else if(num == DIALOG_RESPONSE) {
                 list params = llParseStringKeepNulls(str, ["|"], []);  //parse the message
                 page = (integer)llList2String(params, 0);  //get the page number
                 selection = llList2String(params, 1);  //get the button that was pressed from str
                 toucherid = llList2Key(params, 2);
                 path = llList2String(params, 3); //get the path from params list
+                if(path!="" && selection!="") {
+                    path+=":";
+                }
+                path+=selection;
             }
-            
-            if(path!="" && selection!="") {
-                path+=":";
+            else {
+                list params=llParseStringKeepNulls(str, ["|"], []);
+                path=llList2String(params, 0);
+                page=(integer)llList2String(params, 1);
+                prompt=llList2String(params, 2);
+                additionalButtons=llList2String(params, 3);
+                pluginName=llList2String(params, 4);
+                pluginLocalPath=llList2String(params, 5);
+                pluginStaticParams=llList2String(params, 6);
+                toucherid=id;
             }
-            path+=selection;
             //block end
-            
-            //BackButton
-            if(deleteNode(path, 0, -2)==BACKBTN) {
-                llMessageLinked(LINK_SET, PREPARE_MENU_STEP2, buildParamSet1(deleteNode(path, -2, -1), 0, prompt, [], "", "", ""), toucherid);
-            }
-            else {
-                string paramSet1=buildParamSet1(path, page, prompt, [], "", "", "");
-                string ncName=getNcName(path);
-                if(ncName) {
-                    //there is a NC that should be executed
-                    integer newNum=DOBUTTON;
-                    if(!llSubStringIndex(ncName, DEFAULT_PREFIX) || !llSubStringIndex(ncName, SET_PREFIX)) {
-                        newNum=DOPOSE;
-                    }
-                    llMessageLinked(LINK_SET, newNum, ncName + NC_READER_CONTENT_SEPARATOR + paramSet1, toucherid);
-                }
-                else {
-                    //no NC to be executed, initiate the remenu process without piping the messages trough the core
-                    llMessageLinked(LINK_SET, PREPARE_MENU_STEP1, paramSet1, toucherid);
-                }
-            }
-        }
-        
-        else if(num==PREPARE_MENU_STEP1) {
-            list params=llParseStringKeepNulls(str, ["|"], []);  //parse the message
-            string path=llList2String(params, 0);
-            integer page=(integer)llList2String(params, 1);  //get the page number
-            string prompt=llList2String(params, 2);
-            string additionalButtons=llList2String(params, 3);
-            
-            list pluginParams=getPluginParams(path);
-            if(llList2String(pluginParams, 0)!=MY_PLUGIN_MENU) {
-                //handled by a different plugin
-                string paramSet1=buildParamSet1(path, page, prompt, [additionalButtons], llList2String(pluginParams, 0), llList2String(pluginParams, 1), llList2String(pluginParams, 2));
-                llMessageLinked(LINK_SET, PLUGIN_ACTION, paramSet1, id);
-            }
-            else {
-                //handled by us
-                if(~llListFindList(Menus, [path])) {
-                    //this is a node
-                    page=0;
-                }
-                else {
-                    path=deleteNode(path, -1, -1);
-                }
-                string paramSet1=buildParamSet1(path, page, prompt, [additionalButtons], "", "", "");
-                llMessageLinked(LINK_SET, PREPARE_MENU_STEP2, paramSet1, id);
-            }
-        }
-        
-        else if(num==PREPARE_MENU_STEP2) {
-            list params=llParseStringKeepNulls(str, ["|"], []);  //parse the message
-            string path=llList2String(params, 0);
-            integer page=(integer)llList2String(params, 1);  //get the page number
-            string prompt=llList2String(params, 2);
-            string additionalButtons=llList2String(params, 3);
 
-            list pluginParams=getPluginParams(path);
-            if(llList2String(pluginParams, 0)!=MY_PLUGIN_MENU) {
-                //handled by a different plugin
-                string paramSet1=buildParamSet1(path, page, prompt, [additionalButtons], llList2String(pluginParams, 0), llList2String(pluginParams, 1), llList2String(pluginParams, 2));
-                llMessageLinked(LINK_SET, PLUGIN_MENU, paramSet1, id);
+            if(num == DIALOG_RESPONSE || num==DOMENU || num==DOMENU_ACCESSCTRL) {
+                //BackButton
+                if(deleteNode(path, 0, -2)==BACKBTN) {
+                    path=deleteNode(path, -2, -1);
+                    num=PREPARE_MENU_STEP2;
+                }
+                else {
+                    string ncName=getNcName(path);
+                    if(ncName) {
+                        //there is a NC that should be executed
+                        string paramSet1=buildParamSet1(path, page, prompt, [], "", "", "");
+                        integer newNum=DOBUTTON;
+                        if(!llSubStringIndex(ncName, DEFAULT_PREFIX) || !llSubStringIndex(ncName, SET_PREFIX)) {
+                            newNum=DOPOSE;
+                        }
+                        llMessageLinked(LINK_SET, newNum, ncName + NC_READER_CONTENT_SEPARATOR + paramSet1, toucherid);
+                    }
+                    else {
+                        //no NC to be executed, initiate the remenu process without piping the messages trough the core
+                        num=PREPARE_MENU_STEP1;
+                    }
+                }
             }
-            else {
-                //handled by us
+        
+            if(num==PREPARE_MENU_STEP1) {
+                list pluginParams=getPluginParams(path);
+                if(llList2String(pluginParams, 0)!=MY_PLUGIN_MENU) {
+                    //handled by a different plugin
+                    string paramSet1=buildParamSet1(path, page, prompt, [additionalButtons], llList2String(pluginParams, 0), llList2String(pluginParams, 1), llList2String(pluginParams, 2));
+                    llMessageLinked(LINK_SET, PLUGIN_ACTION, paramSet1, toucherid);
+                }
+                else {
+                    //handled by us
+                    if(~llListFindList(Menus, [path])) {
+                        //this is a node
+                        page=0;
+                    }
+                    else {
+                        path=deleteNode(path, -1, -1);
+                    }
+                    num=PREPARE_MENU_STEP2;
+                }
+            }
+            
+            if(num==PREPARE_MENU_STEP2) {
+                list pluginParams=getPluginParams(path);
+                if(llList2String(pluginParams, 0)!=MY_PLUGIN_MENU) {
+                    //handled by a different plugin
+                    string paramSet1=buildParamSet1(path, page, prompt, [additionalButtons], llList2String(pluginParams, 0), llList2String(pluginParams, 1), llList2String(pluginParams, 2));
+                    llMessageLinked(LINK_SET, PLUGIN_MENU, paramSet1, toucherid);
+                }
+                else {
+                    //handled by us
+                    string paramSet1=buildParamSet1(path, page, prompt, [additionalButtons], "", "", "");
+                    llMessageLinked(LINK_SET, PREPARE_MENU_STEP3, getNcName(path) + NC_READER_CONTENT_SEPARATOR + paramSet1, toucherid);
+                }
+            }
+            if(num==PLUGIN_MENU_DONE) {
                 string paramSet1=buildParamSet1(path, page, prompt, [additionalButtons], "", "", "");
-                llMessageLinked(LINK_SET, PREPARE_MENU_STEP3, getNcName(path) + NC_READER_CONTENT_SEPARATOR + paramSet1, id);
+                llMessageLinked(LINK_SET, PREPARE_MENU_STEP3, getNcName(path) + NC_READER_CONTENT_SEPARATOR + paramSet1, toucherid);
             }
-        }
-        else if(num==PLUGIN_MENU_DONE) {
-            string path=llList2String(llParseStringKeepNulls(str, ["|"], []), 0);
-            llMessageLinked(LINK_SET, PREPARE_MENU_STEP3, getNcName(path) + NC_READER_CONTENT_SEPARATOR + str, id);
+            if(num == MENU_SHOW) {
+                DoMenu(toucherid, path, page, prompt, llParseString2List(additionalButtons, [","], []));
+            }
         }
         else if(num==PLUGIN_MENU_REGISTER) {
             list params=llParseStringKeepNulls(str, ["|"], []);
@@ -711,10 +728,6 @@ default{
                 else if(optionItem == "menudist") {MenuDistance = (float)optionSetting;}
                 else if(optionItem == "usedisplaynames") {OptionUseDisplayNames = optionSettingFlag;}
             }
-        }
-        else if(num == MENU_SHOW) {
-            list parts=llParseStringKeepNulls(str, ["|"], []);
-            DoMenu(id, llList2String(parts, 0), (integer)llList2String(parts, 1), llList2String(parts, 2), llParseString2List(llList2String(parts, 3), [","], []));
         }
         else if(num == NC_READER_RESPONSE) {
             if(id==ScriptId) {
