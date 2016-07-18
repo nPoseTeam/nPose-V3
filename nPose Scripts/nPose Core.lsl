@@ -404,14 +404,8 @@ default{
             integer length=llGetListLength(allData);
             integer index=3;
             integer run_assignSlots;
-            integer pluginMenuTriggered;
             for(; index<length; index++) {
                 string data = llList2String(allData, index);
-                if(num==DOPOSE_READER || num==DOBUTTON_READER) {
-                    if(!llSubStringIndex(data, "PLUGINMENU|")) {
-                        pluginMenuTriggered=TRUE;
-                    }
-                }
                 if(num==DOBUTTON_READER && (llSubStringIndex(data, "ANIM") != 0)) {
                     ProcessLine(llList2String(allData, index), id, ncName, path, page);
                     if(!llSubStringIndex(data, "SCHMO")) { //finds SCHMO and SCHMOE
@@ -453,9 +447,7 @@ default{
                     llMessageLinked(LINK_SET, MENU_SHOW, paramSet1, id);
                 }
                 else if(num==DOPOSE_READER || DOBUTTON_READER) {
-                    if(llGetSubString(path, -1, -1)!="-" || pluginMenuTriggered) {
-                        llMessageLinked(LINK_SET, PREPARE_MENU_STEP1, paramSet1, id);
-                    }
+                    llMessageLinked(LINK_SET, PREPARE_MENU_STEP1, paramSet1, id);
                 }
             }
         }

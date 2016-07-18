@@ -80,12 +80,16 @@ string deleteNode(string path, integer start, integer end) {
     return llDumpList2String(llDeleteSubList(llParseStringKeepNulls(path, [":"], []), start, end), ":");
 }
 
-string buildParamSet1(string path, integer page, string prompt, list additionalButtons, string pluginName, string pluginLocalPath, string pluginStaticParams) {
+string buildParamSet1(string path, integer page, string prompt, list additionalButtons, list pluginParams) {
+    //pluginParams are: string pluginLocalPath, string pluginName, string pluginMenuParams, string pluginActionParams
     //We can't use colons in the promt, because they are used as a seperator in other messages
-    //replace them with a UTF Symbol
-    prompt=llDumpList2String(llParseStringKeepNulls(prompt, [","], []), "‚"); // CAUTION: the 2nd "‚" is a UTF sign!
-    string buttons=llDumpList2String(additionalButtons, ",");
-    return llDumpList2String([path, page, prompt, buttons, pluginName, pluginLocalPath, pluginStaticParams], "|");
+    //so we replace them with a UTF Symbol
+    return llDumpList2String([
+        path,
+        page,
+        llDumpList2String(llParseStringKeepNulls(prompt, [","], []), "‚"), // CAUTION: the 2nd "‚" is a UTF sign!
+        llDumpList2String(additionalButtons, ",")
+    ] + llList2List(pluginParams + ["", "", "", ""], 0, 3), "|");
 }
 
 doSeats(integer slotNum, key avKey) {
@@ -433,9 +437,10 @@ default {
             integer page=(integer)llList2String(params, 1);
             string prompt=llList2String(params, 2);
             string additionalButtons=llList2String(params, 3);
-            string pluginName=llList2String(params, 4);
-            string pluginLocalPath=llList2String(params, 5);
-            string pluginStaticParams=llList2String(params, 6);
+            string pluginLocalPath=llList2String(params, 4);
+            string pluginName=llList2String(params, 5);
+            string pluginMenuParams=llList2String(params, 6);
+            string pluginActionParams=llList2String(params, 7);
 
             if(pluginName==MY_PLUGIN_MENU_OFFSET) {
                 //this is the offset menu. It can be move to any other script easily.
@@ -458,14 +463,14 @@ default {
                         //one level back
                         path=deleteNode(path, -1, -1);
                     }
-                    llMessageLinked(LINK_SET, PLUGIN_ACTION_DONE, buildParamSet1(path, 0, "", [], "", "", ""), id);
+                    llMessageLinked(LINK_SET, PLUGIN_ACTION_DONE, buildParamSet1(path, 0, prompt, [], []), id);
                 }
                 else if(num==PLUGIN_MENU) {
                     // 1) set a prompt if needed
                     // 2) generate your buttons if needed
                     // 3) finish with a PLUGIN_MENU_DONE call
                     string prompt="Adjust by " + (string)CurrentOffsetDelta+ "m, or choose another distance.";
-                    llMessageLinked(LINK_SET, PLUGIN_MENU_DONE, buildParamSet1(path, 0, prompt, OFFSET_BUTTONS, "", "", ""), id);
+                    llMessageLinked(LINK_SET, PLUGIN_MENU_DONE, buildParamSet1(path, page, prompt, OFFSET_BUTTONS, []), id);
                 }
             }
         }

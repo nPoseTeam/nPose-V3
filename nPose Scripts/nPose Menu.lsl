@@ -86,13 +86,13 @@ list pluginPermissionList;
 
 //own plugins related
 #define MY_PLUGIN_MENU "npose_menu"
+#define MY_PLUGIN_MENU_PICK_SEAT "npose_pickseat"
 #define MY_PLUGIN_MENU_UNSIT "npose_unsit"
 #define MY_PLUGIN_MENU_CHANGE_SEAT "npose_changeseat"
 
 //store plugins base paths, register myself as plugin for the rootmenu
 list PluginBasePathList=[ROOTMENU];
-list PluginNamesList=[MY_PLUGIN_MENU];
-list PluginParamsList=[""];
+list PluginParamsList=[MY_PLUGIN_MENU];
 
 //Button comments marker
 #define MARKER_COMMENT_START "/*"
@@ -405,35 +405,36 @@ string deleteNode(string path, integer start, integer end) {
     return llDumpList2String(llDeleteSubList(llParseStringKeepNulls(path, [":"], []), start, end), ":");
 }
 
-string buildParamSet1(string path, integer page, string prompt, list additionalButtons, string pluginName, string pluginLocalPath, string pluginStaticParams) {
+string buildParamSet1(string path, integer page, string prompt, list additionalButtons, list pluginParams) {
+    //pluginParams are: string pluginLocalPath, string pluginName, string pluginMenuParams, string pluginActionParams
     //We can't use colons in the promt, because they are used as a seperator in other messages
-    //replace them with a UTF Symbol
-    prompt=llDumpList2String(llParseStringKeepNulls(prompt, [","], []), "‚"); // CAUTION: the 2nd "‚" is a UTF sign!
-    string buttons=llDumpList2String(additionalButtons, ",");
-    return llDumpList2String([path, page, prompt, buttons, pluginName, pluginLocalPath, pluginStaticParams], "|");
+    //so we replace them with a UTF Symbol
+    return llDumpList2String([
+        path,
+        page,
+        llDumpList2String(llParseStringKeepNulls(prompt, [","], []), "‚"), // CAUTION: the 2nd "‚" is a UTF sign!
+        llDumpList2String(additionalButtons, ",")
+    ] + llList2List(pluginParams + ["", "", "", ""], 0, 3), "|");
 }
 
 list getPluginParams(string path) {
-    //list content:
-    //pluginName
-    //pluginLocalPath
-    //pluginStaticParams
+    //returns:
+    //[pluginLocalPath, pluginName, pluginMenuParams, pluginActionParams]
     
     string pluginBasePath=path;
     while(pluginBasePath!="") {
         integer index=llListFindList(PluginBasePathList, [pluginBasePath]);
         if(~index) {
-            return [
-                llList2String(PluginNamesList, index),
-                llDeleteSubString(path, 0, llStringLength(pluginBasePath)),
-                llList2String(PluginParamsList, index)
-            ];
+            return 
+                [llDeleteSubString(path, 0, llStringLength(pluginBasePath))] +
+                llList2List(llParseStringKeepNulls(llList2String(PluginParamsList, index), ["|"], []) + ["", "", "", ""], 0, 3)
+            ;
         }
         else {
             pluginBasePath=deleteNode(pluginBasePath, -1, -1);
         }
     }
-    return [MY_PLUGIN_MENU, path, ""];
+    return [path, MY_PLUGIN_MENU, "", ""];
 }
 
 default{
@@ -475,9 +476,7 @@ default{
             integer page;
             string prompt;
             string additionalButtons;
-            string pluginName;
-            string pluginLocalPath;
-            string pluginStaticParams;
+            list pluginParams;
             string selection;
             key toucherid;
 
@@ -515,9 +514,7 @@ default{
                 page=(integer)llList2String(params, 1);
                 prompt=llList2String(params, 2);
                 additionalButtons=llList2String(params, 3);
-                pluginName=llList2String(params, 4);
-                pluginLocalPath=llList2String(params, 5);
-                pluginStaticParams=llList2String(params, 6);
+                pluginParams=llList2List(params, 4, 7);
                 toucherid=id;
             }
             //block end
@@ -532,7 +529,7 @@ default{
                     string ncName=getNcName(path);
                     if(ncName) {
                         //there is a NC that should be executed
-                        string paramSet1=buildParamSet1(path, page, prompt, [], "", "", "");
+                        string paramSet1=buildParamSet1(path, page, prompt, [], []);
                         integer newNum=DOBUTTON;
                         if(!llSubStringIndex(ncName, DEFAULT_PREFIX) || !llSubStringIndex(ncName, SET_PREFIX)) {
                             newNum=DOPOSE;
@@ -547,10 +544,10 @@ default{
             }
         
             if(num==PREPARE_MENU_STEP1) {
-                list pluginParams=getPluginParams(path);
-                if(llList2String(pluginParams, 0)!=MY_PLUGIN_MENU) {
+                pluginParams=getPluginParams(path);
+                if(llList2String(pluginParams, 1)!=MY_PLUGIN_MENU) {
                     //handled by a different plugin
-                    string paramSet1=buildParamSet1(path, page, prompt, [additionalButtons], llList2String(pluginParams, 0), llList2String(pluginParams, 1), llList2String(pluginParams, 2));
+                    string paramSet1=buildParamSet1(path, page, prompt, [additionalButtons], pluginParams);
                     llMessageLinked(LINK_SET, PLUGIN_ACTION, paramSet1, toucherid);
                 }
                 else {
@@ -567,20 +564,20 @@ default{
             }
             
             if(num==PREPARE_MENU_STEP2) {
-                list pluginParams=getPluginParams(path);
-                if(llList2String(pluginParams, 0)!=MY_PLUGIN_MENU) {
+                pluginParams=getPluginParams(path);
+                if(llList2String(pluginParams, 1)!=MY_PLUGIN_MENU) {
                     //handled by a different plugin
-                    string paramSet1=buildParamSet1(path, page, prompt, [additionalButtons], llList2String(pluginParams, 0), llList2String(pluginParams, 1), llList2String(pluginParams, 2));
+                    string paramSet1=buildParamSet1(path, page, prompt, [additionalButtons], pluginParams);
                     llMessageLinked(LINK_SET, PLUGIN_MENU, paramSet1, toucherid);
                 }
                 else {
                     //handled by us
-                    string paramSet1=buildParamSet1(path, page, prompt, [additionalButtons], "", "", "");
+                    string paramSet1=buildParamSet1(path, page, prompt, [additionalButtons], []);
                     llMessageLinked(LINK_SET, PREPARE_MENU_STEP3, getNcName(path) + NC_READER_CONTENT_SEPARATOR + paramSet1, toucherid);
                 }
             }
             if(num==PLUGIN_MENU_DONE) {
-                string paramSet1=buildParamSet1(path, page, prompt, [additionalButtons], "", "", "");
+                string paramSet1=buildParamSet1(path, page, prompt, [additionalButtons], []);
                 llMessageLinked(LINK_SET, PREPARE_MENU_STEP3, getNcName(path) + NC_READER_CONTENT_SEPARATOR + paramSet1, toucherid);
             }
             if(num == MENU_SHOW) {
@@ -589,18 +586,16 @@ default{
         }
         else if(num==PLUGIN_MENU_REGISTER) {
             list params=llParseStringKeepNulls(str, ["|"], []);
-            string basePath=llList2String(params, 0);
-            string pluginName=llToLower(llList2String(params, 1));
-            string pluginStaticParams=llList2String(params, 2);
-            integer index=llListFindList(PluginBasePathList, [basePath]);
+            string pluginBasePath=llList2String(params, 0);
+            string pluginParams=llDumpList2String([llToLower(llList2String(params, 1)), llList2String(params, 2), llList2String(params, 3)], "|");
+            integer index=llListFindList(PluginBasePathList, [pluginBasePath]);
             if(~index) {
-                PluginNamesList=llListReplaceList(PluginNamesList, [pluginName], index, index);
-                PluginParamsList=llListReplaceList(PluginParamsList, [pluginStaticParams], index, index);
+                PluginBasePathList=llListReplaceList(PluginBasePathList, [pluginBasePath], index, index);
+                PluginParamsList=llListReplaceList(PluginParamsList, [pluginParams], index, index);
             }
             else {
-                PluginBasePathList+=basePath;
-                PluginNamesList+=pluginName;
-                PluginParamsList+=pluginStaticParams;
+                PluginBasePathList+=pluginBasePath;
+                PluginParamsList+=pluginParams;
             }
         }
         else if(num==PLUGIN_ACTION || num==PLUGIN_MENU) {
@@ -611,17 +606,13 @@ default{
             integer page=(integer)llList2String(params, 1);
             string prompt=llList2String(params, 2);
             string additionalButtons=llList2String(params, 3);
-            string pluginName=llList2String(params, 4);
-            string pluginLocalPath=llList2String(params, 5);
-            string pluginStaticParams=llList2String(params, 6);
+            string pluginLocalPath=llList2String(params, 4);
+            string pluginName=llList2String(params, 5);
+            string pluginMenuParams=llList2String(params, 6);
+            string pluginActionParams=llList2String(params, 7);
 
-            if(pluginName==MY_PLUGIN_MENU_CHANGE_SEAT || pluginName==MY_PLUGIN_MENU_UNSIT) {
-                //TODO: Leona: check if nested plugins could be a good
-                //idea, because both functions are something like a "pick Seat" function
-                //and maybe a "pick Seat" dialog may also be useful in other plugins
-                //
-                //this is the change seat menu. It should stay inside this script, because it uses the isAllowed function and the Slots list. 
-
+            if(pluginName==MY_PLUGIN_MENU_CHANGE_SEAT || pluginName==MY_PLUGIN_MENU_UNSIT || pluginName==MY_PLUGIN_MENU_PICK_SEAT) {
+                //this is the pick seat menu. It should stay inside this script, because it uses the isAllowed function and the Slots list. 
                 if(num==PLUGIN_ACTION) {
                     // 1) Do the action if needed
                     // 2) correct the path if needed
@@ -633,29 +624,45 @@ default{
                         integer index=llSubStringIndex(pluginLocalPath, MARKER_COMMENT_END);
                         if(~index) {
                             integer slotNumber=(integer)llGetSubString(pluginLocalPath, 2, index);
-                            if(pluginName==MY_PLUGIN_MENU_CHANGE_SEAT) {
+                            key avatarInSlot=(key)llList2String(Slots, slotNumber*2);
+                            if(pluginName==MY_PLUGIN_MENU_CHANGE_SEAT || llToLower(pluginActionParams)=="changeseat") {
                                 llMessageLinked(LINK_SET, SWAPTO, (string)(slotNumber+1), id);
                             }
-                            else {
-                                key avatarToUnsit=llList2Key(Slots, slotNumber*2);
-                                llMessageLinked(LINK_SET, UNSIT, avatarToUnsit, id);
-                                if(avatarToUnsit==id) {
+                            else if(pluginName==MY_PLUGIN_MENU_UNSIT || llToLower(pluginActionParams)=="unsit") {
+                                llMessageLinked(LINK_SET, UNSIT, avatarInSlot, id);
+                                if(avatarInSlot==id) {
                                     //don't remenu if someone unsits oneself
                                     remenu=FALSE;
                                 }
+                            }
+                            else if((integer)pluginActionParams) {
+                                llMessageLinked(LINK_SET, (integer)pluginActionParams, llDumpList2String([slotNumber, avatarInSlot], "|"), id);
                             }
                         }
                         path=deleteNode(path, -1, -1);
                     }
                     if(remenu) {
-                        llMessageLinked(LINK_SET, PLUGIN_ACTION_DONE, buildParamSet1(path, page, prompt, [additionalButtons], "", "", ""), id);
+                        llMessageLinked(LINK_SET, PLUGIN_ACTION_DONE, buildParamSet1(path, page, prompt, [additionalButtons], []), id);
                     }
                 }
                 else if(num==PLUGIN_MENU) {
                     // 1) set a prompt if needed
                     // 2) generate your buttons if needed
                     // 3) finish with a PLUGIN_MENU_DONE call
-                    if(pluginName==MY_PLUGIN_MENU_CHANGE_SEAT) {
+                    //pluginMenuParams: permissionString,avatar or seatnumber to highlight
+
+                    list pluginMenuParamsList=llParseStringKeepNulls(pluginMenuParams, [","], []);
+                    string permissionString=llList2String(pluginMenuParamsList, 0);
+                    string highlight=llList2String(pluginMenuParamsList, 0);
+
+                    integer highlightSlot=-1;
+                    key highlightAvatar=id;
+
+                    if(pluginName==MY_PLUGIN_MENU_PICK_SEAT) {
+                        highlightSlot=((string)((integer)highlight)==highlight)*(integer)highlight - 1;
+                        highlightAvatar=(key)highlight;
+                    }
+                    else if(pluginName==MY_PLUGIN_MENU_CHANGE_SEAT) {
                         prompt="Where will you sit?";
                     }
                     else if(pluginName==MY_PLUGIN_MENU_UNSIT) {
@@ -664,32 +671,28 @@ default{
                     //build and show the menu
                     //generate the buttons
                     //A button will be
-                    //0) if the menu user sits on the seat: "•" + menu user name + "•"
-                    //1) if an avatar sits on the seat: "·" + an avatar name + "·"
+                    //1) if an avatar sits on the seat: an avatar name
                     //2) if the seat name is provided: a seat name
                     //3) else: seatX: where X is a number
+                    //We can highlight one avatar or one slotnumber by surrounding a "⚫". In the standart unsit/changeSeat menu this will be the menu user
                     //We use the "button comment" to store the slotnumber to make it easier to parse the response
                     //prefixing the button names is no longer essentially but we keep it because it looks nice
                     integer length=llGetListLength(Slots);
                     list buttons;
                     integer index;
                     for(; index<length; index+=2) {
-                        if(isAllowed(1, id, index/2, pluginStaticParams)) {
-                            string currentButtonName=MARKER_COMMENT_START + (string)(index/2) + MARKER_COMMENT_END;
+                        if(isAllowed(1, id, index/2, permissionString)) {
+                            string currentButtonName;
                             key avatar=llList2Key(Slots, index);
                             list temp=llParseStringKeepNulls(llList2String(Slots, index+1), ["§"], []);
                             string seatName=llList2String(temp, 0);
                             string seatNumber=llList2String(temp, 1);
                             if(avatar) {
-                                string surroundingCharacter="·";
-                                if(avatar==id) {
-                                    surroundingCharacter="⚫";
-                                }
                                 if(OptionUseDisplayNames) {
-                                    currentButtonName+=surroundingCharacter + llGetDisplayName(avatar) + surroundingCharacter;
+                                    currentButtonName+=llGetDisplayName(avatar);
                                 }
                                 else {
-                                    currentButtonName+=surroundingCharacter + llKey2Name(avatar) + surroundingCharacter;
+                                    currentButtonName+=llKey2Name(avatar);
                                 }
                             }
                             else if(seatName) {
@@ -698,10 +701,14 @@ default{
                             else {
                                 currentButtonName+=seatNumber;
                             }
+                            if(avatar==highlightAvatar || index/2==highlightSlot) {
+                                currentButtonName="⚫" + currentButtonName + "⚫";
+                            }
+                            currentButtonName=MARKER_COMMENT_START + (string)(index/2) + MARKER_COMMENT_END + currentButtonName;
                             buttons+=[currentButtonName];
                         }
                     }
-                    llMessageLinked(LINK_SET, PLUGIN_MENU_DONE, buildParamSet1(path, page, prompt, buttons, "", "", ""), id);
+                    llMessageLinked(LINK_SET, PLUGIN_MENU_DONE, buildParamSet1(path, page, prompt, buttons, []), id);
                 }
             }
         }

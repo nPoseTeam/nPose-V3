@@ -59,9 +59,9 @@ list ZERO_WIDTH_UTF_CHARACTERS_BASE64=[
     "4oCu", // U+202e, RIGHT-TO-LEFT OVERRIDE
     "4oGg", // U+2060, WORD JOINER,
     "4oGh", // U+2061, FUNCTION APPLICATION
-    "4oGh", // U+2062, INVISIBLE TIMES
-    "4oGi", // U+2063, INVISIBLE SEPARATOR
-    "4oGj" // U+2064, INVISIBLE PLUS
+    "4oGi", // U+2062, INVISIBLE TIMES
+    "4oGj", // U+2063, INVISIBLE SEPARATOR
+    "4oGk" // U+2064, INVISIBLE PLUS
 ];
 list CodingCharacterSet;
 integer CodingBase;
@@ -217,7 +217,7 @@ Dialog(key recipient, string prompt, list menuButtons, list utilityButtons, inte
     dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%CURRENT_PAGE%"], []), (string)(page+1));
     dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%TOTAL_PAGES%"], []), (string)numberOfPages);
     dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%TIMEOUT%"], []), (string)OptionDialogTimeout);
-    dialogPrompt=Utf8Trim(dialogPrompt, 512);
+    dialogPrompt=Utf8Trim(dialogPrompt, 511);
     if(dialogPrompt=="") {
         dialogPrompt="\n";
     }
@@ -322,9 +322,9 @@ string resolveButtonText(string text) {
     list tempList=llParseStringKeepNulls(text, [], [MARKER_COMMENT_START, MARKER_COMMENT_END, MARKER_BASE64_START, MARKER_BASE64_END]);
     integer index;
     integer length=llGetListLength(tempList);
-    text="";
     integer remove;
     integer decode;
+    text="";
     for(; index<length; index++) {
         string tempString=llList2String(tempList, index);
         if(tempString==MARKER_COMMENT_START) {
@@ -333,8 +333,13 @@ string resolveButtonText(string text) {
         else if(tempString==MARKER_BASE64_START) {
             decode=TRUE;
         }
-
-        if(tempString!=MARKER_COMMENT_START && tempString!=MARKER_COMMENT_END && tempString!=MARKER_BASE64_START && tempString!=MARKER_BASE64_END) {
+        else if(tempString==MARKER_BASE64_END) {
+            decode=FALSE;
+        }
+        else if(tempString==MARKER_COMMENT_END) {
+            remove=FALSE;
+        }
+        else {
             if(!remove) {
                 if(decode) {
                     text+=llBase64ToString(tempString);
@@ -345,12 +350,6 @@ string resolveButtonText(string text) {
             }
         }
 
-        if(tempString==MARKER_BASE64_END) {
-            decode=FALSE;
-        }
-        else if(tempString==MARKER_COMMENT_END) {
-            remove=FALSE;
-        }
     }
     return text;
 }
@@ -372,11 +371,7 @@ list sortButtonsForDialog(list menuButtons, list utilityButtons) {
         combined = menuButtons + spacers + utilityButtons;
     }
     
-    list out = llList2List(combined, 9, 11);
-    out += llList2List(combined, 6, 8);
-    out += llList2List(combined, 3, 5);
-    out += llList2List(combined, 0, 2);
-    return out;
+    return llList2List(combined, 9, 11) + llList2List(combined, 6, 8) + llList2List(combined, 3, 5) + llList2List(combined, 0, 2);
 }
 
 

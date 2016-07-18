@@ -7,9 +7,10 @@ integer PARAM_PATH=0;
 integer PARAM_PAGE=1;
 integer PARAM_PROMPT=2;
 integer PARAM_BUTTONS=3;
-integer PARAM_PLUGIN_NAME=4;
-integer PARAM_PLUGIN_LOCAL_PATH=5;
-integer PARAM_PLUGIN_STATIC_PARAMS=6;
+integer PARAM_PLUGIN_LOCAL_PATH=4;
+integer PARAM_PLUGIN_NAME=5;
+integer PARAM_PLUGIN_MENU_PARAMS=6;
+integer PARAM_PLUGIN_ACTION_PARAMS=6;
 
 //lowercase plugin name
 string MY_PLUGIN_NAME="my_testplugin";
@@ -24,12 +25,16 @@ string deleteNode(string path, integer start, integer end) {
 }
 
 //helper
-string buildParamSet1(string path, integer page, string prompt, list additionalButtons, string pluginName, string pluginLocalPath, string pluginStaticParams) {
+string buildParamSet1(string path, integer page, string prompt, list additionalButtons, list pluginParams) {
+	//pluginParams are: string pluginLocalPath, string pluginName, string pluginMenuParams, string pluginActionParams
 	//We can't use colons in the promt, because they are used as a seperator in other messages
-	//replace them with a UTF Symbol
-	prompt=llDumpList2String(llParseStringKeepNulls(prompt, [","], []), "‚"); // CAUTION: the 2nd "‚" is a UTF sign!
-	string buttons=llDumpList2String(additionalButtons, ",");
-	return llDumpList2String([path, page, prompt, buttons, pluginName, pluginLocalPath, pluginStaticParams], "|");
+	//so we replace them with a UTF Symbol
+	return llDumpList2String([
+		path,
+		page,
+		llDumpList2String(llParseStringKeepNulls(prompt, [","], []), "‚"), // CAUTION: the 2nd "‚" is a UTF sign!
+		llDumpList2String(additionalButtons, ",")
+	] + llList2List(pluginParams + ["", "", "", ""], 0, 3), "|");
 }
 
 string pluginMenu(list params, key id) {
@@ -43,20 +48,21 @@ string pluginMenu(list params, key id) {
 	integer page=(integer)llList2String(params, PARAM_PAGE);
 	string prompt=llList2String(params, PARAM_PROMPT);
 	string buttons=llList2String(params, PARAM_BUTTONS);
-	string pluginName=llList2String(params, PARAM_PLUGIN_NAME);
 	string pluginLocalPath=llList2String(params, PARAM_PLUGIN_LOCAL_PATH);
-	string pluginStaticParams=llList2String(params, PARAM_PLUGIN_STATIC_PARAMS);
+	string pluginName=llList2String(params, PARAM_PLUGIN_NAME);
+	string pluginMenuParams=llList2String(params, PARAM_PLUGIN_MENU_PARAMS);
+	string pluginActionParams=llList2String(params, PARAM_PLUGIN_ACTION_PARAMS);
 	
 	list buttonsList;
 	
 	if(pluginLocalPath=="") { //root level
 		//set a prompt
-		prompt = "\nThis page is created by the script '" + llGetScriptName() + "'.\n";
+		prompt = "This page is created by the script '" + llGetScriptName() + "'.";
 		//generate the buttons
 		buttonsList=[MY_BUTTON_NAME_1, MY_BUTTON_NAME_2, MY_BUTTON_NAME_3];
 	}
 	//return the modified parameters
-	return buildParamSet1(path, page, prompt, buttonsList, pluginName, pluginLocalPath, pluginStaticParams);
+	return buildParamSet1(path, page, prompt, buttonsList, [pluginLocalPath, pluginName, pluginMenuParams, pluginActionParams]);
 }
 
 string pluginAction(list params, key id) {
@@ -69,9 +75,10 @@ string pluginAction(list params, key id) {
 	integer page=(integer)llList2String(params, PARAM_PAGE);
 	string prompt=llList2String(params, PARAM_PROMPT);
 	string buttons=llList2String(params, PARAM_BUTTONS);
-	string pluginName=llList2String(params, PARAM_PLUGIN_NAME);
 	string pluginLocalPath=llList2String(params, PARAM_PLUGIN_LOCAL_PATH);
-	string pluginStaticParams=llList2String(params, PARAM_PLUGIN_STATIC_PARAMS);
+	string pluginName=llList2String(params, PARAM_PLUGIN_NAME);
+	string pluginMenuParams=llList2String(params, PARAM_PLUGIN_MENU_PARAMS);
+	string pluginActionParams=llList2String(params, PARAM_PLUGIN_ACTION_PARAMS);
 
 	//Do the action
 	string displayname=llGetDisplayName(id);
@@ -94,7 +101,7 @@ string pluginAction(list params, key id) {
 	}
 
 	//return the modified parameters
-	return buildParamSet1(path, page, prompt, [buttons], pluginName, pluginLocalPath, pluginStaticParams);
+	return buildParamSet1(path, page, prompt, [buttons], [pluginLocalPath, pluginName, pluginMenuParams, pluginActionParams]);
 }
 
 
