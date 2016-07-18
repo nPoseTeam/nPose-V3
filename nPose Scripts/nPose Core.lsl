@@ -347,12 +347,16 @@ ProcessLine(string sLine, key av, string ncName, string path, integer page) {
     }
 }
 
-string buildParamSet1(string path, integer page, string prompt, list additionalButtons, string pluginName, string pluginLocalPath, string pluginParams) {
+string buildParamSet1(string path, integer page, string prompt, list additionalButtons, list pluginParams) {
+    //pluginParams are: string pluginLocalPath, string pluginName, string pluginMenuParams, string pluginActionParams
     //We can't use colons in the promt, because they are used as a seperator in other messages
-    //replace them with a UTF Symbol
-    prompt=llDumpList2String(llParseStringKeepNulls(prompt, [","], []), "‚"); // CAUTION: the 2nd "‚" is a UTF sign!
-    string buttons=llDumpList2String(additionalButtons, ",");
-    return llDumpList2String([path, page, prompt, buttons, pluginName, pluginLocalPath, pluginParams], "|");
+    //so we replace them with a UTF Symbol
+    return llDumpList2String([
+        path,
+        page,
+        llDumpList2String(llParseStringKeepNulls(prompt, [","], []), "‚"), // CAUTION: the 2nd "‚" is a UTF sign!
+        llDumpList2String(additionalButtons, ",")
+    ] + llList2List(pluginParams + ["", "", "", ""], 0, 3), "|");
 }
 
 
@@ -393,37 +397,38 @@ default{
             integer page=(integer)llList2String(paramSet1List, 1);
             string prompt=llList2String(paramSet1List, 2);
             
-            if(num==DOPOSE_READER) {
-                //handle the Adjuster
-                LastStrideCount = SlotMax;
-                SlotMax = 0;
-                llRegionSay(ChatChannel, "die");
-            }
-            
             //parse the NC content
             integer length=llGetListLength(allData);
             integer index=3;
             integer run_assignSlots;
+            integer slotResetFinished;
             for(; index<length; index++) {
                 string data = llList2String(allData, index);
-                if(num==DOBUTTON_READER && (llSubStringIndex(data, "ANIM") != 0)) {
-                    ProcessLine(llList2String(allData, index), id, ncName, path, page);
+                if(num!=PREPARE_MENU_STEP3_READER) {
+                    if(!llSubStringIndex(data, "ANIM") && !slotResetFinished) {
+                        //reset the slots
+                        LastStrideCount = SlotMax;
+                        SlotMax = 0;
+                        //handle the Adjuster
+                        llRegionSay(ChatChannel, "die");
+                        slotResetFinished=TRUE;
+                        run_assignSlots = TRUE;
+                    }
                     if(!llSubStringIndex(data, "SCHMO")) { //finds SCHMO and SCHMOE
                         run_assignSlots = TRUE;
                     }
-                }
-                else if (num==DOPOSE_READER) {
                     ProcessLine(llList2String(allData, index), id, ncName, path, page);
-                    run_assignSlots = TRUE;
                 }
-                //get all menu relevant data
-                if(!llSubStringIndex(data, "MENU")) {
-                    list parts=llParseStringKeepNulls(insertPlaceholder(data, id, ncName, path, page), ["|"], []);
-                    string cmd=llList2String(parts, 0);
-                    if(cmd=="MENUPROMPT") {
-                        prompt=llList2String(parts, 1);
-                        //"\n" are escaped in NC content
-                        prompt=llDumpList2String(llParseStringKeepNulls(prompt, ["\\n"], []), "\n");
+                else {
+                    //get all menu relevant data
+                    if(!llSubStringIndex(data, "MENU")) {
+                        list parts=llParseStringKeepNulls(insertPlaceholder(data, id, ncName, path, page), ["|"], []);
+                        string cmd=llList2String(parts, 0);
+                        if(cmd=="MENUPROMPT") {
+                            prompt=llList2String(parts, 1);
+                            //"\n" are escaped in NC content
+                            prompt=llDumpList2String(llParseStringKeepNulls(prompt, ["\\n"], []), "\n");
+                        }
                     }
                 }
             }
@@ -441,7 +446,7 @@ default{
             }
             if(path!="") {
                 //only try to remenu if there are parameters to do so
-                string paramSet1=buildParamSet1(path, page, prompt, [llList2String(paramSet1List, 3)], llList2String(paramSet1List, 4), llList2String(paramSet1List, 5), llList2String(paramSet1List, 6));
+                string paramSet1=buildParamSet1(path, page, prompt, [llList2String(paramSet1List, 3)], llList2List(paramSet1List, 4, 7));
                 if(num==PREPARE_MENU_STEP3_READER) {
                     //we are ready to show the menu
                     llMessageLinked(LINK_SET, MENU_SHOW, paramSet1, id);
