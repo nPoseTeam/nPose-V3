@@ -22,7 +22,8 @@ string PAGE_FORWARD_LAST_PAGE = "▷";
 string PAGE_BACKWARD_FIRST_PAGE = "◁";
 string BACK_BUTTON_DISPLAY="▲";
 string BACK_BUTTON_REPORT="^";
-string BLANK = " ";
+string BLANK=" ";
+string SEPARATOR="`";
 integer REPEAT = 10;//how often the timer will go off, in seconds
 integer Channel;
 integer Listener = -1;
@@ -246,8 +247,8 @@ Dialog(key recipient, string prompt, list menuButtons, list utilityButtons, inte
         id,
         llGetUnixTime() + OptionDialogTimeout,
         prompt,
-        llDumpList2String(menuButtons, "`"),
-        llDumpList2String(utilityButtons, "`"),
+        llDumpList2String(menuButtons, SEPARATOR),
+        llDumpList2String(utilityButtons, SEPARATOR),
         page,
         path,
         lookupTable
@@ -276,7 +277,7 @@ list sanitizeButtons(string buttons, string lookupTable) {
     //returns a list with 2 strings
     // - the sanitized button names concentrated into a string
     // - the modified lookupTable
-    list buttonsList=llParseString2List(buttons, ["`"], []);
+    list buttonsList=llParseString2List(buttons, [SEPARATOR], []);
     list sanitizedButtonsList;
     integer index;
     integer length=llGetListLength(buttonsList);
@@ -288,7 +289,7 @@ list sanitizeButtons(string buttons, string lookupTable) {
             lookupTable=llList2String(temp, 1);
         }
     }
-    return [llDumpList2String(sanitizedButtonsList, "`"), lookupTable];
+    return [llDumpList2String(sanitizedButtonsList, SEPARATOR), lookupTable];
 }
 
 list sanitizeButton(string button, string lookupTable) {
@@ -307,10 +308,10 @@ list sanitizeButton(string button, string lookupTable) {
     else {
         //store the original Button text in the lookup table
         //prefix the nice Button text with the current index of the lookup table and trim it again
-        list lookupTableList=llParseStringKeepNulls(lookupTable, ["`"], []);
+        list lookupTableList=llParseStringKeepNulls(lookupTable, [SEPARATOR], []);
         integer nextIndex=llGetListLength(lookupTableList);
         niceButton=Utf8Trim(integer2Invisible(nextIndex) + niceButton, 24);
-        return [niceButton, llDumpList2String(lookupTableList + [button], "`")];
+        return [niceButton, llDumpList2String(lookupTableList + [button], SEPARATOR)];
     }
 }
 
@@ -358,7 +359,7 @@ string buttonLookup(string dialogAnswer, string lookupTable) {
     if(!~llListFindList(CodingCharacterSet, [llGetSubString(dialogAnswer, 0, 0)])) {
         return dialogAnswer;
     }
-    list lookupTableList=llParseStringKeepNulls(lookupTable, ["`"], []);
+    list lookupTableList=llParseStringKeepNulls(lookupTable, [SEPARATOR], []);
     return llList2String(lookupTableList, invisible2Integer(dialogAnswer));
 }
 
@@ -442,11 +443,11 @@ default {
             //get the buttons and create the lookup table
             //MENU_BUTTONS
             list temp=sanitizeButtons(llList2String(params, 3), lookupTable); 
-            list menuButtons=llParseString2List(llList2String(temp, 0), ["`"], []);
+            list menuButtons=llParseString2List(llList2String(temp, 0), [SEPARATOR], []);
             lookupTable=llList2String(temp, 1);
             //Utility buttons
             temp=sanitizeButtons(llList2String(params, 4), lookupTable);
-            list utilityButtons=llParseString2List(llList2String(temp, 0), ["`"], []);
+            list utilityButtons=llParseString2List(llList2String(temp, 0), [SEPARATOR], []);
             lookupTable=llList2String(temp, 1);
             //prepare the dialog
             Dialog(rcpt, prompt, menuButtons, utilityButtons, page, id, path, lookupTable);
@@ -471,8 +472,8 @@ default {
         if (~index) {
             key callerId = llList2Key(Menus, index + MENUS_PARAM_CALLER_ID);
             string prompt = llList2String(Menus, index + MENUS_PARAM_PROMPT);
-            list menuButtons = llParseString2List(llList2String(Menus, index + MENUS_PARAM_MENU_BUTTONS), ["`"], []);
-            list utilityButtons = llParseString2List(llList2String(Menus, index + MENUS_PARAM_UTILITY_BUTTONS), ["`"], []);
+            list menuButtons = llParseString2List(llList2String(Menus, index + MENUS_PARAM_MENU_BUTTONS), [SEPARATOR], []);
+            list utilityButtons = llParseString2List(llList2String(Menus, index + MENUS_PARAM_UTILITY_BUTTONS), [SEPARATOR], []);
             integer page = llList2Integer(Menus, index + MENUS_PARAM_PAGE);
             string path = llList2String(Menus, index + MENUS_PARAM_PATH);
             string lookupTable=llList2String(Menus, index + MENUS_PARAM_LOOKUP_TABLE);

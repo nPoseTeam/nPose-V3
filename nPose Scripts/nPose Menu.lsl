@@ -639,7 +639,7 @@ default{
                                 llMessageLinked(LINK_SET, (integer)pluginActionParams, llDumpList2String([slotNumber, avatarInSlot], "|"), id);
                             }
                         }
-                        //set path to plugin root path (caution: button names may contain a ":")
+                        //set path to plugin root path
                         path=llGetSubString(path, 0, -llStringLength(pluginLocalPath)-2);
                     }
                     if(remenu) {
@@ -654,7 +654,7 @@ default{
 
                     list pluginMenuParamsList=llParseStringKeepNulls(pluginMenuParams, [","], []);
                     string permissionString=llList2String(pluginMenuParamsList, 0);
-                    string highlight=llList2String(pluginMenuParamsList, 0);
+                    string highlight=llList2String(pluginMenuParamsList, 1);
 
                     integer highlightSlot=-1;
                     key highlightAvatar=id;
@@ -702,9 +702,17 @@ default{
                             else {
                                 currentButtonName+=seatNumber;
                             }
+                            //replace some characters that will cause problems
+                            currentButtonName=llDumpList2String(llParseStringKeepNulls(currentButtonName, ["`"], []), "‵");
+                            currentButtonName=llDumpList2String(llParseStringKeepNulls(currentButtonName, ["|"], []), "┃");
+                            currentButtonName=llDumpList2String(llParseStringKeepNulls(currentButtonName, ["/"], []), "⁄");
+                            currentButtonName=llDumpList2String(llParseStringKeepNulls(currentButtonName, [":"], []), "꞉");
+                            
+                            //highlight
                             if(avatar==highlightAvatar || index/2==highlightSlot) {
                                 currentButtonName="⚫" + currentButtonName + "⚫";
                             }
+
                             currentButtonName=MARKER_COMMENT_START + (string)(index/2) + MARKER_COMMENT_END + currentButtonName;
                             buttons+=[currentButtonName];
                         }
