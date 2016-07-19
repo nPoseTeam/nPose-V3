@@ -639,7 +639,8 @@ default{
                                 llMessageLinked(LINK_SET, (integer)pluginActionParams, llDumpList2String([slotNumber, avatarInSlot], "|"), id);
                             }
                         }
-                        path=deleteNode(path, -1, -1);
+                        //set path to plugin root path (caution: button names may contain a ":")
+                        path=llGetSubString(path, 0, -llStringLength(pluginLocalPath)-2);
                     }
                     if(remenu) {
                         llMessageLinked(LINK_SET, PLUGIN_ACTION_DONE, buildParamSet1(path, page, prompt, [additionalButtons], []), id);
