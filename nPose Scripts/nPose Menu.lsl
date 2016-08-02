@@ -115,7 +115,7 @@ DoMenu(key rcpt, string path, integer page, string prompt, list additionalButton
     //check menu permissions
     if(
         //the whole if statement only exists for backward compability, because all this (and more) could be done via button permissions on root level
-        (rcpt == llGetOwner() || Permissions == "group" && llSameGroup(rcpt) || Permissions == "public") &&
+        (rcpt == llGetOwner() || (Permissions == "group" && llSameGroup(rcpt)) || Permissions == "public") &&
         (rcpt == llGetOwner() || !Sit2GetMenu || ~llListFindList(Slots, [rcpt]))
     ) {
         list thisMenuPath=llDeleteSubList(llParseStringKeepNulls(path , [":"], []), 0, 0);
