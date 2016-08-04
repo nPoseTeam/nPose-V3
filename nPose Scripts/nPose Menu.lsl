@@ -25,6 +25,10 @@ list MenuPermPerms;
 
 key ScriptId;
 
+list UserDefinedPermissionsList;
+list MacroNames;
+list MacroValues;
+
 #define SET_PREFIX "SET"
 #define BTN_PREFIX "BTN"
 #define DEFAULT_PREFIX "DEFAULT"
@@ -48,7 +52,10 @@ key ScriptId;
 #define UNSIT -222
 #define DOMENU -800
 #define DOMENU_ACCESSCTRL -801
+#define UDPBOOL -804
+#define UDPLIST -805
 #define USER_PERMISSION_UPDATE -806
+#define MACRO -807
 #define PLUGIN_MENU_REGISTER -810
 #define MENU_SHOW -815
 #define PREPARE_MENU_STEP1 -820
@@ -63,7 +70,7 @@ key ScriptId;
 #define MEMORY_USAGE 34334
 #define SEAT_UPDATE 35353
 #define VICTIMS_LIST -238
-#define OPTIONS_NUM -240
+#define OPTIONS -240
 
 
 //dialog buttons
@@ -76,10 +83,8 @@ key ScriptId;
 #define PERMISSION_SEATED "seated"
 #define PERMISSION_OCCUPIED "occupied"
 #define PERMISSION_OWNSEAT "ownseat"
-#define USER_PERMISSION_TYPE_LIST "list"
-#define USER_PERMISSION_TYPE_BOOL "bool"
-#define USER_PERMISSION_TYPE_MACRO "macro"
-list pluginPermissionList;
+#define USER_DEFINED_PERMISSION_TYPE_LIST "list"
+#define USER_DEFINED_PERMISSION_TYPE_BOOL "bool"
 
 //NC Reader
 #define NC_READER_CONTENT_SEPARATOR "%&§"
@@ -202,14 +207,14 @@ integer isAllowed(integer mode, key avatarKey, integer slotNumber, string permis
     // any integer counts as a seatNumber:
     //        mode 0: returns TRUE if menu user sits on the seat with the number seatNumber
     //        mode 1: returns TRUE if the specified slotNumber represents the seat with the number seatNumber
+    // any string that beginns with a "@":
+    //       is a macro, which gets recursivly parsed
     // any other string counts as a UserDefinedPermission
     //        type list:
     //            mode 0: returns TRUE if the menu user is within the list
     //            mode 1: returns TRUE if the user sitting on the specified seat is within the list
     //        type bool:
     //            all modes: returns the value of the UserDefinedPermission
-    //        type macro:
-    //            all modes: recursively parses the value
 
     // Examples:
     // mode 0:
@@ -268,26 +273,32 @@ integer isAllowed(integer mode, key avatarKey, integer slotNumber, string permis
                 else if((string)((integer)item)==item){
                     result=logicalXor(invert, slotNumber+1==(integer)item);
                 }
-
+                else if(llGetSubString(item, 0, 0)=="@") {
+                    integer macroIndex=llListFindList(MacroNames, [llDeleteSubString(item, 0, 0)]);
+                    if(~macroIndex) {
+                        result=logicalXor(invert, isAllowed(mode, avatarKey, slotNumber, llList2String(MacroValues, macroIndex)));
+                    }
+                    else {
+                        //unknown Macro: assume that it is set to ""
+                        result=invert;
+                    }
+                }
                 else {
                     //maybe a user defined permission
-                    integer pluginPermissionIndex=llListFindList(pluginPermissionList, [item]);
-                    if(~pluginPermissionIndex) {
+                    integer udpIndex=llListFindList(UserDefinedPermissionsList, [item]);
+                    if(~udpIndex) {
                         //plugin permission
-                        string pluginPermissionType=llList2String(pluginPermissionList, pluginPermissionIndex+1);
-                        if(pluginPermissionType==USER_PERMISSION_TYPE_LIST) {
+                        string pluginPermissionType=llList2String(UserDefinedPermissionsList, udpIndex+1);
+                        if(pluginPermissionType==USER_DEFINED_PERMISSION_TYPE_LIST) {
                             if(!mode) {
-                                result=logicalXor(invert, ~llSubStringIndex(llList2String(pluginPermissionList, pluginPermissionIndex+2), (string)avatarKey));
+                                result=logicalXor(invert, ~llSubStringIndex(llList2String(UserDefinedPermissionsList, udpIndex+2), (string)avatarKey));
                             }
                             else {
-                                result=logicalXor(invert, ~llSubStringIndex(llList2String(pluginPermissionList, pluginPermissionIndex+2), (string)avatarInSlot));
+                                result=logicalXor(invert, ~llSubStringIndex(llList2String(UserDefinedPermissionsList, udpIndex+2), (string)avatarInSlot));
                             }
                         }
-                        else if(pluginPermissionType==USER_PERMISSION_TYPE_BOOL) {
-                            result=logicalXor(invert, (integer)llList2String(pluginPermissionList, pluginPermissionIndex+2));
-                        }
-                        else if(pluginPermissionType==USER_PERMISSION_TYPE_MACRO) {
-                            result=logicalXor(invert, isAllowed(mode, avatarKey, slotNumber, llList2String(pluginPermissionList, pluginPermissionIndex+2)));
+                        else if(pluginPermissionType==USER_DEFINED_PERMISSION_TYPE_BOOL) {
+                            result=logicalXor(invert, (integer)llList2String(UserDefinedPermissionsList, udpIndex+2));
                         }
                         else {
                             //error unknown plugin permission type
@@ -714,8 +725,8 @@ default{
             }
         }
 //begin handle link message inputs
-        else if(num==OPTIONS_NUM) {
-            //save new option(s) from LINKMSG
+        else if(num == OPTIONS || num == MACRO || num == UDPBOOL || num == UDPLIST) {
+            //save new option(s) or macro(s) or userdefined permissions from LINKMSG
             list optionsToSet = llParseStringKeepNulls(str, ["~","|"], []);
             integer length = llGetListLength(optionsToSet);
             integer index;
@@ -725,11 +736,32 @@ default{
                 string optionString = llList2String(optionsItems, 1);
                 string optionSetting = llToLower(llStringTrim(optionString, STRING_TRIM));
                 integer optionSettingFlag = optionSetting=="on" || (integer)optionSetting;
-
-                if(optionItem == "permit") {Permissions = optionSetting;}
-                else if(optionItem == "sit2getmenu") {Sit2GetMenu = optionSettingFlag;}
-                else if(optionItem == "menudist") {MenuDistance = (float)optionSetting;}
-                else if(optionItem == "usedisplaynames") {OptionUseDisplayNames = optionSettingFlag;}
+                if(num==MACRO) {
+                    integer macroIndex=llListFindList(MacroNames, [optionItem]);
+                    if(~macroIndex) {
+                        MacroNames=llDeleteSubList(MacroNames, macroIndex, macroIndex);
+                        MacroValues=llDeleteSubList(MacroValues, macroIndex, macroIndex);
+                    }
+                    MacroNames+=[optionItem];
+                    MacroValues+=[optionString];
+                }
+                else if(num==UDPBOOL || num==UDPLIST) {
+                    integer udpIndex=llListFindList(UserDefinedPermissionsList, [optionItem]);
+                    if(~udpIndex) {
+                        UserDefinedPermissionsList=llDeleteSubList(UserDefinedPermissionsList, udpIndex, udpIndex+2);
+                    }
+                    string udpType=USER_DEFINED_PERMISSION_TYPE_BOOL;
+                    if(num==UDPLIST) {
+                        udpType=USER_DEFINED_PERMISSION_TYPE_LIST;
+                    }
+                    UserDefinedPermissionsList+=[optionItem, udpType, optionSettingFlag];
+                }
+                else if(num==OPTIONS) {
+                    if(optionItem == "permit") {Permissions = optionSetting;}
+                    else if(optionItem == "sit2getmenu") {Sit2GetMenu = optionSettingFlag;}
+                    else if(optionItem == "menudist") {MenuDistance = (float)optionSetting;}
+                    else if(optionItem == "usedisplaynames") {OptionUseDisplayNames = optionSettingFlag;}
+                }
             }
         }
         else if(num == NC_READER_RESPONSE) {
@@ -739,24 +771,24 @@ default{
             }
         }
         else if(num == USER_PERMISSION_UPDATE) {
+            // DEPRECATED: Use UDPBOOL or UDPLIST instead
             // @param str string CSV: permissionName, permissionType, permissionValue[, permissionName, permissionType, permissionValue[, ...]]
             // permissionName: a unique name for a permission. A permission name of the type macro should begin with a @
-            // permissionType: bool|list|macro
+            // permissionType: bool|list
             // permissionValue:
             //   bool: 0|1
             //   list: a list with Avatar UUIDs (must not contain a ",")
-            //   macro: a permission string
 
             list newPermission=llCSV2List(str);
             integer index;
             integer length=llGetListLength(newPermission);
             for(; index<length; index+=3) {
                 string permissionName=llToLower(llList2String(newPermission, index));
-                integer permissionIndex=llListFindList(pluginPermissionList, [permissionName]);
+                integer permissionIndex=llListFindList(UserDefinedPermissionsList, [permissionName]);
                 if(~permissionIndex) {
-                    pluginPermissionList=llDeleteSubList(pluginPermissionList, permissionIndex, permissionIndex+2);
+                    UserDefinedPermissionsList=llDeleteSubList(UserDefinedPermissionsList, permissionIndex, permissionIndex+2);
                 }
-                pluginPermissionList+=[permissionName] + llList2List(newPermission, index+1, index+2);
+                UserDefinedPermissionsList+=[permissionName] + llList2List(newPermission, index+1, index+2);
             }
         }
         else if(num==SEAT_UPDATE) {

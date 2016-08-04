@@ -122,4 +122,7 @@ default {
 			}
 		}
 	}
+	on_rez(integer param) {
+		llResetScript();
+	}
 }

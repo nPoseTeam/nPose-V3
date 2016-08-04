@@ -664,8 +664,10 @@ default {
                 LastAnimRunning = "";
             }
         }
+/* Leona: This have to be done in all scripts or in none of them. If we do it only in one script, the scripts may get out of sync
         else if(change & CHANGED_OWNER) {
             llResetScript();
         }
+*/
     }
 }

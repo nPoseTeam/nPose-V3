@@ -13,6 +13,7 @@ integer DIALOG = -900;
 integer DIALOG_RESPONSE = -901;
 integer DIALOG_TIMEOUT = -902;
 integer OPTIONS = -240;
+integer MACRO = -807;
 
 integer PAGE_SIZE = 12;
 integer MEMORY_USAGE = 34334;
@@ -46,6 +47,8 @@ integer MENUS_STRIDE=9;
 
 list Avs;//fill this on start and update on changed_link.  leave dialogs open until avs stand
 
+list MacroNames;
+list MacroValues;
 
 list ZERO_WIDTH_UTF_CHARACTERS_BASE64=[
     "4oCL", // U+200b, ZERO WIDTH SPACE
@@ -71,6 +74,8 @@ string MARKER_COMMENT_START="/*";
 string MARKER_COMMENT_END="*/";
 string MARKER_BASE64_START="/$";
 string MARKER_BASE64_END="$/";
+string MARKER_MACRO_START="/@";
+string MARKER_MACRO_END="@/";
 
 string TemplateDialogPrompt="%PROMPT%\nPath: %NICE_PATH%\nPage: %CURRENT_PAGE%/%TOTAL_PAGES%%DIALOG_TIMEOUT_TEXT%";
 string TemplateDialogTimeoutText="\n(Timeout in %TIMEOUT% seconds.)";
@@ -205,16 +210,16 @@ Dialog(key recipient, string prompt, list menuButtons, list utilityButtons, inte
         dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%DIALOG_TIMEOUT_TEXT%"], []), "");
     }
     else {
-        dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%DIALOG_TIMEOUT_TEXT%"], []), TemplateDialogTimeoutText);
+        dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%DIALOG_TIMEOUT_TEXT%"], []), resolveText(TemplateDialogTimeoutText));
     }
     if(prompt) {
-        dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%PROMPT%"], []), "\n" + prompt + "\n");
+        dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%PROMPT%"], []), "\n" + resolveText(prompt) + "\n");
     }
     else {
         dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%PROMPT%"], []), "");
     }
     dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%PATH%"], []), path);
-    dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%NICE_PATH%"], []), resolveButtonText(path));
+    dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%NICE_PATH%"], []), resolveText(path));
     dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%CURRENT_PAGE%"], []), (string)(page+1));
     dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%TOTAL_PAGES%"], []), (string)numberOfPages);
     dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%TIMEOUT%"], []), (string)OptionDialogTimeout);
@@ -296,7 +301,7 @@ list sanitizeButton(string button, string lookupTable) {
     //returns a list with 2 strings
     // - the button name ready for use in the dialog
     // - the modified lookupTable
-    string niceButton=Utf8Trim(resolveButtonText(button), 24);
+    string niceButton=Utf8Trim(resolveText(button), 24);
     if(button==niceButton) {
         //nothing to do
         return [button, lookupTable];
@@ -315,21 +320,26 @@ list sanitizeButton(string button, string lookupTable) {
     }
 }
 
-string resolveButtonText(string text) {
+string resolveText(string text) {
     //this function removes comments /*thisIsAComment*/
-    //and replaces the base64 coded text /$thisIsABase64EncodedText$/
+    //replaces the base64 coded text /$thisIsABase64EncodedText$/
+    //and inserts the macros recursiv /@thisIsAMacro@/
     //from a text
     //don't support nesting.
-    list tempList=llParseStringKeepNulls(text, [], [MARKER_COMMENT_START, MARKER_COMMENT_END, MARKER_BASE64_START, MARKER_BASE64_END]);
+    list tempList=llParseStringKeepNulls(text, [], [MARKER_COMMENT_START, MARKER_COMMENT_END, MARKER_BASE64_START, MARKER_BASE64_END, MARKER_MACRO_START, MARKER_MACRO_END]);
     integer index;
     integer length=llGetListLength(tempList);
     integer remove;
     integer decode;
+    integer macro;
     text="";
     for(; index<length; index++) {
         string tempString=llList2String(tempList, index);
         if(tempString==MARKER_COMMENT_START) {
             remove=TRUE;
+        }
+        else if(tempString==MARKER_COMMENT_END) {
+            remove=FALSE;
         }
         else if(tempString==MARKER_BASE64_START) {
             decode=TRUE;
@@ -337,15 +347,24 @@ string resolveButtonText(string text) {
         else if(tempString==MARKER_BASE64_END) {
             decode=FALSE;
         }
-        else if(tempString==MARKER_COMMENT_END) {
-            remove=FALSE;
+        else if(tempString==MARKER_MACRO_START) {
+            macro=TRUE;
+        }
+        else if(tempString==MARKER_MACRO_END) {
+            macro=FALSE;
         }
         else {
             if(!remove) {
-                if(decode) {
+                if(decode && !macro) {
                     text+=llBase64ToString(tempString);
                 }
-                else {
+                else if(!decode && macro) {
+                    integer macroIndex=llListFindList(MacroNames, [llToLower(tempString)]);
+                    if(~macroIndex) {
+                        text+=resolveText(llList2String(MacroValues, macroIndex));
+                    }
+                }
+                else if(!decode && !macro) {
                     text+=tempString;
                 }
             }
@@ -404,10 +423,6 @@ CleanList() {
 }
 
 default {
-    on_rez(integer param) {
-        llResetScript();
-    }
-
     state_entry() {
         Channel = RandomUniqueChannel();
         Avs = SeatedAvs();
@@ -452,8 +467,8 @@ default {
             //prepare the dialog
             Dialog(rcpt, prompt, menuButtons, utilityButtons, page, id, path, lookupTable);
         }
-        else if(num == OPTIONS) {
-            //save new option(s) from LINKMSG
+        else if(num == OPTIONS || num == MACRO) {
+            //save new option(s) or macro(s) from LINKMSG
             list optionsToSet = llParseStringKeepNulls(str, ["~","|"], []);
             integer length = llGetListLength(optionsToSet);
             integer index;
@@ -463,9 +478,19 @@ default {
                 string optionString = llList2String(optionsItems, 1);
                 string optionSetting = llToLower(llStringTrim(optionString, STRING_TRIM));
                 integer optionSettingFlag = optionSetting=="on" || (integer)optionSetting;
-
-                if(optionItem == "dialogtimeout") {OptionDialogTimeout = (integer)optionSetting;}
-                if(optionItem == "dialogbackward") {OptionUsePageBackward = optionSettingFlag;}
+                if(num==MACRO) {
+                    integer macroIndex=llListFindList(MacroNames, [optionItem]);
+                    if(~macroIndex) {
+                        MacroNames=llDeleteSubList(MacroNames, macroIndex, macroIndex);
+                        MacroValues=llDeleteSubList(MacroValues, macroIndex, macroIndex);
+                    }
+                    MacroNames+=[optionItem];
+                    MacroValues+=[optionString];
+                }
+                else if(num==OPTIONS) {
+                    if(optionItem == "dialogtimeout") {OptionDialogTimeout = (integer)optionSetting;}
+                    if(optionItem == "dialogbackward") {OptionUsePageBackward = optionSettingFlag;}
+                }
             }
         }
     }
@@ -519,5 +544,8 @@ default {
             Listener = -1;
             llSetTimerEvent(0.0);
         }
+    }
+    on_rez(integer param) {
+        llResetScript();
     }
 }

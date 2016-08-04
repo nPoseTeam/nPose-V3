@@ -39,6 +39,9 @@ string DefaultCardName;
 #define OPTIONS -240
 #define DEFAULT_CARD -242
 #define DOMENU -800
+#define UDPBOOL -804
+#define UDPLIST -805
+#define MACRO -807
 #define PLUGIN_MENU_REGISTER -810
 #define MENU_SHOW -815
 #define PREPARE_MENU_STEP1 -820
@@ -347,14 +350,19 @@ ProcessLine(string sLine, key av, string ncName, string path, integer page) {
         Slots = llListReplaceList(Slots, [llDumpList2String([llList2String(Slots,index),
             llDumpList2String(llDeleteSubList(paramsOriginal, 0, 0), "|")], "§")], index, index);
     }
-    else if(action =="PLUGINMENU") {
+    else if(action == "PLUGINMENU") {
         llMessageLinked(LINK_SET, PLUGIN_MENU_REGISTER, llDumpList2String(llListReplaceList(params, [path], 0, 0), "|"), "");
     }
-    else if(action =="DEFAULTCARD") {
-        llMessageLinked(LINK_SET, DEFAULT_CARD, llDumpList2String(llDeleteSubList(params, 0, 0), "|"), "");
-    }
-    else if(action =="OPTIONS") {
-        llMessageLinked(LINK_SET, OPTIONS, llDumpList2String(llDeleteSubList(params, 0, 0), "|"), "");
+    else {
+        integer num;
+        if(action == "DEFAULTCARD") {num=DEFAULT_CARD;}
+        else if(action == "OPTION") {num=OPTIONS;}
+        else if(action == "UDPBOOL") {num=UDPBOOL;}
+        else if(action == "UDPLIST") {num=UDPLIST;}
+        else if(action == "MACRO") {num=MACRO;}
+        if(num) {
+            llMessageLinked(LINK_SET, num, llDumpList2String(llDeleteSubList(params, 0, 0), "|"), "");
+        }
     }
 }
 
