@@ -8,6 +8,8 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 "Full perms" means having the modify, copy, and transfer permissions enabled in Second Life and/or other virtual world platforms derived from Second Life (such as OpenSim).  If the platform should allow more fine-grained permissions, then "full perms" will mean the most permissive possible set of permissions allowed by the platform.
 */
 
+string INIT_CARD_NAME=".init";
+string DefaultCardName;
 
 //define block start
 #define ADMIN_HUD_NAME "npose admin hud"
@@ -35,6 +37,7 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 #define CORERELAY 300
 #define UNSIT -222
 #define OPTIONS -240
+#define DEFAULT_CARD -242
 #define DOMENU -800
 #define PLUGIN_MENU_REGISTER -810
 #define MENU_SHOW -815
@@ -42,6 +45,7 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 #define PREPARE_MENU_STEP2 -821
 
 #define PLUGIN_ACTION_DONE -831
+#define DIALOG_TIMEOUT -902
 #define HUD_REQUEST -999
 //define block end
 
@@ -57,6 +61,7 @@ key LastAssignSlotsAvatarId;
 list Slots;  //one STRIDE = [animationName, posVector, rotVector, facials, sitterKey, SATMSG, NOTSATMSG, seatName]
 
 integer CurMenuOnSit; //default menuonsit option
+integer Cur2default;  //default action to revert back to default pose when last sitter has stood
 
 string NC_READER_CONTENT_SEPARATOR="%&§";
 
@@ -345,6 +350,12 @@ ProcessLine(string sLine, key av, string ncName, string path, integer page) {
     else if(action =="PLUGINMENU") {
         llMessageLinked(LINK_SET, PLUGIN_MENU_REGISTER, llDumpList2String(llListReplaceList(params, [path], 0, 0), "|"), "");
     }
+    else if(action =="DEFAULTCARD") {
+        llMessageLinked(LINK_SET, DEFAULT_CARD, llDumpList2String(llDeleteSubList(params, 0, 0), "|"), "");
+    }
+    else if(action =="OPTIONS") {
+        llMessageLinked(LINK_SET, OPTIONS, llDumpList2String(llDeleteSubList(params, 0, 0), "|"), "");
+    }
 }
 
 string buildParamSet1(string path, integer page, string prompt, list additionalButtons, list pluginParams) {
@@ -370,15 +381,21 @@ default{
         //let our scripts know the chat channel for props and adjusters
         llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)ChatChannel, NULL_KEY);
         integer listener = llListen(ChatChannel, "", "", "");
-        //the nPose Menu will do the same, so this should basically only run if there is no nPose menu script in this build
-        //but currently we don't check this, so at the startup the DOPOSE|DEFAULT will happen twice
-        integer stop = llGetInventoryNumber(INVENTORY_NOTECARD);
-        for(n = 0; n < stop; n++) {
-            string cardName = llGetInventoryName(INVENTORY_NOTECARD, n);
-            if((llSubStringIndex(cardName, DEFAULT_PREFIX) == 0) || (llSubStringIndex(cardName, CARD_PREFIX) == 0)) {
-                llSleep(1.0); //be sure that the NC reader script finished resetting
-                llMessageLinked(LINK_SET, DOPOSE, cardName, NULL_KEY);
-                return;
+        
+        if(llGetInventoryType(INIT_CARD_NAME)==INVENTORY_NOTECARD) {
+            llSleep(1.0); //be sure that the NC reader script finished resetting
+            llMessageLinked(LINK_SET, DOPOSE, INIT_CARD_NAME, NULL_KEY);
+        }
+        else {
+            //this is the old default notcard detection.
+            integer stop = llGetInventoryNumber(INVENTORY_NOTECARD);
+            for(n = 0; n < stop; n++) {
+                string cardName = llGetInventoryName(INVENTORY_NOTECARD, n);
+                if((llSubStringIndex(cardName, DEFAULT_PREFIX) == 0) || (llSubStringIndex(cardName, CARD_PREFIX) == 0)) {
+                    llSleep(1.0); //be sure that the NC reader script finished resetting
+                    llMessageLinked(LINK_SET, DEFAULT_CARD, cardName, NULL_KEY);
+                    return;
+                }
             }
         }
     }
@@ -518,17 +535,32 @@ default{
                 llRegionSayTo(HudId, ChatChannel, "/die");
             }
         }
+        else if(num == DEFAULT_CARD) {
+            DefaultCardName=str;
+            llMessageLinked(LINK_SET, DOPOSE, DefaultCardName, id);
+        }
+        else if(num == DIALOG_TIMEOUT) {
+            if(Cur2default && (llGetObjectPrimCount(llGetKey()) == llGetNumberOfPrims()) && (DefaultCardName != "")) {
+                llMessageLinked(LINK_SET, DOPOSE, DefaultCardName, NULL_KEY);
+            }
+        }
         else if(num == OPTIONS) {
-            list optionsToSet = llParseStringKeepNulls(str, ["~"], []);
-            integer stop = llGetListLength(optionsToSet);
-            integer n;
-            for(; n<stop; ++n) {
-                list optionsItems = llParseString2List(llList2String(optionsToSet, n), ["="], []);
+            //save new option(s) from LINKMSG
+            list optionsToSet = llParseStringKeepNulls(str, ["~","|"], []);
+            integer length = llGetListLength(optionsToSet);
+            integer index;
+            for(; index<length; ++index) {
+                list optionsItems = llParseString2List(llList2String(optionsToSet, index), ["="], []);
                 string optionItem = llToLower(llStringTrim(llList2String(optionsItems, 0), STRING_TRIM));
-                string optionSetting = llToLower(llStringTrim(llList2String(optionsItems, 1), STRING_TRIM));
+                string optionString = llList2String(optionsItems, 1);
+                string optionSetting = llToLower(llStringTrim(optionString, STRING_TRIM));
                 integer optionSettingFlag = optionSetting=="on" || (integer)optionSetting;
+
                 if(optionItem == "menuonsit") {
                     CurMenuOnSit = optionSettingFlag;
+                }
+                else if(optionItem == "2default") {
+                    Cur2default = optionSettingFlag;
                 }
             }
         }
@@ -604,6 +636,9 @@ default{
         if(change & CHANGED_LINK) {
             llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)ChatChannel, NULL_KEY); //let our scripts know the chat channel for props and adjusters
             assignSlots();
+            if(Cur2default && (llGetObjectPrimCount(llGetKey()) == llGetNumberOfPrims()) && (DefaultCardName != "")) {
+                llMessageLinked(LINK_SET, DOPOSE, DefaultCardName, NULL_KEY);
+            }
         }
         if(change & CHANGED_REGION) {
             llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(Slots, "^"), NULL_KEY);

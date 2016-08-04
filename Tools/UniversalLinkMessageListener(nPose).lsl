@@ -48,6 +48,7 @@ list REPLACE_NUM=[
 	-222, "UNSIT", "Unsits an avatar",
 	-240, "OPTIONS", "a global option string", 
 	-241, "FACIALS_FLAG", "any string received by the slave with arb number -241 will be assigned to the permissions.  This should either be 'on' or 'off'.", 
+	-242, "DEFAULT_CARD", "",
 	-800, "DOMENU", "call to menu to pull menu dialog.", 
 	-801, "DOMENU_ACCESSCTRL (Deprecated)", "Instead use DOMENU", 
 	-802, "arbNum (Deprecated)", "used to send out the current path to be used when a plugin menu returns to nPose menu.  This path can be used to bring back the same menu that called the plugin's menu in the beginning.", 

@@ -10,17 +10,16 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 
 //default options settings.  Change these to suit personal preferences
 string Permissions = "public"; //default permit option Public, Locked, Group
-integer Cur2default;  //default action to revert back to default pose when last sitter has stood
 integer Sit2GetMenu;  //required to be seated to get a menu
 float MenuDistance = 30.0;
 integer OptionUseDisplayNames; //use display names instead of usernames in changeSeat/unsit menu
 
 
 list Slots; //this Slots list is not complete. it only contains seated AV key and seat numbers
-string DefaultPoseNcName; //holds the name of the default notecard.
 string MenuNc = ".Change Menu Order"; //holds the name of the menu order notecard to read.
 //key toucherid;
-list Menus;
+list MenuPaths;
+list MenuButtons;
 list MenuPermPath;
 list MenuPermPerms;
 
@@ -66,6 +65,7 @@ key ScriptId;
 #define VICTIMS_LIST -238
 #define OPTIONS_NUM -240
 
+
 //dialog buttons
 #define BACKBTN "^"
 #define ROOTMENU "Main"
@@ -106,9 +106,9 @@ debug(list message){
 
 DoMenu(key rcpt, string path, integer page, string prompt, list additionalButtons) {
     list choices;
-    integer index = llListFindList(Menus, [path]);
+    integer index = llListFindList(MenuPaths, [path]);
     if(~index) {
-        choices=llParseStringKeepNulls(llList2String(Menus, index+1), ["|"], []);
+        choices=llParseStringKeepNulls(llList2String(MenuButtons, index), ["|"], []);
     }
     choices+=additionalButtons;
     
@@ -311,7 +311,8 @@ integer logicalXor(integer conditionA, integer conditionB) {
 }
 
 BuildMenus(list cardNames) {//builds the user defined menu buttons
-    Menus = [];
+    MenuPaths = [];
+    MenuButtons = [];
     MenuPermPath = [];
     MenuPermPerms = [];
     integer stop = llGetListLength(cardNames);
@@ -320,7 +321,6 @@ BuildMenus(list cardNames) {//builds the user defined menu buttons
         fromContents = TRUE;
         stop = llGetInventoryNumber(INVENTORY_NOTECARD);
     }
-    integer defaultSet;// = FALSE; // false by default
     integer n;
     for(; n<stop; ++n) {//step through the notecards backwards so that default notecard is first in the contents
         string name = llList2String(cardNames, n);
@@ -336,38 +336,30 @@ BuildMenus(list cardNames) {//builds the user defined menu buttons
         }
         list pathParts = llParseStringKeepNulls(name, [":"], []);
         string prefix = llList2String(pathParts, 0);
-        if((!defaultSet && prefix == SET_PREFIX) | (prefix == DEFAULT_PREFIX)) {
-            if(!fromContents) {
-                DefaultPoseNcName = llList2String(cardNames, n);
-            }
-            else {
-                DefaultPoseNcName = llGetInventoryName(INVENTORY_NOTECARD, n);
-            }
-            defaultSet = TRUE;
-        }
-        pathParts = llListReplaceList(pathParts, [ROOTMENU], 0, 0);
-        if(menuPerms) {
-            MenuPermPath += llDumpList2String(llDeleteSubList(pathParts, 0, 0), ":");
-            MenuPermPerms += menuPerms;
-        }
+        pathParts = llDeleteSubList(pathParts, 0, 0);
+
         if(~llListFindList(CARD_PREFIXES, [prefix])) { // found
-            pathParts = llDeleteSubList(pathParts, 0, 0);
+            if(menuPerms) {
+                MenuPermPath += llDumpList2String(pathParts, ":");
+                MenuPermPerms += menuPerms;
+            }
             while(llGetListLength(pathParts)) {
                 string last = llList2String(pathParts, -1);
                 string parentpath = llDumpList2String([ROOTMENU] + llDeleteSubList(pathParts, -1, -1), ":");
-                integer index = llListFindList(Menus, [parentpath]);
-                if(~index && !(index & 1)) {
-                    list children = llParseStringKeepNulls(llList2String(Menus, index + 1), ["|"], []);
+                integer index = llListFindList(MenuPaths, [parentpath]);
+                if(~index) {
+                    list children = llParseStringKeepNulls(llList2String(MenuButtons, index), ["|"], []);
                     if(!~llListFindList(children, [last])) {
                         children += [last];
-                        if(llGetInventoryType(MenuNc) != INVENTORY_NOTECARD) {
+                        if(fromContents) {
                             children = llListSort(children, 1, 1);
                         }
-                        Menus = llListReplaceList(Menus, [llDumpList2String(children, "|")], index + 1, index + 1);
+                        MenuButtons = llListReplaceList(MenuButtons, [llDumpList2String(children, "|")], index, index);
                     }
                 }
                 else {
-                    Menus += [parentpath, last];
+                    MenuPaths += [parentpath];
+                    MenuButtons += [last];
                 }
                 pathParts = llDeleteSubList(pathParts, -1, -1);
             }
@@ -552,7 +544,7 @@ default{
                 }
                 else {
                     //handled by us
-                    if(~llListFindList(Menus, [path])) {
+                    if(~llListFindList(MenuPaths, [path])) {
                         //this is a node
                         page=0;
                     }
@@ -721,25 +713,20 @@ default{
                 }
             }
         }
-        else if(num == DIALOG_TIMEOUT) {//menu not clicked and dialog timed out
-            if(Cur2default && (llGetObjectPrimCount(llGetKey()) == llGetNumberOfPrims()) && (DefaultPoseNcName != "")) {
-                llMessageLinked(LINK_SET, DOPOSE, DefaultPoseNcName, NULL_KEY);
-            }
 //begin handle link message inputs
-        }
         else if(num==OPTIONS_NUM) {
             //save new option(s) from LINKMSG
-            list optionsToSet = llParseStringKeepNulls(str, ["~"], []);
+            list optionsToSet = llParseStringKeepNulls(str, ["~","|"], []);
             integer length = llGetListLength(optionsToSet);
             integer index;
             for(; index<length; ++index) {
                 list optionsItems = llParseString2List(llList2String(optionsToSet, index), ["="], []);
                 string optionItem = llToLower(llStringTrim(llList2String(optionsItems, 0), STRING_TRIM));
-                string optionSetting = llToLower(llStringTrim(llList2String(optionsItems, 1), STRING_TRIM));
+                string optionString = llList2String(optionsItems, 1);
+                string optionSetting = llToLower(llStringTrim(optionString, STRING_TRIM));
                 integer optionSettingFlag = optionSetting=="on" || (integer)optionSetting;
 
                 if(optionItem == "permit") {Permissions = optionSetting;}
-                else if(optionItem == "2default") {Cur2default = optionSettingFlag;}
                 else if(optionItem == "sit2getmenu") {Sit2GetMenu = optionSettingFlag;}
                 else if(optionItem == "menudist") {MenuDistance = (float)optionSetting;}
                 else if(optionItem == "usedisplaynames") {OptionUseDisplayNames = optionSettingFlag;}
@@ -799,16 +786,11 @@ default{
                 llMessageLinked(LINK_SET, NC_READER_REQUEST, MenuNc, ScriptId);
             }
         }
+/* Leona: This have to be done in all scripts or in none of them. If we do it only in one script, the scripts may get out of sync
         if(change & CHANGED_OWNER) {
             llResetScript();
         }
-        if(
-            (change & CHANGED_LINK) && Cur2default
-            && (llGetObjectPrimCount(llGetKey()) == llGetNumberOfPrims())
-            && (DefaultPoseNcName != "")
-         ) {
-            llMessageLinked(LINK_SET, DOPOSE, DefaultPoseNcName, NULL_KEY);
-        }
+*/
     }
 
     on_rez(integer params) {

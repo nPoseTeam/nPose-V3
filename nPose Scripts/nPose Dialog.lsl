@@ -174,8 +174,12 @@ Dialog(key recipient, string prompt, list menuButtons, list utilityButtons, inte
     }
     page=page%numberOfPages;
     
-    //add page backward button
     list currentUtilityButtons=utilityButtons;
+    //add back button
+    if(backButtonNeeded) {
+        currentUtilityButtons+=[BACK_BUTTON_DISPLAY];
+    }
+    //add page backward button
     if(pageSizeExceeded && OptionUsePageBackward) {
         if(page) {
             currentUtilityButtons+=[PAGE_BACKWARD];
@@ -183,10 +187,6 @@ Dialog(key recipient, string prompt, list menuButtons, list utilityButtons, inte
         else {
             currentUtilityButtons+=[PAGE_BACKWARD_FIRST_PAGE];
         }
-    }
-    //add back button
-    if(backButtonNeeded) {
-        currentUtilityButtons+=[BACK_BUTTON_DISPLAY];
     }
     //add page forward button
     if(pageSizeExceeded) {
@@ -453,16 +453,19 @@ default {
             Dialog(rcpt, prompt, menuButtons, utilityButtons, page, id, path, lookupTable);
         }
         else if(num == OPTIONS) {
-            list optionsToSet = llParseStringKeepNulls(str, ["~"], []);
-            integer stop = llGetListLength(optionsToSet);
-            integer n;
-            for(; n<stop; ++n) {
-                list optionsItems = llParseString2List(llList2String(optionsToSet, n), ["="], []);
+            //save new option(s) from LINKMSG
+            list optionsToSet = llParseStringKeepNulls(str, ["~","|"], []);
+            integer length = llGetListLength(optionsToSet);
+            integer index;
+            for(; index<length; ++index) {
+                list optionsItems = llParseString2List(llList2String(optionsToSet, index), ["="], []);
                 string optionItem = llToLower(llStringTrim(llList2String(optionsItems, 0), STRING_TRIM));
-                string optionSetting = llToLower(llStringTrim(llList2String(optionsItems, 1), STRING_TRIM));
+                string optionString = llList2String(optionsItems, 1);
+                string optionSetting = llToLower(llStringTrim(optionString, STRING_TRIM));
                 integer optionSettingFlag = optionSetting=="on" || (integer)optionSetting;
+
                 if(optionItem == "dialogtimeout") {OptionDialogTimeout = (integer)optionSetting;}
-                if(optionItem == "dialogbackward") {OptionUsePageBackward = (integer)optionSetting;}
+                if(optionItem == "dialogbackward") {OptionUsePageBackward = optionSettingFlag;}
             }
         }
     }
