@@ -49,6 +49,18 @@ list REPLACE_NUM=[
 	-240, "OPTIONS", "a global option string", 
 	-241, "FACIALS_FLAG", "any string received by the slave with arb number -241 will be assigned to the permissions.  This should either be 'on' or 'off'.", 
 	-242, "DEFAULT_CARD", "",
+//eventHandling -700 - -799
+	-700, "ON_SAT", "generic event",
+	-701, "ON_NOT_SAT", "generic event",
+	-702, "ON_NEW", "generic event",
+	-703, "ON_CHANGE", "generic event",
+	-704, "ON_LOST", "generic event",
+	-705, "ON_EMPTY", "generic event",
+	-706, "ON_NOT_EMPTY", "generic event",
+	-707, "ON_FULL", "generic event",
+	-708, "ON_NOT_FULL", "generic event",
+	-719, "ON_INVALID", "generic event",
+
 	-800, "DOMENU", "call to menu to pull menu dialog.", 
 	-801, "DOMENU_ACCESSCTRL (Deprecated)", "Instead use DOMENU", 
 	-802, "arbNum (Deprecated)", "used to send out the current path to be used when a plugin menu returns to nPose menu.  This path can be used to bring back the same menu that called the plugin's menu in the beginning.", 

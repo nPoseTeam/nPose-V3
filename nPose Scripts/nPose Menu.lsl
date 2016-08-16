@@ -404,10 +404,16 @@ string getNcName(string path) {
     return "";
 }
 
-string deleteNode(string path, integer start, integer end) {
+//helper
+string deleteNodes(string path, integer start, integer end) {
     return llDumpList2String(llDeleteSubList(llParseStringKeepNulls(path, [":"], []), start, end), ":");
 }
+//helper
+string getNodes(string path, integer start, integer end) {
+    return llDumpList2String(llList2List(llParseStringKeepNulls(path, [":"], []), start, end), ":");
+}
 
+//helper
 string buildParamSet1(string path, integer page, string prompt, list additionalButtons, list pluginParams) {
     //pluginParams are: string pluginLocalPath, string pluginName, string pluginMenuParams, string pluginActionParams
     //We can't use colons in the promt, because they are used as a seperator in other messages
@@ -434,7 +440,7 @@ list getPluginParams(string path) {
             ;
         }
         else {
-            pluginBasePath=deleteNode(pluginBasePath, -1, -1);
+            pluginBasePath=deleteNodes(pluginBasePath, -1, -1);
         }
     }
     return [path, MY_PLUGIN_MENU, "", ""];
@@ -524,8 +530,8 @@ default{
 
             if(num == DIALOG_RESPONSE || num==DOMENU || num==DOMENU_ACCESSCTRL) {
                 //BackButton
-                if(deleteNode(path, 0, -2)==BACKBTN) {
-                    path=deleteNode(path, -2, -1);
+                if(getNodes(path, -1, -1)==BACKBTN) {
+                    path=deleteNodes(path, -2, -1);
                     num=PREPARE_MENU_STEP2;
                 }
                 else {
@@ -560,7 +566,7 @@ default{
                         page=0;
                     }
                     else {
-                        path=deleteNode(path, -1, -1);
+                        path=deleteNodes(path, -1, -1);
                     }
                     num=PREPARE_MENU_STEP2;
                 }
@@ -653,7 +659,7 @@ default{
                     // 1) set a prompt if needed
                     // 2) generate your buttons if needed
                     // 3) finish with a PLUGIN_MENU_DONE call
-                    //pluginMenuParams: permissionString,avatar or seatnumber to highlight
+                    //pluginMenuParams: permissionString,avatar or seatnumber to highlight, prompt
 
                     list pluginMenuParamsList=llParseStringKeepNulls(pluginMenuParams, [","], []);
                     string permissionString=llList2String(pluginMenuParamsList, 0);
@@ -665,6 +671,9 @@ default{
                     if(pluginName==MY_PLUGIN_MENU_PICK_SEAT) {
                         highlightSlot=((string)((integer)highlight)==highlight)*(integer)highlight - 1;
                         highlightAvatar=(key)highlight;
+                        if(llList2String(pluginMenuParamsList, 2)) {
+                            prompt=llList2String(pluginMenuParamsList, 2);
+                        }
                     }
                     else if(pluginName==MY_PLUGIN_MENU_CHANGE_SEAT) {
                         prompt="Where will you sit?";
@@ -710,6 +719,7 @@ default{
                             currentButtonName=llDumpList2String(llParseStringKeepNulls(currentButtonName, ["|"], []), "┃");
                             currentButtonName=llDumpList2String(llParseStringKeepNulls(currentButtonName, ["/"], []), "⁄");
                             currentButtonName=llDumpList2String(llParseStringKeepNulls(currentButtonName, [":"], []), "꞉");
+                            currentButtonName=llDumpList2String(llParseStringKeepNulls(currentButtonName, [","], []), "‚");
                             
                             //highlight
                             if(avatar==highlightAvatar || index/2==highlightSlot) {

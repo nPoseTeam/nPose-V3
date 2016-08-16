@@ -12,7 +12,7 @@ integer PARAM_PLUGIN_NAME=5;
 integer PARAM_PLUGIN_MENU_PARAMS=6;
 integer PARAM_PLUGIN_ACTION_PARAMS=6;
 
-//lowercase plugin name
+//plugin name
 string MY_PLUGIN_NAME="my_testplugin";
 
 string MY_BUTTON_NAME_1="Button 1";
@@ -20,8 +20,30 @@ string MY_BUTTON_NAME_2="Button 2";
 string MY_BUTTON_NAME_3="Button 3";
 
 //helper
-string deleteNode(string path, integer start, integer end) {
+string deleteNodes(string path, integer start, integer end) {
 	return llDumpList2String(llDeleteSubList(llParseStringKeepNulls(path, [":"], []), start, end), ":");
+}
+//helper
+string getNodes(string path, integer start, integer end) {
+	return llDumpList2String(llList2List(llParseStringKeepNulls(path, [":"], []), start, end), ":");
+}
+//helper
+string joinNodes(list nodes) {
+	integer index;
+	integer length=llGetListLength(nodes);
+	list tempNodes;
+	for(; index<length; index++) {
+		string currentNodeString=llList2String(nodes, index);
+		if(currentNodeString) {
+			tempNodes+=llParseStringKeepNulls(currentNodeString, [":"], []);
+		}
+	}
+	return llDumpList2String(tempNodes, ":");
+}
+
+//helper
+string getPluginBasePath(string path, string pluginLocalPath) {
+	return getNodes(path, 0, -llGetListLength(llParseString2List(pluginLocalPath, [":"], []))-1);
 }
 
 //helper
@@ -96,7 +118,7 @@ string pluginAction(list params, key id) {
 	//correct the path
 	if(pluginLocalPath!="") {
 		//back one level
-		path=deleteNode(path, -1, -1);
+		path=deleteNodes(path, -1, -1);
 		page=0;
 	}
 
@@ -111,7 +133,7 @@ default {
 		if(num==PLUGIN_ACTION || num==PLUGIN_MENU) {
 			list params=llParseStringKeepNulls(str, ["|"], []);
 			string pluginName=llList2String(params, PARAM_PLUGIN_NAME);
-			if(pluginName==MY_PLUGIN_NAME) {
+			if(pluginName==llToLower(MY_PLUGIN_NAME)) {
 				//it is for me
 				if(num==PLUGIN_ACTION) {
 					llMessageLinked(LINK_SET, PLUGIN_ACTION_DONE, pluginAction(params, id), id);

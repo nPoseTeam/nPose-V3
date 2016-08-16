@@ -76,10 +76,12 @@ list OFFSET_BUTTONS = [
 ];
 
 
-string deleteNode(string path, integer start, integer end) {
+//helper
+string deleteNodes(string path, integer start, integer end) {
     return llDumpList2String(llDeleteSubList(llParseStringKeepNulls(path, [":"], []), start, end), ":");
 }
 
+//helper
 string buildParamSet1(string path, integer page, string prompt, list additionalButtons, list pluginParams) {
     //pluginParams are: string pluginLocalPath, string pluginName, string pluginMenuParams, string pluginActionParams
     //We can't use colons in the promt, because they are used as a seperator in other messages
@@ -464,7 +466,7 @@ default {
                             SetAvatarOffset(id, direction * CurrentOffsetDelta);
                         }
                         //one level back
-                        path=deleteNode(path, -1, -1);
+                        path=deleteNodes(path, -1, -1);
                     }
                     llMessageLinked(LINK_SET, PLUGIN_ACTION_DONE, buildParamSet1(path, 0, prompt, [], []), id);
                 }

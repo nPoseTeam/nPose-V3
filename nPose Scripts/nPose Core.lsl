@@ -339,16 +339,24 @@ ProcessLine(string sLine, key av, string ncName, string path, integer page) {
         if((integer)llList2String(paramsOriginal, 4) >= 1) {
             index = (((integer)llList2String(paramsOriginal, 4) + -1) * STRIDE + 5);
         }
-        Slots = llListReplaceList(Slots, [llDumpList2String([llList2String(Slots,index),
-            llDumpList2String(llDeleteSubList(paramsOriginal, 0, 0), "|")], "§")], index, index);
+        Slots = llListReplaceList(
+            Slots,
+            [llDumpList2String([llList2String(Slots,index), llDumpList2String(llDeleteSubList(paramsOriginal, 0, 0), "|")], "§")],
+            index,
+            index
+        );
     }
     else if (action == "NOTSATMSG") {
         integer index = (SlotMax - 1) * STRIDE + 6;
         if((integer)llList2String(paramsOriginal, 4) >= 1) {
             index = (((integer)llList2String(paramsOriginal, 4) + -1) * STRIDE + 6);
         }
-        Slots = llListReplaceList(Slots, [llDumpList2String([llList2String(Slots,index),
-            llDumpList2String(llDeleteSubList(paramsOriginal, 0, 0), "|")], "§")], index, index);
+        Slots = llListReplaceList(
+            Slots,
+            [llDumpList2String([llList2String(Slots,index), llDumpList2String(llDeleteSubList(paramsOriginal, 0, 0), "|")], "§")],
+            index,
+            index
+        );
     }
     else if(action == "PLUGINMENU") {
         llMessageLinked(LINK_SET, PLUGIN_MENU_REGISTER, llDumpList2String(llListReplaceList(params, [path], 0, 0), "|"), "");
