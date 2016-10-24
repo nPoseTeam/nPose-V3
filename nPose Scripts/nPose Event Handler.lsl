@@ -106,8 +106,11 @@ sendUserDefinedMessage(key avatar, string msg) {
 		integer index;
 		integer length=llGetListLength(msgParts);
 		for(; index<length; index++) {
-			list msgAtoms=llParseString2List(msg, ["|"], []);
-			sendMessage((integer)llList2String(msgAtoms, 0), llList2String(msgAtoms, 1), (key)llList2String(msgAtoms, 2));
+			string msgPart=llList2String(msgParts, index);
+			if(msgPart) {
+				list msgAtoms=llParseString2List(msgPart, ["|"], []);
+				sendMessage((integer)llList2String(msgAtoms, 0), llList2String(msgAtoms, 1), (key)llList2String(msgAtoms, 2));
+			}
 		}
 	}
 }
