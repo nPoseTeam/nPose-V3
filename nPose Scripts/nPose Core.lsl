@@ -52,6 +52,7 @@ string DefaultCardName;
 #define HUD_REQUEST -999
 //define block end
 
+integer SatNotsatSlotNumber=-1;
 integer SlotMax;
 integer LastStrideCount = 12;
 integer RezAdjusters;
@@ -252,32 +253,35 @@ ProcessLine(string sLine, key av, string ncName, string path, integer page) {
         */
         integer slotNumber = (integer)llList2String(params,1)-1;
         if(slotNumber * STRIDE < llGetListLength(Slots)) { //sanity
-            if(action == "SCHMOE" || (action == "SCHMO" && llList2Key(Slots, slotNumber * STRIDE + 4) == av)) {
+            if (action == "SCHMO" && llList2Key(Slots, slotNumber * STRIDE + 4) == av) {
+                //SatNotsatSlotNumber becomes the active seat# so we know when to run (NOT)SATMSGs
+                SatNotsatSlotNumber = (integer)llList2String(params,1);
+                Slots=llListReplaceList(Slots, ["",""],
+                slotNumber * STRIDE + 5, slotNumber * STRIDE + 6);
+            }
+             if(action == "SCHMOE" || (action == "SCHMO" && llList2Key(Slots, slotNumber * STRIDE + 4) == av)) {
                 integer index=2;
                 integer length=llGetListLength(params);
                 for(; index<length; index++) {
                     if(index==2) {
                         Slots=llListReplaceList(Slots, [llList2String(params, index)],
-                         slotNumber * STRIDE, slotNumber * STRIDE);
-                        //Clear out the SATMSG/NOTSATMSG. If we need them, we must add them back in the NC
-                        Slots=llListReplaceList(Slots, ["",""],
-                         slotNumber * STRIDE + 5, slotNumber * STRIDE + 6);
+                            slotNumber * STRIDE, slotNumber * STRIDE);
                     }
                     else if(index==3) {
                         Slots=llListReplaceList(Slots, [(vector)llList2String(params, index)],
-                         slotNumber * STRIDE + 1, slotNumber * STRIDE + 1);
+                            slotNumber * STRIDE + 1, slotNumber * STRIDE + 1);
                     }
                     else if(index==4) {
                         Slots=llListReplaceList(Slots, [llEuler2Rot((vector)llList2String(params, index) * DEG_TO_RAD)],
-                         slotNumber * STRIDE + 2, slotNumber * STRIDE + 2);
+                            slotNumber * STRIDE + 2, slotNumber * STRIDE + 2);
                     }
                     if(index==5) {
                         Slots=llListReplaceList(Slots, [llList2String(params, index)],
-                         slotNumber * STRIDE + 3, slotNumber * STRIDE + 3);
+                            slotNumber * STRIDE + 3, slotNumber * STRIDE + 3);
                     }
                     else if(index==6) {
                         Slots=llListReplaceList(Slots, [llList2String(params, index) + "§seat" + (string)(slotNumber+1)],
-                         slotNumber * STRIDE + 7, slotNumber * STRIDE + 7);
+                            slotNumber * STRIDE + 7, slotNumber * STRIDE + 7);
                     }
                 }
             }
@@ -335,28 +339,40 @@ ProcessLine(string sLine, key av, string ncName, string path, integer page) {
         llRegionSay(ChatChannel, llDumpList2String(["LINKMSG",num,llList2String(params, 2),lmid], "|"));
     }
     else if (action == "SATMSG") {
+        //set index for normal (we building Slots list) cards containing ANIM or SCHMOE lines
         integer index = (SlotMax - 1) * STRIDE + 5;
+        //change that index if we have SCHMO lines
         if((integer)llList2String(paramsOriginal, 4) >= 1) {
             index = (((integer)llList2String(paramsOriginal, 4) + -1) * STRIDE + 5);
         }
-        Slots = llListReplaceList(
-            Slots,
-            [llDumpList2String([llList2String(Slots,index), llDumpList2String(llDeleteSubList(paramsOriginal, 0, 0), "|")], "§")],
-            index,
-            index
-        );
+        //now we can set up rules to run, SatNotsatSlotNumber == -1 happens when no SCHMO involved
+        //otherwise sort out which seat# to use with SCHMO
+        if((SatNotsatSlotNumber == (integer)llList2String(paramsOriginal, 4) && llList2Key(Slots, index + -1) == av) || (SatNotsatSlotNumber == -1)) {
+            Slots = llListReplaceList(
+                Slots,
+                [llDumpList2String([llList2String(Slots,index), llDumpList2String(llDeleteSubList(paramsOriginal, 0, 0), "|")], "§")],
+                index,
+                index
+            );
+        }
     }
     else if (action == "NOTSATMSG") {
+        //set index for normal (we building Slots list) cards containing ANIM or SCHMOE lines
         integer index = (SlotMax - 1) * STRIDE + 6;
+        //change that index if we have SCHMO lines
         if((integer)llList2String(paramsOriginal, 4) >= 1) {
             index = (((integer)llList2String(paramsOriginal, 4) + -1) * STRIDE + 6);
         }
-        Slots = llListReplaceList(
-            Slots,
-            [llDumpList2String([llList2String(Slots,index), llDumpList2String(llDeleteSubList(paramsOriginal, 0, 0), "|")], "§")],
-            index,
-            index
-        );
+        //now we can set up rules to run, SatNotsatSlotNumber == -1 happens when no SCHMO involved
+        //otherwise sort out which seat# to use with SCHMO
+        if ((SatNotsatSlotNumber == (integer)llList2String(paramsOriginal, 4) && llList2Key(Slots, index + -2) == av) || (SatNotsatSlotNumber == -1)) {
+            Slots = llListReplaceList(
+                Slots,
+                [llDumpList2String([llList2String(Slots,index), llDumpList2String(llDeleteSubList(paramsOriginal, 0, 0), "|")], "§")],
+                index,
+                index
+            );
+        }
     }
     else if(action == "PLUGINMENU") {
         llMessageLinked(LINK_SET, PLUGIN_MENU_REGISTER, llDumpList2String(llListReplaceList(params, [path], 0, 0), "|"), "");
@@ -421,6 +437,7 @@ default{
             llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)ChatChannel, NULL_KEY);
         }
         else if(num == DOPOSE_READER || num == DOBUTTON_READER || num==PREPARE_MENU_STEP3_READER) {
+            SatNotsatSlotNumber=(llSubStringIndex(str, NC_READER_CONTENT_SEPARATOR + "SCHMO|")>-1)-1;
             list allData=llParseStringKeepNulls(str, [NC_READER_CONTENT_SEPARATOR], []);
             str = "";
             //allData: [ncName, paramSet1, "", contentLine1, contentLine2, ...]
