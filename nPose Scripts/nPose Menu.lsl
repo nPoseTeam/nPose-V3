@@ -12,7 +12,7 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 string Permissions = "public"; //default permit option Public, Locked, Group
 integer Sit2GetMenu;  //required to be seated to get a menu
 float MenuDistance = 30.0;
-integer OptionUseDisplayNames; //use display names instead of usernames in changeSeat/unsit menu
+integer OptionUseDisplayNames=1; //use display names instead of usernames in changeSeat/unsit menu
 
 
 list Slots; //this Slots list is not complete. it only contains seated AV key and seat numbers

@@ -22,13 +22,13 @@ integer OPTION_TYPE_STRING=3;
 list Options=[
 	//format: optionName, optionType, optionDefaultValue, description
 //nPose
-	"permit", OPTION_TYPE_STRING, "public", "This controls the global permission to get the menu. Default permissions is public and options are group and owner.",
+	"permit", OPTION_TYPE_STRING, "public", "Deprecated: Use Button Permissions instead. This controls the global permission to get the menu. Default permissions is public and options are group and owner.",
 	"menuOnSit", OPTION_TYPE_FLAG, "0", "Turn this on to give the menu to any new sitter automatically when they sit, off means they must click for menu.",
 	"2Default", OPTION_TYPE_FLAG, "0", "Turn this on and nPose returns to the DEFAULT pose when everyone stands.",
 	"facialExp", OPTION_TYPE_FLAG, "1", "This is a global setting for facial anims. If this option is off, any facial anims set in the build will be ignored.",
-	"sit2GetMenu", OPTION_TYPE_FLAG, "0", "Turn this on to ensure no one will be able to pull a menu while standing. Everyone must be seated to get a menu.",
+	"sit2GetMenu", OPTION_TYPE_FLAG, "0", "Deprecated: Use Button Permissions instead. Turn this on to ensure no one will be able to pull a menu while standing. Everyone must be seated to get a menu.",
 	"menuDist", OPTION_TYPE_FLOAT, "30.0", "Distance away and still click to get menu.",
-	"useDisplayNames", OPTION_TYPE_FLAG, "0", "Turn this on to see sitter's display name in ChangeSeats menu.",
+	"useDisplayNames", OPTION_TYPE_FLAG, "1", "Turn this on to see sitter's display name in ChangeSeats menu.",
 	"adjustRefRoot", OPTION_TYPE_FLAG, "0", "Turn this on to reference adjusts to the root prim rather than the prim the slave script is in.",
 	"quietAdjusters", OPTION_TYPE_FLAG, "0", "Turn this on to quiet new position reporting by the adjusters, and also adjuster reporting when clicked. PosDump will still report all positions/rotations.",
 	"enableEvents", OPTION_TYPE_INTEGER, "0", "Turns on the generic event linkMessages. See script 'nPose Event Handler'.",
