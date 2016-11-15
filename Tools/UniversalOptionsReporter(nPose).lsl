@@ -31,7 +31,7 @@ list Options=[
 	"useDisplayNames", OPTION_TYPE_FLAG, "1", "Turn this on to see sitter's display name in ChangeSeats menu.",
 	"adjustRefRoot", OPTION_TYPE_FLAG, "0", "Turn this on to reference adjusts to the root prim rather than the prim the slave script is in.",
 	"quietAdjusters", OPTION_TYPE_FLAG, "0", "Turn this on to quiet new position reporting by the adjusters, and also adjuster reporting when clicked. PosDump will still report all positions/rotations.",
-	"enableEvents", OPTION_TYPE_INTEGER, "0", "Turns on the generic event linkMessages. See script 'nPose Event Handler'.",
+	"enableEvents", OPTION_TYPE_INTEGER, "0", "Turns on the generic event linkMessages. See script 'nPose SAT-NOTSAT Handler'.",
 //nPose RLV+
 	"RLV_grabRange", OPTION_TYPE_FLOAT, "10.0", "The range within an Avatar could be captured via menu. Set to 0 to disable the feature.",
 	"RLV_grabTimer", OPTION_TYPE_INTEGER, "0", "0: No Timer, any other value will set a timer on grab to an RLV_enabledSeat.",
