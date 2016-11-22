@@ -90,7 +90,7 @@ list REPLACE_NUM=[
 	1444, "nPose plugin AnimSoundOnce:???", "",
 	2732, "nPose LM/LG chains plugin (plugin_lockmeister_lockguard):gCMD_SET_CHAINS", "",
 	2733, "nPose LM/LG chains plugin (plugin_lockmeister_lockguard):gCMD_REM_CHAINS", "",
-	2734, "nPose LM/LG chains plugin:???", "TODO: slmember1",
+	2734, "nPose LM/LG chains plugin V0.02+:gCMD_CONFIG", "Config for the chain particle",
 	7200, "nPose Chain Point Plugin:STARTCHAIN", "channel relayed out to chain point to start chains.", 
 	7201, "nPose Chain Point Plugin:STOPCHAIN", "channel relayed out to chain point to stop chains.", 
 	27130, "plugin_movePrims:gCMD_GET_PRIMS", "",
