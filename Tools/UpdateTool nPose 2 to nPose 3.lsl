@@ -240,7 +240,7 @@ llOwnerSay("Parsing: " + ncName);
 			integer index=3;
 			for(; index<length; index++) {
 				string data = llList2String(allData, index);
-				list parts=llParseString2List(data, ["|"], []);
+				list parts=llParseStringKeepNulls(data, ["|"], []);
 				string cmd=llList2String(parts, 0);
 				if(cmd=="LINKMSG" || cmd=="SATMSG" || cmd=="NOTSATMSG") {
 					integer linkmsgNum=(integer)llList2String(parts, 1);
