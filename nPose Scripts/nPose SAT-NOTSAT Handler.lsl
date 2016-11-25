@@ -113,7 +113,7 @@ sendUserDefinedMessage(key avatar, string msg) {
 		for(; index<length; index++) {
 			string msgPart=llList2String(msgParts, index);
 			if(msgPart) {
-				list msgAtoms=llParseString2List(msgPart, ["|"], []);
+				list msgAtoms=llParseStringKeepNulls(msgPart, ["|"], []);
 				string idString=llList2String(msgAtoms, 2);
 				key id=(key)idString;
 				if(idString=="") {
