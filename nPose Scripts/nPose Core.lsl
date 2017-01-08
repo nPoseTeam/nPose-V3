@@ -38,6 +38,7 @@ string DefaultCardName;
 #define UNSIT -222
 #define OPTIONS -240
 #define DEFAULT_CARD -242
+#define ON_PROP_REZZED -790
 #define DOMENU -800
 #define UDPBOOL -804
 #define UDPLIST -805
@@ -622,6 +623,7 @@ default{
             if(llGetOwnerKey(id) == llGetOwner()) {
                 if(message == "ping") {
                     llRegionSayTo(id, ChatChannel, "pong|" + (string)llGetPos());
+                    llMessageLinked(LINK_SET, ON_PROP_REZZED, llDumpList2String([name, id, channel], "|"), NULL_KEY);
                 }
                 else if(llGetSubString(message,0,8) == "PROPRELAY") {
                     list msg = llParseString2List(message, ["|"], []);
