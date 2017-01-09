@@ -60,7 +60,7 @@ list REPLACE_NUM=[
 	-707, "ON_FULL", "generic event",
 	-708, "ON_NOT_FULL", "generic event",
 	-719, "ON_INVALID", "generic event",
-	-790, "ON_PROP_REZZED", "generic event"
+	-790, "ON_PROP_REZZED", "generic event",
 
 	-800, "DOMENU", "call to menu to pull menu dialog.", 
 	-801, "DOMENU_ACCESSCTRL (Deprecated)", "Instead use DOMENU", 
@@ -121,11 +121,12 @@ list REPLACE_NUM=[
 	-8010, "RLV+:RLV_CORE_COMMAND", "https://github.com/LeonaMorro/nPose-RLV-Plugin/wiki/Link-messages", 
 	-8012, "RLV+:RLV_CHANGE_SELECTED_VICTIM", "https://github.com/LeonaMorro/nPose-RLV-Plugin/wiki/Link-messages", 
 	-8013, "RLV+:RLV_VICTIMS_LIST_UPDATE", "https://github.com/LeonaMorro/nPose-RLV-Plugin/wiki/Link-messages", 
-	-8040, "Xcite! Plugin:XCITE_COMMAND", "https://github.com/LeonaMorro/nPose-Xcite-plugin/wiki/Link-messages", 
+	-8040, "Xcite! Plugin:XCITE_COMMAND", "https://github.com/LeonaMorro/nPose-Xcite-plugin/wiki/Link-messages",
+	-8050, "TODO: The new Color/Texture Changer Plugin", "TODO: https://github.com/nPoseTeam/Color-Texture-Plugin",
 	//
 	-888888, "tip jar plugin:arb number", "exclusive to the tip jar to send parameters needed in this plugin.", 
-	-22452987, "color/texture changer plugin:arbNum", "The plugin uses this to identify when it is supposed to act on the message.  It accepts the message and relays out to prims using this number as a listen channel.  This same script located in props receives the info and does the retexturing of prims.", 
-	-22452988, "color/texture changer plugin:arbNum+1", "The plugin uses this to identify when it is supposed to act on the message.  It accepts the message and relays out to prims using this number as a listen channel.  This same script located in props receives the info and does the retexturing of prims.", 
+	-22452987, "color/texture changer plugin:arbNum (deprecated, doesn't work with nPose V3)", "The plugin uses this to identify when it is supposed to act on the message.  It accepts the message and relays out to prims using this number as a listen channel.  This same script located in props receives the info and does the retexturing of prims.", 
+	-22452988, "color/texture changer plugin:arbNum+1 (deprecated, doesn't work with nPose V3)", "The plugin uses this to identify when it is supposed to act on the message.  It accepts the message and relays out to prims using this number as a listen channel.  This same script located in props receives the info and does the retexturing of prims.", 
 	-1812221819, "RLV plugin (deprecated):relaychannel", "RLV channel"
 ];
 
