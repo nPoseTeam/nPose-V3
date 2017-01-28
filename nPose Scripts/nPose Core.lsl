@@ -35,6 +35,8 @@ string DefaultCardName;
 #define DOPOSE_READER 222
 #define DOBUTTON_READER 223
 #define CORERELAY 300
+#define EXTERNAL_COMMAND 310
+#define UNKNOWN_COMMAND 311
 #define UNSIT -222
 #define OPTIONS -240
 #define DEFAULT_CARD -242
@@ -375,6 +377,9 @@ ProcessLine(string sLine, key av, string ncName, string path, integer page) {
         else if(action == "MACRO") {num=MACRO;}
         if(num) {
             llMessageLinked(LINK_SET, num, llDumpList2String(llDeleteSubList(params, 0, 0), "|"), "");
+        }
+        else {
+            llMessageLinked(LINK_SET, UNKNOWN_COMMAND, sLine, av);
         }
     }
 }
