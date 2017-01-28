@@ -35,7 +35,7 @@ string DefaultCardName;
 #define DOPOSE_READER 222
 #define DOBUTTON_READER 223
 #define CORERELAY 300
-#define EXTERNAL_COMMAND 310
+#define PLUGIN_COMMAND_REGISTER 310
 #define UNKNOWN_COMMAND 311
 #define UNSIT -222
 #define OPTIONS -240
@@ -70,6 +70,16 @@ integer CurMenuOnSit; //default menuonsit option
 integer Cur2default;  //default action to revert back to default pose when last sitter has stood
 
 string NC_READER_CONTENT_SEPARATOR="%&§";
+
+list PluginCommands=[
+    "PLUGINCOMMAND", PLUGIN_COMMAND_REGISTER,
+    "DEFAULTCARD", DEFAULT_CARD,
+    "OPTION", OPTIONS,
+    "UDPBOOL", UDPBOOL,
+    "UDPLIST", UDPLIST,
+    "MACRO", MACRO
+];
+
 
 integer FindEmptySlot() {
     integer n;
@@ -369,13 +379,9 @@ ProcessLine(string sLine, key av, string ncName, string path, integer page) {
         llMessageLinked(LINK_SET, PLUGIN_MENU_REGISTER, llDumpList2String(llListReplaceList(params, [path], 0, 0), "|"), "");
     }
     else {
-        integer num;
-        if(action == "DEFAULTCARD") {num=DEFAULT_CARD;}
-        else if(action == "OPTION") {num=OPTIONS;}
-        else if(action == "UDPBOOL") {num=UDPBOOL;}
-        else if(action == "UDPLIST") {num=UDPLIST;}
-        else if(action == "MACRO") {num=MACRO;}
-        if(num) {
+        integer index=llListFindList(PluginCommands, [action]);
+        if(~index) {
+            integer num=llList2Integer(PluginCommands, index+1);
             llMessageLinked(LINK_SET, num, llDumpList2String(llDeleteSubList(params, 0, 0), "|"), "");
         }
         else {
@@ -564,6 +570,14 @@ default{
         else if(num == DEFAULT_CARD) {
             DefaultCardName=str;
             llMessageLinked(LINK_SET, DOPOSE, DefaultCardName, id);
+        }
+        else if(num == PLUGIN_COMMAND_REGISTER) {
+            list parts=llParseString2List(str, ["|"], []);
+            string action=llList2String(parts, 0);
+            integer index=llListFindList(PluginCommands, [action]);
+            if(!~index) {
+                PluginCommands+=[action, (integer)llList2String(parts, 1)];
+            }
         }
         else if(num == DIALOG_TIMEOUT) {
             if(Cur2default && (llGetObjectPrimCount(llGetKey()) == llGetNumberOfPrims()) && (DefaultCardName != "")) {

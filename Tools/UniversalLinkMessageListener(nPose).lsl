@@ -37,7 +37,7 @@ list REPLACE_NUM=[
 	224, "NC_READER_REQUEST", "Used by NC Reader script.  Someone sent a request to use the Reader", 
 	225, "NC_READER_RESPONSE", "Used by NC Reader script.  Script is returning the data requested by NC_READER_REQUEST", 
 	300, "CORERELAY", " to the core. This triggers chat to props directly from the core.  There must be a custom receiver script in the props to interpret and act on this message.", 
-	310, "EXTERNAL_COMMAND (for later use)", "reserved for core plugins",
+	310, "PLUGIN_COMMAND_REGISTER", "registers a new NC command",
 	311, "UNKNOWN_COMMAND", "If the core parses a line with an unknown command, it will send out the line for debugging or other purposes.",
 
 	
