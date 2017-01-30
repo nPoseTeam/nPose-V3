@@ -31,6 +31,9 @@ list Options=[
 	"useDisplayNames", OPTION_TYPE_FLAG, "1", "Turn this on to see sitter's display name in ChangeSeats menu.",
 	"adjustRefRoot", OPTION_TYPE_FLAG, "0", "Turn this on to reference adjusts to the root prim rather than the prim the slave script is in.",
 	"quietAdjusters", OPTION_TYPE_FLAG, "0", "Turn this on to quiet new position reporting by the adjusters, and also adjuster reporting when clicked. PosDump will still report all positions/rotations.",
+	"dialogTimeout", OPTION_TYPE_INTEGER, "120", "If a menu user is not sitting on the nPose Object, the Menu will timeout after the specified number of seconds.",
+	"dialogBackward", OPTION_TYPE_FLAG, "0", "enables a backward button inside a multi paged menu",
+//nPose SAT_NOTSAT plugin
 	"enableEvents", OPTION_TYPE_INTEGER, "0", "Turns on the generic event linkMessages. See script 'nPose SAT-NOTSAT Handler'.",
 //nPose RLV+
 	"RLV_grabRange", OPTION_TYPE_FLOAT, "10.0", "The range within an Avatar could be captured via menu. Set to 0 to disable the feature.",
