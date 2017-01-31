@@ -448,6 +448,9 @@ state stage40{
 	state_entry() {
 		llOwnerSay("FINISHED");
 	}
+	on_rez(integer start_param) {
+		llResetScript();
+	}
 }
 //stage 99
 //rename NCs
