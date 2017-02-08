@@ -71,13 +71,14 @@ integer Cur2default;  //default action to revert back to default pose when last 
 
 string NC_READER_CONTENT_SEPARATOR="%&§";
 
+//PluginCommands=[string name, integer num, integer sendToProps]
 list PluginCommands=[
-    "PLUGINCOMMAND", PLUGIN_COMMAND_REGISTER,
-    "DEFAULTCARD", DEFAULT_CARD,
-    "OPTION", OPTIONS,
-    "UDPBOOL", UDPBOOL,
-    "UDPLIST", UDPLIST,
-    "MACRO", MACRO
+    "PLUGINCOMMAND", PLUGIN_COMMAND_REGISTER, 0,
+    "DEFAULTCARD", DEFAULT_CARD, 0,
+    "OPTION", OPTIONS, 0,
+    "UDPBOOL", UDPBOOL, 0,
+    "UDPLIST", UDPLIST, 0,
+    "MACRO", MACRO, 0
 ];
 
 
@@ -297,7 +298,7 @@ ProcessLine(string sLine, key av, string ncName, string path, integer page) {
         }
         SlotMax = LastStrideCount;
     }
-    else if (action == "PROP") {
+    else if (action == "PROP" || action=="PROPREZ") {
         string obj = llList2String(params, 1);
         if(llGetInventoryType(obj) == INVENTORY_OBJECT) {
             list strParm2 = llParseString2List(llList2String(params, 2), ["="], []);
@@ -330,6 +331,9 @@ ProcessLine(string sLine, key av, string ncName, string path, integer page) {
                 }
             }
         }
+    }
+    else if(action=="PROPDIE") {
+        llRegionSay(ChatChannel, llList2Json(JSON_ARRAY, [llList2Json(JSON_ARRAY, params)]));
     }
     else if(action=="PAUSE") {
         llSleep((float)llList2String(params, 1));
@@ -382,7 +386,12 @@ ProcessLine(string sLine, key av, string ncName, string path, integer page) {
         integer index=llListFindList(PluginCommands, [action]);
         if(~index) {
             integer num=llList2Integer(PluginCommands, index+1);
-            llMessageLinked(LINK_SET, num, llDumpList2String(llDeleteSubList(params, 0, 0), "|"), "");
+            string str=llDumpList2String(llDeleteSubList(params, 0, 0), "|");
+            llMessageLinked(LINK_SET, num, str, "");
+            if(llList2Integer(PluginCommands, index+2)) {
+                //this should also be send to props
+                llRegionSay(ChatChannel, llList2Json(JSON_ARRAY, [llList2Json(JSON_ARRAY, ["LINKMSG", num, str, ""])]));
+            }
         }
         else {
             llMessageLinked(LINK_SET, UNKNOWN_COMMAND, sLine, av);
@@ -575,9 +584,10 @@ default{
             list parts=llParseString2List(str, ["|"], []);
             string action=llList2String(parts, 0);
             integer index=llListFindList(PluginCommands, [action]);
-            if(!~index) {
-                PluginCommands+=[action, (integer)llList2String(parts, 1)];
+            if(~index) {
+                PluginCommands=llDeleteSubList(PluginCommands, index, index+2);
             }
+            PluginCommands+=[action, (integer)llList2String(parts, 1), (integer)llList2String(parts, 2)];
         }
         else if(num == DIALOG_TIMEOUT) {
             if(Cur2default && (llGetObjectPrimCount(llGetKey()) == llGetNumberOfPrims()) && (DefaultCardName != "")) {
