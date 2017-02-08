@@ -74,6 +74,7 @@ default {
 //add .init file
 state stage10 {
 	state_entry() {
+		llOwnerSay("This script analyses your nPose object in 3 steps. You have to follow the instructions given in each step to continue.");
 		llOwnerSay("Step1 (Default card analysis) ...");
 		MyId=llGetInventoryKey(llGetScriptName());
 		
@@ -120,10 +121,10 @@ state stage10 {
 			);
 			if(DefaultCardName!=newDefaultCardName) {
 				llOwnerSay(
-					"Then rename the card " + DefaultCardName + " to " + newDefaultCardName + 
-					"\n Click when finished."
+					"Then rename the card " + DefaultCardName + " to " + newDefaultCardName
 				);
 			}
+			llOwnerSay("\n Click when finished.");
 		}
 	}
 	touch_start(integer num_detected) {
@@ -425,6 +426,18 @@ llOwnerSay("Parsing: " + ncName);
 					else if(linkmsgNum==1337 || linkmsgNum==1338) {
 						deleteIf(ncName, index-2, data, "the old RLV timer plugin");
 					}
+				}
+				else if(cmd=="PROP") {
+					string propParam2=llList2String(parts, 2);
+					string newLine;
+					if(~llSubStringIndex(propParam2, "=die")) {
+						newLine="PROPDIE|list|" + llGetSubString(propParam2, 0, -5);
+					}
+					else {
+						newLine=llDumpList2String(["PROPREZ"]+llDeleteSubList(parts, 0, 0), "|");
+					}
+					pleaseChange(ncName, index-2, data, newLine);
+					llOwnerSay("and make sure that you update your props script to V1.00 (or newer)");
 				}
 			}
 			if(CardsList) {
