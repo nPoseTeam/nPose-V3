@@ -457,7 +457,9 @@ default{
             //allData: [ncName, paramSet1, "", contentLine1, contentLine2, ...]
             string ncName=llList2String(allData, 0);
             if(ncName==DefaultCardName && num == DOPOSE_READER) {
-                
+                //props (propGroup 0) die when the default card is read
+                llRegionSay(ChatChannel, "die");
+            }
             list paramSet1List=llParseStringKeepNulls(llList2String(allData, 1), ["|"], []);
             string path=llList2String(paramSet1List, 0);
             integer page=(integer)llList2String(paramSet1List, 1);
@@ -475,7 +477,7 @@ default{
                         //reset the slots
                         LastStrideCount = SlotMax;
                         SlotMax = 0;
-                        //handle the Adjuster
+                        //props (propGroup 0) die if there is an ANIM line inside the NC
                         llRegionSay(ChatChannel, "die");
                         slotResetFinished=TRUE;
                         run_assignSlots = TRUE;
