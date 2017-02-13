@@ -301,33 +301,39 @@ ProcessLine(string sLine, key av, string ncName, string path, integer page) {
     else if (action == "PROP" || action=="PROPREZ") {
         string obj = llList2String(params, 1);
         if(llGetInventoryType(obj) == INVENTORY_OBJECT) {
+            //the old die command for explicit props. should be removed soon.
             list strParm2 = llParseString2List(llList2String(params, 2), ["="], []);
             if(llList2String(strParm2, 1) == "die") {
                 llRegionSay(ChatChannel,llList2String(strParm2,0)+"=die");
             }
             else {
-                ExplicitFlag = 0;
-                if(llList2String(params, 4) == "explicit") {
-                    ExplicitFlag = 1;
+                //the rezzing
+                string propGroupString=llList2String(params, 4);
+                integer propGroup=(integer)propGroupString;
+                if(propGroupString=="explicit") {
+                    propGroup=1;
                 }
                 //This flag will keep the prop from chatting out it's moves. Some props should move but not spam owner.
+                integer quietMode;
                 if(llList2String(params, 5) == "quiet") {
-                    ExplicitFlag += 2;
+                    quietMode=TRUE;
                 }
+                //calculate pos and rot of the prop
                 vector vDelta = (vector)llList2String(params, 2);
                 vector pos = llGetPos() + (vDelta * llGetRot());
                 rotation rot = llEuler2Rot((vector)llList2String(params, 3) * DEG_TO_RAD) * llGetRot();
-                integer sendToPropChannel = (ChatChannel << 8);
-                sendToPropChannel = sendToPropChannel | ExplicitFlag;
+                
+                //build the rez paremeter. Upper 3 Bytes for the chatchannel, lower Byte for data
+                integer rezParam = (ChatChannel << 8);
+                rezParam=rezParam | (quietMode << 1) | ((propGroup & 0x2F) << 2);
                 if(llVecMag(vDelta) > 9.9) {
                     //too far to rez it direct.  need to do a prop move
-                    llRezAtRoot(obj, llGetPos(), ZERO_VECTOR, rot, sendToPropChannel);
+                    llRezAtRoot(obj, llGetPos(), ZERO_VECTOR, rot, rezParam);
                     llSleep(1.0);
                     llRegionSay(ChatChannel, llDumpList2String(["MOVEPROP", obj, (string)pos], "|"));
                 }
                 else {
-                    llRezAtRoot(obj, llGetPos() + ((vector)llList2String(params, 2) * llGetRot()),
-                     ZERO_VECTOR, rot, sendToPropChannel);
+                    llRezAtRoot(obj, pos, ZERO_VECTOR, rot, rezParam);
                 }
             }
         }
@@ -450,6 +456,8 @@ default{
             str = "";
             //allData: [ncName, paramSet1, "", contentLine1, contentLine2, ...]
             string ncName=llList2String(allData, 0);
+            if(ncName==DefaultCardName && num == DOPOSE_READER) {
+                
             list paramSet1List=llParseStringKeepNulls(llList2String(allData, 1), ["|"], []);
             string path=llList2String(paramSet1List, 0);
             integer page=(integer)llList2String(paramSet1List, 1);
