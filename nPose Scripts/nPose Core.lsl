@@ -105,7 +105,7 @@ list SeatedAvs(){
     return avs;
 }
 
-assignSlots(){
+assignSlots(string cardName){
     list avqueue = SeatedAvs();
     /*clean up the Slots list with regard to AV key's in the list by
     removing extra AV keys from the Slots list, they are no longer seated.
@@ -185,7 +185,7 @@ assignSlots(){
         }
     }
     LastStrideCount = SlotMax;
-    llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(Slots, "^"), NULL_KEY);
+    llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(Slots, "^"), cardName);
 }
 
 SwapTwoSlots(integer currentseatnum, integer newseatnum) {
@@ -501,7 +501,7 @@ default{
                 }
             }
             if(run_assignSlots) {
-                assignSlots();
+                assignSlots(ncName);
                 if (llGetInventoryType(ncName) == INVENTORY_NOTECARD){ //sanity
                     LastAssignSlotsCardName=ncName;
                     LastAssignSlotsCardId=llGetInventoryKey(LastAssignSlotsCardName);
@@ -696,7 +696,7 @@ default{
         }
         if(change & CHANGED_LINK) {
             llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)ChatChannel, NULL_KEY); //let our scripts know the chat channel for props and adjusters
-            assignSlots();
+            assignSlots(LastAssignSlotsCardName);
             if(Cur2default && (llGetObjectPrimCount(llGetKey()) == llGetNumberOfPrims()) && (DefaultCardName != "")) {
                 llMessageLinked(LINK_SET, DOPOSE, DefaultCardName, NULL_KEY);
             }
