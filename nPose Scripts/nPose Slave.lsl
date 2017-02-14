@@ -297,11 +297,16 @@ default {
                 if (!QuietAdjusters) {
                     list temp=llParseStringKeepNulls(llList2String(Slots, slotsindex+7), ["§"], []);
                     string seatName;
-                    if(llList2String(temp, 0)) {
-                        seatName = llList2String(temp, 0);
+                    seatName = llList2String(temp, 0);
+                    string action = llList2String(temp, 2);
+
+                    string ncName = llList2String(temp, 3);
+                    string stringPart = "\n" + action + "|";;
+                    if(action == "SCHMO" || action == "SCHMOE") {
+                        stringPart += (string)(slotsindex/STRIDE+1) + "|";
                     }
-                    llRegionSayTo(llGetOwner(), 0, "SCHMOE and SCHMO lines will be reported as ANIM.  Be sure to replace if needed.");
-                    llRegionSayTo(llGetOwner(), 0, "\nANIM|" + llList2String(Slots, slotsindex) + "|" + (string)newpos + "|" +
+
+                    llRegionSayTo(llGetOwner(), 0, stringPart + llList2String(Slots, slotsindex) + "|" + (string)newpos + "|" +
                         (string)(llRot2Euler(newrot) * RAD_TO_DEG) + "|" + llList2String(Slots, slotsindex + 3) + "|" + seatName);
                 }
                 llSetObjectName(primName);
@@ -315,16 +320,22 @@ default {
             string primName = llGetObjectName();
             llSetObjectName(llGetLinkName(1));
             llRegionSayTo(llGetOwner(), 0, "SCHMOE and SCHMO lines will be reported as ANIM.  Be sure to replace if needed.");
-            for(n = 0; n < llGetListLength(Slots)/8; ++n) {
-                list temp=llParseStringKeepNulls(llList2String(Slots, n*8+7), ["§"], []);
+            for(n = 0; n < llGetListLength(Slots)/STRIDE; ++n) {
+                list temp=llParseStringKeepNulls(llList2String(Slots, n*STRIDE+7), ["§"], []);
                 string seatName;
-                if(llList2String(temp, 0)) {
-                    seatName = llList2String(temp, 0);
-                }
+                seatName = llList2String(temp, 0);
+                string action = llList2String(temp, 2);
+                string ncName = llList2String(temp, 3);
+
+
                 list slice = llList2List(Slots, n*STRIDE, n*STRIDE + 3);
                 slice = llListReplaceList(slice, [RAD_TO_DEG * llRot2Euler(llList2Rot(slice, 2))], 2, 2);
-                string sendSTR = "ANIM|" + llDumpList2String(slice, "|") + "|" + seatName;
-                llRegionSayTo(llGetOwner(), 0, "\n"+sendSTR);
+                string sendSTR = action + "|";
+                if(action == "SCHMO" || action == "SCHMOE") {
+                    sendSTR += (string)(n+1) + "|";
+                }
+                sendSTR += llDumpList2String(slice, "|") + "|" + seatName;
+                llRegionSayTo(llGetOwner(), 0, "\nSet card for this data is '" + ncName + "'." + "\n"+sendSTR);
             }
             llRegionSay(Chatchannel, "posdump");
             llSetObjectName(primName);
