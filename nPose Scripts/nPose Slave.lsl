@@ -311,15 +311,17 @@ default {
                     string seatName;
                     seatName = llList2String(temp, 0);
                     string action = llList2String(temp, 2);
-
                     string ncName = llList2String(temp, 3);
-                    string stringPart = "\n" + action + "|";;
-                    if(action == "SCHMO" || action == "SCHMOE") {
-                        stringPart += (string)(slotsindex/STRIDE+1) + "|";
-                    }
 
-                    llRegionSayTo(llGetOwner(), 0, stringPart + llList2String(Slots, slotsindex) + "|" + (string)newpos + "|" +
-                        (string)(llRot2Euler(newrot) * RAD_TO_DEG) + "|" + llList2String(Slots, slotsindex + 3) + "|" + seatName);
+                    list slice = llList2List(Slots, slotsindex, slotsindex + 3);
+                    slice = llListReplaceList(slice, [RAD_TO_DEG * llRot2Euler(llList2Rot(slice, 2))], 2, 2);
+                    string sendSTR = "\n" + action + "|";;
+                    if(action != "ANIM") {
+
+                        sendSTR += (string)(slotsindex/STRIDE+1) + "|";
+                    }
+                    sendSTR += llDumpList2String(slice, "|") + "|" + seatName;
+                    llRegionSayTo(llGetOwner(), 0, "\nSet card for this data is '" + ncName + "'." + "\n"+sendSTR);
                 }
                 llSetObjectName(primName);
                 llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(Slots, "^"), NULL_KEY);
@@ -338,11 +340,10 @@ default {
                 string action = llList2String(temp, 2);
                 string ncName = llList2String(temp, 3);
 
-
                 list slice = llList2List(Slots, n*STRIDE, n*STRIDE + 3);
                 slice = llListReplaceList(slice, [RAD_TO_DEG * llRot2Euler(llList2Rot(slice, 2))], 2, 2);
                 string sendSTR = action + "|";
-                if(action == "SCHMO" || action == "SCHMOE") {
+                if(action != "ANIM") {
                     sendSTR += (string)(n+1) + "|";
                 }
                 sendSTR += llDumpList2String(slice, "|") + "|" + seatName;
