@@ -194,8 +194,8 @@ SwapTwoSlots(integer currentseatnum, integer newseatnum) {
         integer OldSlot;
         integer NewSlot;
         for(; slotNum < SlotMax; ++slotNum) {
-            list tempSeat = llParseString2List(llList2String(Slots, slotNum*STRIDE+7), ["§"], []);
-            string strideSeat = llList2String(tempSeat, llGetListLength(tempSeat)-3);
+            list tempSeat = llParseStringKeepNulls(llList2String(Slots, slotNum*STRIDE+7), ["§"], []);
+            string strideSeat = llList2String(tempSeat, 1);
             tempSeat =[];
             if(strideSeat == "seat" + (string)(currentseatnum)) {
                 OldSlot= slotNum;
@@ -240,8 +240,8 @@ ProcessLine(string sLine, key av, string ncName, string path, integer page) {
     if(action == "ANIM") {
         if(SlotMax<LastStrideCount) {
             Slots = llListReplaceList(Slots, [llList2String(params, 1), (vector)llList2String(params, 2),
-                llEuler2Rot((vector)llList2String(params, 3) * DEG_TO_RAD), llList2String(params, 4), llList2Key(Slots, (SlotMax)*STRIDE+4),
-                 "", "",llGetSubString(llList2String(params, 5), 0, 12) + "§" + "seat"+(string)(SlotMax+1) + "§" + action + "§" + ncName], (SlotMax)*STRIDE, (SlotMax)*STRIDE+7);
+                llEuler2Rot((vector)llList2String(params, 3) * DEG_TO_RAD), llList2String(params, 4), llList2Key(Slots, (SlotMax)*STRIDE+4), "", "",
+                llGetSubString(llList2String(params, 5), 0, 12) + "§" + "seat"+(string)(SlotMax+1) + "§" + action + "§" + ncName], (SlotMax)*STRIDE, (SlotMax)*STRIDE+7);
         }
         else {
             Slots += [llList2String(params, 1), (vector)llList2String(params, 2),
@@ -270,6 +270,7 @@ ProcessLine(string sLine, key av, string ncName, string path, integer page) {
              if(action == "SCHMOE" || (action == "SCHMO" && llList2Key(Slots, slotNumber * STRIDE + 4) == av)) {
                 integer index=2;
                 integer length=llGetListLength(params);
+                string seatName=llList2String(llParseStringKeepNulls(llList2String(params, 7), ["§"], []), 0);
                 for(; index<length; index++) {
                     if(index==2) {
                         Slots=llListReplaceList(Slots, [llList2String(params, index)],
@@ -277,11 +278,6 @@ ProcessLine(string sLine, key av, string ncName, string path, integer page) {
                         //Clear out the SATMSG/NOTSATMSG. If we need them, we must add them back in the NC
                         Slots=llListReplaceList(Slots, ["",""],
                         slotNumber * STRIDE + 5, slotNumber * STRIDE + 6);
-                        Slots=llListReplaceList(Slots, 
-                        [
-                            llList2String(params, index+4) + "§seat" + (string)(slotNumber+1) + "§" + action + "§" + ncName
-                        ],
-                         slotNumber * STRIDE + 7, slotNumber * STRIDE + 7);
                     }
                     else if(index==3) {
                         Slots=llListReplaceList(Slots, [(vector)llList2String(params, index)],
@@ -296,18 +292,19 @@ ProcessLine(string sLine, key av, string ncName, string path, integer page) {
                             slotNumber * STRIDE + 3, slotNumber * STRIDE + 3);
                     }
                     else if(index==6) {
-                        Slots=llListReplaceList(Slots, 
-                        [
-                            llList2String(params, index) + "§seat" + (string)(slotNumber+1) + "§" + action + "§" + ncName
-                        ],
-                            slotNumber * STRIDE + 7, slotNumber * STRIDE + 7);
+                        seatName=llList2String(params, index);
                     }
                 }
+                Slots=llListReplaceList(Slots,
+                    [
+                        llDumpList2String([seatName, "seat"+ (string)(slotNumber+1), action, ncName], "§")
+                    ],
+                        slotNumber * STRIDE + 7, slotNumber * STRIDE + 7);
             }
         }
         SlotMax = LastStrideCount;
     }
-    else if (action == "PROP" || action=="PROPREZ") {
+    else if (action == "PROP") {
         string obj = llList2String(params, 1);
         if(llGetInventoryType(obj) == INVENTORY_OBJECT) {
             //the old die command for explicit props. should be removed soon.
@@ -563,10 +560,10 @@ default{
             //usage:  LINKMSG|210|3  Will swap menu user to seat3 and seat3 occupant moves to existing menu user's seat#
             //this is intended as an internal call for ChangeSeat button but can be used by any plugin, LINKMSG, or SAT/NOTSATMSG
             integer slotIndex = llListFindList(Slots, [id])/STRIDE;
-            list tempSeat = llParseString2List(llList2String(Slots, slotIndex*STRIDE+7), ["§"], []);
-
-            string strideSeat = llList2String(tempSeat, llGetListLength(tempSeat)-3);
+            list tempSeat = llParseStringKeepNulls(llList2String(Slots, slotIndex*STRIDE+7), ["§"], []);
+            string strideSeat = llList2String(tempSeat, 1);
             tempSeat =[];
+
             integer oldseat = (integer)llGetSubString(strideSeat, 4,-1);
             if (oldseat <= 0) {
                 llWhisper(0, "avatar is not assigned a slot: " + (string)id);
