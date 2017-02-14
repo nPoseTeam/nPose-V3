@@ -34,6 +34,9 @@ key MyId;
 list CardsList;
 list FinishedCardsList;
 
+integer PropsOldSyntax;
+integer PropsUsed;
+
 string deleteNode(string path, integer start, integer end) {
 	return llDumpList2String(llDeleteSubList(llParseStringKeepNulls(path, [":"], []), start, end), ":");
 }
@@ -209,6 +212,7 @@ state stage20 {
 
 state stage30 {
 	state_entry() {
+		llOwnerSay("Step3 (NC content) ...");
 		llOwnerSay("Step3 (NC content) ...");
 		integer length=llGetInventoryNumber(INVENTORY_NOTECARD);
 		integer index;
@@ -428,16 +432,12 @@ llOwnerSay("Parsing: " + ncName);
 					}
 				}
 				else if(cmd=="PROP") {
+					PropsUsed=TRUE;
 					string propParam2=llList2String(parts, 2);
-					string newLine;
-					if(~llSubStringIndex(propParam2, "=die")) {
-						newLine="PROPDIE|list|" + llGetSubString(propParam2, 0, -5);
+					string propParam4=llList2String(parts, 4);
+					if(~llSubStringIndex(propParam2, "=die") || propParam4=="explicit") {
+						PropsOldSyntax=TRUE;
 					}
-					else {
-						newLine=llDumpList2String(["PROPREZ"]+llDeleteSubList(parts, 0, 0), "|");
-					}
-					pleaseChange(ncName, index-2, data, newLine);
-					llOwnerSay("and make sure that you update your props script to V1.00 (or newer)");
 				}
 			}
 			if(CardsList) {
@@ -459,6 +459,10 @@ llOwnerSay("Parsing: " + ncName);
 }
 state stage40{
 	state_entry() {
+		if(PropsUsed) {
+			llOwnerSay("Notice: You are using props. With nPose V3 there will be a new prop script. You may want to check the wiki for the PROP and PROPDIE command.");
+		}
+		llOwnerSay("nPose V3 wiki: https://github.com/nPoseTeam/nPose-V3/wiki");
 		llOwnerSay("FINISHED");
 	}
 	on_rez(integer start_param) {
