@@ -315,7 +315,7 @@ default {
 
                     list slice = llList2List(Slots, slotsindex, slotsindex + 3);
                     slice = llListReplaceList(slice, [RAD_TO_DEG * llRot2Euler(llList2Rot(slice, 2))], 2, 2);
-                    string sendSTR = "\n" + action + "|";;
+                    string sendSTR = "\n" + action + "|";
                     if(action != "ANIM") {
 
                         sendSTR += (string)(slotsindex/STRIDE+1) + "|";
@@ -342,7 +342,7 @@ default {
 
                 list slice = llList2List(Slots, n*STRIDE, n*STRIDE + 3);
                 slice = llListReplaceList(slice, [RAD_TO_DEG * llRot2Euler(llList2Rot(slice, 2))], 2, 2);
-                string sendSTR = action + "|";
+                string sendSTR = "\n" + action + "|";
                 if(action != "ANIM") {
                     sendSTR += (string)(n+1) + "|";
                 }
