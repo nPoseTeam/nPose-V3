@@ -331,7 +331,6 @@ default {
             integer n;
             string primName = llGetObjectName();
             llSetObjectName(llGetLinkName(1));
-            llRegionSayTo(llGetOwner(), 0, "SCHMOE and SCHMO lines will be reported as ANIM.  Be sure to replace if needed.");
             for(n = 0; n < llGetListLength(Slots)/STRIDE; ++n) {
                 list temp=llParseStringKeepNulls(llList2String(Slots, n*STRIDE+7), ["§"], []);
                 string seatName;
