@@ -185,10 +185,22 @@ RezNextAdjuster(integer slotnum) {
             pos = llGetPos() + llList2Vector(Slots, index + 1) * llGetRot();
             rot = llList2Rot(Slots, index + 2) * llGetRot();
         }
-        llRezObject("Adjuster", pos, ZERO_VECTOR, rot, Chatchannel);
+        integer sendToPropChannel = (Chatchannel << 8);
+        if(llVecMag(llList2Vector(Slots, index + 1)) > 9.9) {
+            //too far to rez it direct.  need to do a prop move
+            sendToPropChannel = sendToPropChannel | 0;
+            
+            llRezObject("Adjuster", llGetPos(), ZERO_VECTOR, rot, sendToPropChannel);
+            llSleep(0.1);
+            llRegionSay(Chatchannel, llDumpList2String(["MOVEPROP", "Adjuster", (string)pos], "|"));
+        }
+        else {
+            sendToPropChannel = sendToPropChannel | 1;
+            llRezObject("Adjuster", pos, ZERO_VECTOR, rot, sendToPropChannel);
+        }
     }
     else {
-        llSay(Chatchannel, "adjuster_die");
+        llRegionSay(Chatchannel, "adjuster_die");
         Adjusters = [];
         llRegionSayTo(llGetOwner(), 0, "Seat Adjustment disabled.  No Adjuster object found in " + llGetObjectName()+ ".");
     }
@@ -251,13 +263,13 @@ default {
             }
         }
         else if((num == ADJUST) || (num == REZ_ADJUSTERS && str == "RezAdjuster")) { //adjust has been chosen from the menu
-            llSay(Chatchannel, "adjuster_die");
+            llRegionSay(Chatchannel, "adjuster_die");
             Adjusters = [];
             RezNextAdjuster(0);
         }
         else if(num == STOPADJUST) { //stopadjust has been chosen from the menu
             llMessageLinked(LINK_SET, DUMP, "", "");
-            llSay(Chatchannel, "adjuster_die"); 
+            llRegionSay(Chatchannel, "adjuster_die"); 
             Adjusters = [];
         }
         else if(num == OPTIONS) {
