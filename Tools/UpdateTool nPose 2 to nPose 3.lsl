@@ -34,6 +34,9 @@ key MyId;
 list CardsList;
 list FinishedCardsList;
 
+integer PropsOldSyntax;
+integer PropsUsed;
+
 string deleteNode(string path, integer start, integer end) {
 	return llDumpList2String(llDeleteSubList(llParseStringKeepNulls(path, [":"], []), start, end), ":");
 }
@@ -74,6 +77,7 @@ default {
 //add .init file
 state stage10 {
 	state_entry() {
+		llOwnerSay("This script analyses your nPose object in 3 steps. You have to follow the instructions given in each step to continue.");
 		llOwnerSay("Step1 (Default card analysis) ...");
 		MyId=llGetInventoryKey(llGetScriptName());
 		
@@ -120,10 +124,10 @@ state stage10 {
 			);
 			if(DefaultCardName!=newDefaultCardName) {
 				llOwnerSay(
-					"Then rename the card " + DefaultCardName + " to " + newDefaultCardName + 
-					"\n Click when finished."
+					"Then rename the card " + DefaultCardName + " to " + newDefaultCardName
 				);
 			}
+			llOwnerSay("\n Click when finished.");
 		}
 	}
 	touch_start(integer num_detected) {
@@ -208,6 +212,7 @@ state stage20 {
 
 state stage30 {
 	state_entry() {
+		llOwnerSay("Step3 (NC content) ...");
 		llOwnerSay("Step3 (NC content) ...");
 		integer length=llGetInventoryNumber(INVENTORY_NOTECARD);
 		integer index;
@@ -426,6 +431,14 @@ llOwnerSay("Parsing: " + ncName);
 						deleteIf(ncName, index-2, data, "the old RLV timer plugin");
 					}
 				}
+				else if(cmd=="PROP") {
+					PropsUsed=TRUE;
+					string propParam2=llList2String(parts, 2);
+					string propParam4=llList2String(parts, 4);
+					if(~llSubStringIndex(propParam2, "=die") || propParam4=="explicit") {
+						PropsOldSyntax=TRUE;
+					}
+				}
 			}
 			if(CardsList) {
 				FinishedCardsList+=ncName;
@@ -446,6 +459,10 @@ llOwnerSay("Parsing: " + ncName);
 }
 state stage40{
 	state_entry() {
+		if(PropsUsed) {
+			llOwnerSay("Notice: You are using props. With nPose V3 there will be a new prop script. You may want to check the wiki for the PROP and PROPDIE command.");
+		}
+		llOwnerSay("nPose V3 wiki: https://github.com/nPoseTeam/nPose-V3/wiki");
 		llOwnerSay("FINISHED");
 	}
 	on_rez(integer start_param) {

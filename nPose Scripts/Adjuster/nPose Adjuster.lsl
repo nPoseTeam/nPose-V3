@@ -1,5 +1,6 @@
 integer chatchannel = 0;
 integer slotid = 0;
+integer iMoved;
 
 float timeout = 0.1;
 vector pos = ZERO_VECTOR;
@@ -13,7 +14,8 @@ default
     {
         if (param)
         {
-            chatchannel = param;
+            chatchannel = (integer)((0x00FFFFFF & (param >> 8)) + 0x7F000000);
+            iMoved = param & 0x000000FF;
             pos = llGetPos();
             rot = llGetRot();
             llListen(chatchannel, "", "", "");
@@ -27,6 +29,9 @@ default
 
     listen(integer channel, string name, key id, string message)
     {
+        list msg = llParseString2List(message, ["|"], []);
+        string cmd = llList2String(msg,0);
+        vector vDelta = (vector)llList2String(msg, 1);
         //only pay attention of obj owner is my owner
         if (llGetOwnerKey(id) == llGetOwner())
         {
@@ -50,6 +55,18 @@ default
             {
                 llDie();
             }            
+        }
+        if (cmd == "MOVEPROP" ){
+            if (llList2String(msg,1) == llGetObjectName() && (llVecMag(vDelta) < 0.1)){
+                if (iMoved == 0){
+                    // move it
+                    vector vPosition =  (vector)llList2String(msg,2);
+                    llSetRegionPos( vPosition );
+                    pos = llGetPos();
+                    rot = llGetRot();
+                }
+                iMoved = 1;
+            }
         }
     }
     
@@ -79,7 +96,7 @@ default
         
         if (chat_out)
         {
-            llSay(chatchannel, (string)pos + "|" + (string)rot);
+            llRegionSay(chatchannel, (string)pos + "|" + (string)rot);
         }
     }
 }

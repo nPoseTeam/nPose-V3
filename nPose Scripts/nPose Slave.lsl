@@ -185,10 +185,22 @@ RezNextAdjuster(integer slotnum) {
             pos = llGetPos() + llList2Vector(Slots, index + 1) * llGetRot();
             rot = llList2Rot(Slots, index + 2) * llGetRot();
         }
-        llRezObject("Adjuster", pos, ZERO_VECTOR, rot, Chatchannel);
+        integer sendToPropChannel = (Chatchannel << 8);
+        if(llVecMag(llList2Vector(Slots, index + 1)) > 9.9) {
+            //too far to rez it direct.  need to do a prop move
+            sendToPropChannel = sendToPropChannel | 0;
+            
+            llRezObject("Adjuster", llGetPos(), ZERO_VECTOR, rot, sendToPropChannel);
+            llSleep(0.1);
+            llRegionSay(Chatchannel, llDumpList2String(["MOVEPROP", "Adjuster", (string)pos], "|"));
+        }
+        else {
+            sendToPropChannel = sendToPropChannel | 1;
+            llRezObject("Adjuster", pos, ZERO_VECTOR, rot, sendToPropChannel);
+        }
     }
     else {
-        llSay(Chatchannel, "adjuster_die");
+        llRegionSay(Chatchannel, "adjuster_die");
         Adjusters = [];
         llRegionSayTo(llGetOwner(), 0, "Seat Adjustment disabled.  No Adjuster object found in " + llGetObjectName()+ ".");
     }
@@ -251,13 +263,13 @@ default {
             }
         }
         else if((num == ADJUST) || (num == REZ_ADJUSTERS && str == "RezAdjuster")) { //adjust has been chosen from the menu
-            llSay(Chatchannel, "adjuster_die");
+            llRegionSay(Chatchannel, "adjuster_die");
             Adjusters = [];
             RezNextAdjuster(0);
         }
         else if(num == STOPADJUST) { //stopadjust has been chosen from the menu
             llMessageLinked(LINK_SET, DUMP, "", "");
-            llSay(Chatchannel, "adjuster_die"); 
+            llRegionSay(Chatchannel, "adjuster_die"); 
             Adjusters = [];
         }
         else if(num == OPTIONS) {
@@ -297,12 +309,19 @@ default {
                 if (!QuietAdjusters) {
                     list temp=llParseStringKeepNulls(llList2String(Slots, slotsindex+7), ["§"], []);
                     string seatName;
-                    if(llList2String(temp, 0)) {
-                        seatName = llList2String(temp, 0);
+                    seatName = llList2String(temp, 0);
+                    string action = llList2String(temp, 2);
+                    string ncName = llList2String(temp, 3);
+
+                    list slice = llList2List(Slots, slotsindex, slotsindex + 3);
+                    slice = llListReplaceList(slice, [RAD_TO_DEG * llRot2Euler(llList2Rot(slice, 2))], 2, 2);
+                    string sendSTR = "\n" + action + "|";
+                    if(action != "ANIM") {
+
+                        sendSTR += (string)(slotsindex/STRIDE+1) + "|";
                     }
-                    llRegionSayTo(llGetOwner(), 0, "SCHMOE and SCHMO lines will be reported as ANIM.  Be sure to replace if needed.");
-                    llRegionSayTo(llGetOwner(), 0, "\nANIM|" + llList2String(Slots, slotsindex) + "|" + (string)newpos + "|" +
-                        (string)(llRot2Euler(newrot) * RAD_TO_DEG) + "|" + llList2String(Slots, slotsindex + 3) + "|" + seatName);
+                    sendSTR += llDumpList2String(slice, "|") + "|" + seatName;
+                    llRegionSayTo(llGetOwner(), 0, "\nSet card for this data is '" + ncName + "'." + "\n"+sendSTR);
                 }
                 llSetObjectName(primName);
                 llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(Slots, "^"), NULL_KEY);
@@ -314,17 +333,21 @@ default {
             integer n;
             string primName = llGetObjectName();
             llSetObjectName(llGetLinkName(1));
-            llRegionSayTo(llGetOwner(), 0, "SCHMOE and SCHMO lines will be reported as ANIM.  Be sure to replace if needed.");
-            for(n = 0; n < llGetListLength(Slots)/8; ++n) {
-                list temp=llParseStringKeepNulls(llList2String(Slots, n*8+7), ["§"], []);
+            for(n = 0; n < llGetListLength(Slots)/STRIDE; ++n) {
+                list temp=llParseStringKeepNulls(llList2String(Slots, n*STRIDE+7), ["§"], []);
                 string seatName;
-                if(llList2String(temp, 0)) {
-                    seatName = llList2String(temp, 0);
-                }
+                seatName = llList2String(temp, 0);
+                string action = llList2String(temp, 2);
+                string ncName = llList2String(temp, 3);
+
                 list slice = llList2List(Slots, n*STRIDE, n*STRIDE + 3);
                 slice = llListReplaceList(slice, [RAD_TO_DEG * llRot2Euler(llList2Rot(slice, 2))], 2, 2);
-                string sendSTR = "ANIM|" + llDumpList2String(slice, "|") + "|" + seatName;
-                llRegionSayTo(llGetOwner(), 0, "\n"+sendSTR);
+                string sendSTR = "\n" + action + "|";
+                if(action != "ANIM") {
+                    sendSTR += (string)(n+1) + "|";
+                }
+                sendSTR += llDumpList2String(slice, "|") + "|" + seatName;
+                llRegionSayTo(llGetOwner(), 0, "\nSet card for this data is '" + ncName + "'." + "\n"+sendSTR);
             }
             llRegionSay(Chatchannel, "posdump");
             llSetObjectName(primName);
