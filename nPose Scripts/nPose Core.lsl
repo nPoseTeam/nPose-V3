@@ -56,7 +56,7 @@ string DefaultCardName;
 //define block end
 
 integer SlotMax;
-integer LastStrideCount = 12;
+integer LastStrideCount;
 integer RezAdjusters;
 integer ChatChannel;
 integer ExplicitFlag;
