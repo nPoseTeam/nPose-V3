@@ -704,7 +704,6 @@ default{
             }
         }
         if(change & CHANGED_LINK) {
-            llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)ChatChannel, NULL_KEY); //let our scripts know the chat channel for props and adjusters
             assignSlots(LastAssignSlotsCardName);
             if(Cur2default && (llGetObjectPrimCount(llGetKey()) == llGetNumberOfPrims()) && (DefaultCardName != "")) {
                 llMessageLinked(LINK_SET, DOPOSE, DefaultCardName, NULL_KEY);
