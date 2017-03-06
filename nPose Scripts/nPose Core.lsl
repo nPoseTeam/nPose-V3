@@ -228,6 +228,7 @@ string insertPlaceholder(string sLine, key av, string ncName, string path, integ
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%PAGE%"], []), (string)page);
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%DISPLAYNAME%"], []), llGetDisplayName(av));
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%USERNAME%"], []), llGetUsername(av));
+    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%SCALE%"], []), (string)llGetScale());
     return sLine;
 }
 
