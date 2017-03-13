@@ -484,7 +484,6 @@ default{
                         //reset the slots
                         LastStrideCount = SlotMax;
                         SlotMax = 0;
-                        Slots = [];
                         //props (propGroup 0) die if there is an ANIM line inside the NC
                         llRegionSay(ChatChannel, "die");
                         slotResetFinished=TRUE;
