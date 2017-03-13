@@ -68,6 +68,7 @@ list Slots;  //one STRIDE = [animationName, posVector, rotVector, facials, sitte
 
 integer CurMenuOnSit; //default menuonsit option
 integer Cur2default;  //default action to revert back to default pose when last sitter has stood
+vector ScaleRef; //perhaps we want to do rezzing etc. relative to the current scale of the object. If yes: we need a reference scale.
 
 string NC_READER_CONTENT_SEPARATOR="%&§";
 
@@ -228,7 +229,8 @@ string insertPlaceholder(string sLine, key av, string ncName, string path, integ
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%PAGE%"], []), (string)page);
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%DISPLAYNAME%"], []), llGetDisplayName(av));
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%USERNAME%"], []), llGetUsername(av));
-    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%SCALE%"], []), (string)llGetScale());
+    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%SCALECUR%"], []), (string)llGetScale());
+    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%SCALEREF%"], []), (string)ScaleRef);
     return sLine;
 }
 
@@ -630,6 +632,9 @@ default{
                 }
                 else if(optionItem == "2default") {
                     Cur2default = optionSettingFlag;
+                }
+                else if(optionItem == "scaleref") {
+                    ScaleRef = (vector)optionString;
                 }
             }
         }
