@@ -56,7 +56,7 @@ string DefaultCardName;
 //define block end
 
 integer SlotMax;
-integer LastStrideCount = 12;
+integer LastStrideCount;
 integer RezAdjusters;
 integer ChatChannel;
 integer ExplicitFlag;
@@ -68,6 +68,7 @@ list Slots;  //one STRIDE = [animationName, posVector, rotVector, facials, sitte
 
 integer CurMenuOnSit; //default menuonsit option
 integer Cur2default;  //default action to revert back to default pose when last sitter has stood
+vector ScaleRef; //perhaps we want to do rezzing etc. relative to the current scale of the object. If yes: we need a reference scale.
 
 string NC_READER_CONTENT_SEPARATOR="%&§";
 
@@ -228,6 +229,8 @@ string insertPlaceholder(string sLine, key av, string ncName, string path, integ
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%PAGE%"], []), (string)page);
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%DISPLAYNAME%"], []), llGetDisplayName(av));
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%USERNAME%"], []), llGetUsername(av));
+    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%SCALECUR%"], []), (string)llGetScale());
+    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%SCALEREF%"], []), (string)ScaleRef);
     return sLine;
 }
 
@@ -630,6 +633,9 @@ default{
                 else if(optionItem == "2default") {
                     Cur2default = optionSettingFlag;
                 }
+                else if(optionItem == "scaleref") {
+                    ScaleRef = (vector)optionString;
+                }
             }
         }
         else if(num == MEMORY_USAGE) {
@@ -703,7 +709,6 @@ default{
             }
         }
         if(change & CHANGED_LINK) {
-            llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)ChatChannel, NULL_KEY); //let our scripts know the chat channel for props and adjusters
             assignSlots(LastAssignSlotsCardName);
             if(Cur2default && (llGetObjectPrimCount(llGetKey()) == llGetNumberOfPrims()) && (DefaultCardName != "")) {
                 llMessageLinked(LINK_SET, DOPOSE, DefaultCardName, NULL_KEY);

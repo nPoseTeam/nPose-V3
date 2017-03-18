@@ -25,6 +25,7 @@ list Options=[
 	"permit", OPTION_TYPE_STRING, "public", "Deprecated: Use Button Permissions instead. This controls the global permission to get the menu. Default permissions is public and options are group and owner.",
 	"menuOnSit", OPTION_TYPE_FLAG, "0", "Turn this on to give the menu to any new sitter automatically when they sit, off means they must click for menu.",
 	"2Default", OPTION_TYPE_FLAG, "0", "Turn this on and nPose returns to the DEFAULT pose when everyone stands.",
+	"scaleRef", OPTION_TYPE_STRING, "<0.0, 0.0, 0.0>", "the placeholder %SCALEREF% is replaced with this value.",
 	"facialExp", OPTION_TYPE_FLAG, "1", "This is a global setting for facial anims. If this option is off, any facial anims set in the build will be ignored.",
 	"sit2GetMenu", OPTION_TYPE_FLAG, "0", "Deprecated: Use Button Permissions instead. Turn this on to ensure no one will be able to pull a menu while standing. Everyone must be seated to get a menu.",
 	"menuDist", OPTION_TYPE_FLOAT, "30.0", "Distance away and still click to get menu.",
