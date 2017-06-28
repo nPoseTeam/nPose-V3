@@ -746,7 +746,14 @@ default{
 //begin handle link message inputs
         else if(num == OPTIONS || num == MACRO || num == UDPBOOL || num == UDPLIST) {
             //save new option(s) or macro(s) or userdefined permissions from LINKMSG
-            list optionsToSet = llParseStringKeepNulls(str, ["~","|"], []);
+            list optionsToSet;
+            if(num==OPTIONS) {
+                //Backward compatibility: split the string also by "~"
+                optionsToSet = llParseStringKeepNulls(str, ["~","|"], []);
+            }
+            else {
+                optionsToSet = llParseStringKeepNulls(str, ["|"], []);
+            }
             integer length = llGetListLength(optionsToSet);
             integer index;
             for(; index<length; ++index) {
