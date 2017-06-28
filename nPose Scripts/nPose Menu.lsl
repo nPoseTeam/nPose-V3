@@ -769,11 +769,12 @@ default{
                     if(~udpIndex) {
                         UserDefinedPermissionsList=llDeleteSubList(UserDefinedPermissionsList, udpIndex, udpIndex+2);
                     }
-                    string udpType=USER_DEFINED_PERMISSION_TYPE_BOOL;
                     if(num==UDPLIST) {
-                        udpType=USER_DEFINED_PERMISSION_TYPE_LIST;
+                        UserDefinedPermissionsList+=[optionItem, USER_DEFINED_PERMISSION_TYPE_LIST, optionString];
                     }
-                    UserDefinedPermissionsList+=[optionItem, udpType, optionSettingFlag];
+                    else if(num==UDPBOOL) {
+                        UserDefinedPermissionsList+=[optionItem, USER_DEFINED_PERMISSION_TYPE_BOOL, optionSettingFlag];
+                    }
                 }
                 else if(num==OPTIONS) {
                     if(optionItem == "permit") {Permissions = optionSetting;}
