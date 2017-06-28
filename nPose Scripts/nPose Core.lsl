@@ -82,6 +82,25 @@ list PluginCommands=[
     "MACRO", MACRO, 0
 ];
 
+UpdateDefaultCard() {
+    if(llGetInventoryType(INIT_CARD_NAME)==INVENTORY_NOTECARD) {
+        llSleep(1.0); //be sure that the NC reader script finished resetting
+        llMessageLinked(LINK_SET, DOPOSE, INIT_CARD_NAME, NULL_KEY);
+    }
+    else {
+        //this is the old default notcard detection.
+        integer nn;
+        integer stop = llGetInventoryNumber(INVENTORY_NOTECARD);
+        for(; nn < stop; nn++) {
+            string cardName = llGetInventoryName(INVENTORY_NOTECARD, nn);
+            if((llSubStringIndex(cardName, DEFAULT_PREFIX) == 0) || (llSubStringIndex(cardName, CARD_PREFIX) == 0)) {
+                llSleep(1.0); //be sure that the NC reader script finished resetting
+                llMessageLinked(LINK_SET, DEFAULT_CARD, cardName, NULL_KEY);
+                return;
+            }
+        }
+    }
+}
 
 integer FindEmptySlot() {
     integer n;
@@ -437,23 +456,7 @@ default{
         //let our scripts know the chat channel for props and adjusters
         llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)ChatChannel, NULL_KEY);
         integer listener = llListen(ChatChannel, "", "", "");
-        
-        if(llGetInventoryType(INIT_CARD_NAME)==INVENTORY_NOTECARD) {
-            llSleep(1.0); //be sure that the NC reader script finished resetting
-            llMessageLinked(LINK_SET, DOPOSE, INIT_CARD_NAME, NULL_KEY);
-        }
-        else {
-            //this is the old default notcard detection.
-            integer stop = llGetInventoryNumber(INVENTORY_NOTECARD);
-            for(n = 0; n < stop; n++) {
-                string cardName = llGetInventoryName(INVENTORY_NOTECARD, n);
-                if((llSubStringIndex(cardName, DEFAULT_PREFIX) == 0) || (llSubStringIndex(cardName, CARD_PREFIX) == 0)) {
-                    llSleep(1.0); //be sure that the NC reader script finished resetting
-                    llMessageLinked(LINK_SET, DEFAULT_CARD, cardName, NULL_KEY);
-                    return;
-                }
-            }
-        }
+        UpdateDefaultCard();
     }
     link_message(integer sender, integer num, string str, key id) {
         if(num == REQUEST_CHATCHANNEL) {//slave has asked me to reset so it can get the ChatChannel from me.
@@ -706,6 +709,12 @@ default{
                     llSleep(1.0); //be sure that the NC reader script finished resetting
                     llMessageLinked(LINK_SET, DOPOSE, LastAssignSlotsCardName, LastAssignSlotsAvatarId); 
                 }
+                else {
+                    UpdateDefaultCard();
+                }
+            }
+            else {
+                UpdateDefaultCard();
             }
         }
         if(change & CHANGED_LINK) {
