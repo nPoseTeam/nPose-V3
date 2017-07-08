@@ -250,6 +250,8 @@ string insertPlaceholder(string sLine, key av, string ncName, string path, integ
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%USERNAME%"], []), llGetUsername(av));
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%SCALECUR%"], []), (string)llGetScale());
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%SCALEREF%"], []), (string)ScaleRef);
+    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%POSITION%"], []), (string)llGetPos());
+    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%ROTATION%"], []), (string)llGetRot());
     return sLine;
 }
 
