@@ -12,13 +12,12 @@ string INIT_CARD_NAME=".init";
 string DefaultCardName;
 
 //define block start
+#define DEFAULT_PREFIX "SET"
 #define ADMIN_HUD_NAME "npose admin hud"
 #define STRIDE 8
 #define MEMORY_USAGE 34334
 #define SEAT_UPDATE 35353
 #define REQUEST_CHATCHANNEL 999999
-#define DEFAULT_PREFIX "DEFAULT:"
-#define CARD_PREFIX "SET:"
 #define SEND_CHATCHANNEL 1
 #define REZ_ADJUSTERS 2
 #define ADJUSTER_REPORT 3
@@ -70,6 +69,7 @@ integer CurMenuOnSit; //default menuonsit option
 integer Cur2default;  //default action to revert back to default pose when last sitter has stood
 vector ScaleRef; //perhaps we want to do rezzing etc. relative to the current scale of the object. If yes: we need a reference scale.
 
+
 string NC_READER_CONTENT_SEPARATOR="%&§";
 
 //PluginCommands=[string name, integer num, integer sendToProps]
@@ -84,7 +84,6 @@ list PluginCommands=[
 
 UpdateDefaultCard() {
     if(llGetInventoryType(INIT_CARD_NAME)==INVENTORY_NOTECARD) {
-        llSleep(1.0); //be sure that the NC reader script finished resetting
         llMessageLinked(LINK_SET, DOPOSE, INIT_CARD_NAME, NULL_KEY);
     }
     else {
@@ -93,8 +92,7 @@ UpdateDefaultCard() {
         integer stop = llGetInventoryNumber(INVENTORY_NOTECARD);
         for(; nn < stop; nn++) {
             string cardName = llGetInventoryName(INVENTORY_NOTECARD, nn);
-            if((llSubStringIndex(cardName, DEFAULT_PREFIX) == 0) || (llSubStringIndex(cardName, CARD_PREFIX) == 0)) {
-                llSleep(1.0); //be sure that the NC reader script finished resetting
+            if((llSubStringIndex(cardName, DEFAULT_PREFIX+":") == 0)) {
                 llMessageLinked(LINK_SET, DEFAULT_CARD, cardName, NULL_KEY);
                 return;
             }
@@ -458,6 +456,7 @@ default{
         //let our scripts know the chat channel for props and adjusters
         llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)ChatChannel, NULL_KEY);
         integer listener = llListen(ChatChannel, "", "", "");
+        llSleep(1.0); //be sure that the NC reader script finished resetting
         UpdateDefaultCard();
     }
     link_message(integer sender, integer num, string str, key id) {
@@ -632,15 +631,9 @@ default{
                 string optionSetting = llToLower(llStringTrim(optionString, STRING_TRIM));
                 integer optionSettingFlag = optionSetting=="on" || (integer)optionSetting;
 
-                if(optionItem == "menuonsit") {
-                    CurMenuOnSit = optionSettingFlag;
-                }
-                else if(optionItem == "2default") {
-                    Cur2default = optionSettingFlag;
-                }
-                else if(optionItem == "scaleref") {
-                    ScaleRef = (vector)optionString;
-                }
+                if(optionItem == "menuonsit") {CurMenuOnSit = optionSettingFlag;}
+                else if(optionItem == "2default") {Cur2default = optionSettingFlag;}
+                else if(optionItem == "scaleref") {ScaleRef = (vector)optionString;}
             }
         }
         else if(num == MEMORY_USAGE) {

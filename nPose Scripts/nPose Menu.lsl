@@ -13,7 +13,7 @@ string Permissions = "public"; //default permit option Public, Locked, Group
 integer Sit2GetMenu;  //required to be seated to get a menu
 float MenuDistance = 30.0;
 integer OptionUseDisplayNames=1; //use display names instead of usernames in changeSeat/unsit menu
-
+integer OptionAutoLanguage=1; //if disabled, only the default language will be used, if enabled the script tries to determine the agent language
 
 list Slots; //this Slots list is not complete. it only contains seated AV key and seat numbers
 string MenuNc = ".Change Menu Order"; //holds the name of the menu order notecard to read.
@@ -29,10 +29,7 @@ list UserDefinedPermissionsList;
 list MacroNames;
 list MacroValues;
 
-#define SET_PREFIX "SET"
-#define BTN_PREFIX "BTN"
-#define DEFAULT_PREFIX "DEFAULT"
-#define CARD_PREFIXES [SET_PREFIX, DEFAULT_PREFIX, BTN_PREFIX]
+#define DEFAULT_PREFIX "SET"
 
 #define DIALOG -900
 #define DIALOG_RESPONSE -901
@@ -75,7 +72,6 @@ list MacroValues;
 
 //dialog buttons
 #define BACKBTN "^"
-#define ROOTMENU "Main"
 
 // userDefinedPermissions
 #define PERMISSION_GROUP "group"
@@ -95,9 +91,9 @@ list MacroValues;
 #define MY_PLUGIN_MENU_UNSIT "npose_unsit"
 #define MY_PLUGIN_MENU_CHANGE_SEAT "npose_changeseat"
 
-//store plugins base paths, register myself as plugin for the rootmenu
-list PluginBasePathList=[ROOTMENU];
-list PluginParamsList=[MY_PLUGIN_MENU];
+//store plugins base paths
+list PluginBasePathList;
+list PluginParamsList;
 
 //Button comments marker
 #define MARKER_COMMENT_START "/*"
@@ -132,7 +128,7 @@ DoMenu(key rcpt, string path, integer page, string prompt, list additionalButton
         (rcpt == llGetOwner() || (Permissions == "group" && llSameGroup(rcpt)) || Permissions == "public") &&
         (rcpt == llGetOwner() || !Sit2GetMenu || ~llListFindList(Slots, [rcpt]))
     ) {
-        list thisMenuPath=llDeleteSubList(llParseStringKeepNulls(path , [":"], []), 0, 0);
+        list thisMenuPath=llParseStringKeepNulls(path , [":"], []);
         //check button permission for this path up to the root
         //this also means that button permissions are inheritable
         list tempPath=thisMenuPath;
@@ -335,50 +331,57 @@ BuildMenus(list cardNames) {//builds the user defined menu buttons
     MenuButtons = [];
     MenuPermPath = [];
     MenuPermPerms = [];
-    integer stop = llGetListLength(cardNames);
+    PluginBasePathList=[];
+    PluginParamsList=[];
+
+    integer length = llGetListLength(cardNames);
     integer fromContents;
-    if(!stop) {
+    if(!length) {
         fromContents = TRUE;
-        stop = llGetInventoryNumber(INVENTORY_NOTECARD);
+        length = llGetInventoryNumber(INVENTORY_NOTECARD);
     }
-    integer n;
-    for(; n<stop; ++n) {//step through the notecards backwards so that default notecard is first in the contents
-        string name = llList2String(cardNames, n);
+    integer indexNC;
+    for(; indexNC<length; ++indexNC) {//step through the notecards backwards so that default notecard is first in the contents
+        string name = llList2String(cardNames, indexNC);
         if(fromContents) {
-            name = llGetInventoryName(INVENTORY_NOTECARD, n);
+            name = llGetInventoryName(INVENTORY_NOTECARD, indexNC);
         }
         integer permsIndex1 = llSubStringIndex(name,"{");
         integer permsIndex2 = llSubStringIndex(name,"}");
         string menuPerms;
-        if(~permsIndex1) { // found
+        if(permsIndex1>0 && permsIndex2>permsIndex1) { // found
             menuPerms = llGetSubString(name, permsIndex1+1, permsIndex2+-1);
             name = llDeleteSubString(name, permsIndex1, permsIndex2);
         }
         list pathParts = llParseStringKeepNulls(name, [":"], []);
         string prefix = llList2String(pathParts, 0);
-        pathParts = llDeleteSubList(pathParts, 0, 0);
 
-        if(~llListFindList(CARD_PREFIXES, [prefix])) { // found
+        if(prefix==DEFAULT_PREFIX || (llStringLength(prefix)==2 && llToUpper(prefix)==prefix)) { // found
             if(menuPerms) {
                 MenuPermPath += llDumpList2String(pathParts, ":");
                 MenuPermPerms += menuPerms;
             }
-            while(llGetListLength(pathParts)) {
+            if(!~llListFindList(PluginBasePathList, [prefix])) {
+                //register nPose menu to be responsible for all used languages (all trees in the forest)
+                PluginBasePathList+=[prefix];
+                PluginParamsList+=[MY_PLUGIN_MENU];
+            }
+            while(llGetListLength(pathParts)>1) {
                 string last = llList2String(pathParts, -1);
-                string parentpath = llDumpList2String([ROOTMENU] + llDeleteSubList(pathParts, -1, -1), ":");
-                integer index = llListFindList(MenuPaths, [parentpath]);
-                if(~index) {
-                    list children = llParseStringKeepNulls(llList2String(MenuButtons, index), ["|"], []);
+                string parentPath = llDumpList2String(llDeleteSubList(pathParts, -1, -1), ":");
+                integer indexParentPath = llListFindList(MenuPaths, [parentPath]);
+                if(~indexParentPath) {
+                    list children = llParseStringKeepNulls(llList2String(MenuButtons, indexParentPath), ["|"], []);
                     if(!~llListFindList(children, [last])) {
                         children += [last];
                         if(fromContents) {
                             children = llListSort(children, 1, 1);
                         }
-                        MenuButtons = llListReplaceList(MenuButtons, [llDumpList2String(children, "|")], index, index);
+                        MenuButtons = llListReplaceList(MenuButtons, [llDumpList2String(children, "|")], indexParentPath, indexParentPath);
                     }
                 }
                 else {
-                    MenuPaths += [parentpath];
+                    MenuPaths += [parentPath];
                     MenuButtons += [last];
                 }
                 pathParts = llDeleteSubList(pathParts, -1, -1);
@@ -388,7 +391,6 @@ BuildMenus(list cardNames) {//builds the user defined menu buttons
 }
 
 string getNcName(string path) {
-    path = llDumpList2String(llDeleteSubList(llParseStringKeepNulls(path, [":"], []), 0, 0), ":");
     integer permissionIndex = llListFindList(MenuPermPath, [path]);
     if(~permissionIndex) {
         string thisPerm = llList2String(MenuPermPerms, permissionIndex);
@@ -396,19 +398,8 @@ string getNcName(string path) {
             path+="{"+thisPerm+"}";
         }
     }
-    if(path!="") {
-        path=":"+path;
-    }
-
-    string ncName;
-    if(llGetInventoryType(ncName=DEFAULT_PREFIX + path) == INVENTORY_NOTECARD) {
-        return ncName;
-    }
-    if(llGetInventoryType(ncName=SET_PREFIX + path) == INVENTORY_NOTECARD) {
-        return ncName;
-    }
-    if(llGetInventoryType(ncName=BTN_PREFIX + path) == INVENTORY_NOTECARD) {
-        return ncName;
+    if(llGetInventoryType(path) == INVENTORY_NOTECARD) {
+        return path;
     }
     return "";
 }
@@ -471,16 +462,11 @@ default{
         key toucherKey = llDetectedKey(0);
         vector vDelta = llDetectedPos(0) - llGetPos();
         if(toucherKey == llGetOwner() || llVecMag(vDelta) < MenuDistance) {
-            llMessageLinked(LINK_SET, DOMENU, llDumpList2String([ROOTMENU, 0, ""], ","), toucherKey);
+            llMessageLinked(LINK_SET, DOMENU, llDumpList2String(["", 0, ""], ","), toucherKey);
         }
     }
     
     link_message(integer sender, integer num, string str, key id) {
-// This will not work anymore
-//        if(str == "menuUP") {
-//            //TODO: deprecated
-//            llMessageLinked(LINK_SET, -802, "PATH=" + GlobalPath, id);
-//        }
         if(
             (num==DIALOG_RESPONSE && id == ScriptId ) ||
             num==DOMENU ||
@@ -501,6 +487,7 @@ default{
             //the following block is to sort the paramters from the different message (to be backward compatible)
             //a better way would be to harmonize these parameters
             if(num==DOMENU || num==DOMENU_ACCESSCTRL) {
+                toucherid=id;
                 list params = llParseStringKeepNulls(str, [","], []);  //parse the message
                 //str: path[, page[, prompt]]
                 path=llList2String(params, 0);
@@ -508,12 +495,23 @@ default{
                 if(!llSubStringIndex(path, "PATH=")) {
                      path = llGetSubString(path, 5, -1);
                 }
-                if(path=="") {
-                    path=ROOTMENU;
+                if(path=="" || path=="Main") {
+                    //Deprecated: "Main" shouldn't be used any more
+                    path=DEFAULT_PREFIX;
+                    if(OptionAutoLanguage) {
+                        string agentLanguage=llToUpper(llGetAgentLanguage(toucherid));
+                        if(llStringLength(agentLanguage)>2) {
+                            if(llGetSubString(agentLanguage, 2, 2)=="-") {
+                                agentLanguage=llGetSubString(agentLanguage, 0, 1);
+                            }
+                        }
+                        if(~llListFindList(MenuPaths, [agentLanguage])) {
+                            path=agentLanguage;
+                        }
+                    }
                 }
                 page=(integer)llList2String(params, 1);
                 prompt=llList2String(params, 2);
-                toucherid=id;
             }
             else if(num == DIALOG_RESPONSE) {
                 list params = llParseStringKeepNulls(str, ["|"], []);  //parse the message
@@ -548,11 +546,7 @@ default{
                     if(ncName) {
                         //there is a NC that should be executed
                         string paramSet1=buildParamSet1(path, page, prompt, [], []);
-                        integer newNum=DOBUTTON;
-                        if(!llSubStringIndex(ncName, DEFAULT_PREFIX) || !llSubStringIndex(ncName, SET_PREFIX)) {
-                            newNum=DOPOSE;
-                        }
-                        llMessageLinked(LINK_SET, newNum, ncName + NC_READER_CONTENT_SEPARATOR + paramSet1, toucherid);
+                        llMessageLinked(LINK_SET, DOPOSE, ncName + NC_READER_CONTENT_SEPARATOR + paramSet1, toucherid);
                     }
                     else {
                         //no NC to be executed, initiate the remenu process without piping the messages trough the core
@@ -788,6 +782,7 @@ default{
                     else if(optionItem == "sit2getmenu") {Sit2GetMenu = optionSettingFlag;}
                     else if(optionItem == "menudist") {MenuDistance = (float)optionSetting;}
                     else if(optionItem == "usedisplaynames") {OptionUseDisplayNames = optionSettingFlag;}
+                    else if(optionItem == "autolanguage") {OptionAutoLanguage = optionSettingFlag;}
                 }
             }
         }
