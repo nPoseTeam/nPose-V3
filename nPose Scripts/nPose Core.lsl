@@ -718,9 +718,6 @@ default{
                 llMessageLinked(LINK_SET, DOPOSE, DefaultCardName, NULL_KEY);
             }
         }
-        if(change & CHANGED_REGION) {
-            llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(Slots, "^"), NULL_KEY);
-        }
     }
     
     on_rez(integer param) {

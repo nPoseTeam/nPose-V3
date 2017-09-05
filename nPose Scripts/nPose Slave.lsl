@@ -510,5 +510,9 @@ default {
                 LastAnimRunning = "";
             }
         }
+        if(change & CHANGED_REGION) {
+            llSleep(1.0);
+            llMessageLinked(LINK_SET, SYNC, "", NULL_KEY);
+        }
     }
 }
