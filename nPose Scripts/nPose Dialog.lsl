@@ -81,6 +81,7 @@ string TemplateDialogPrompt="%PROMPT%\nPath: %NICE_PATH%\nPage: %CURRENT_PAGE%/%
 string TemplateDialogTimeoutText="\n(Timeout in %TIMEOUT% seconds.)";
 integer OptionDialogTimeout=120;
 integer OptionUsePageBackward=FALSE;
+string OptionReplaceRoot="Main";
 
 /*
 debug(list message){
@@ -218,8 +219,12 @@ Dialog(key recipient, string prompt, list menuButtons, list utilityButtons, inte
     else {
         dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%PROMPT%"], []), "");
     }
-    dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%PATH%"], []), path);
-    dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%NICE_PATH%"], []), resolveText(path));
+    string pathDisplayString=path;
+    if(OptionReplaceRoot) {
+        pathDisplayString=llDumpList2String([OptionReplaceRoot] + llDeleteSubList(llParseStringKeepNulls(pathDisplayString, [":"], []), 0, 0), ":");
+    }
+    dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%PATH%"], []), pathDisplayString);
+    dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%NICE_PATH%"], []), resolveText(pathDisplayString));
     dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%CURRENT_PAGE%"], []), (string)(page+1));
     dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%TOTAL_PAGES%"], []), (string)numberOfPages);
     dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%TIMEOUT%"], []), (string)OptionDialogTimeout);
@@ -489,7 +494,8 @@ default {
                 }
                 else if(num==OPTIONS) {
                     if(optionItem == "dialogtimeout") {OptionDialogTimeout = (integer)optionSetting;}
-                    if(optionItem == "dialogbackward") {OptionUsePageBackward = optionSettingFlag;}
+                    else if(optionItem == "dialogbackward") {OptionUsePageBackward = optionSettingFlag;}
+                    else if(optionItem == "dialogreplaceroot") {OptionReplaceRoot = optionString;}
                 }
             }
         }
