@@ -239,13 +239,14 @@ SwapTwoSlots(integer currentseatnum, integer newseatnum) {
     llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(Slots, "^"), NULL_KEY);
 }
 
-string insertPlaceholder(string sLine, key av, string ncName, string path, integer page) {
+string insertPlaceholder(string sLine, key avKey, integer avSeat, string ncName, string path, integer page) {
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%CARDNAME%"], []), ncName);
-    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%AVKEY%"], []), av);
+    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%AVKEY%"], []), (string)avKey);
+    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%AVSEAT%"], []), (string)avSeat);
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%PATH%"], []), path);
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%PAGE%"], []), (string)page);
-    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%DISPLAYNAME%"], []), llGetDisplayName(av));
-    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%USERNAME%"], []), llGetUsername(av));
+    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%DISPLAYNAME%"], []), llGetDisplayName(avKey));
+    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%USERNAME%"], []), llGetUsername(avKey));
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%SCALECUR%"], []), (string)llGetScale());
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%SCALEREF%"], []), (string)ScaleRef);
     sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%POSITION%"], []), (string)llGetPos());
@@ -253,9 +254,9 @@ string insertPlaceholder(string sLine, key av, string ncName, string path, integ
     return sLine;
 }
 
-ProcessLine(string sLine, key av, string ncName, string path, integer page) {
+ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path, integer page) {
     list paramsOriginal = llParseStringKeepNulls(sLine, ["|"], []);
-    sLine=insertPlaceholder(sLine, av, ncName, path, page);
+    sLine=insertPlaceholder(sLine, avKey, avSeat, ncName, path, page);
     list params = llParseStringKeepNulls(sLine, ["|"], []);
     string action = llList2String(params, 0);
     integer slotNumber;
@@ -289,7 +290,7 @@ ProcessLine(string sLine, key av, string ncName, string path, integer page) {
         */
         integer slotNumber = (integer)llList2String(params,1)-1;
         if(slotNumber * STRIDE < llGetListLength(Slots)) { //sanity
-             if(action == "SCHMOE" || (action == "SCHMO" && llList2Key(Slots, slotNumber * STRIDE + 4) == av)) {
+             if(action == "SCHMOE" || (action == "SCHMO" && llList2Key(Slots, slotNumber * STRIDE + 4) == avKey)) {
                 integer index=2;
                 integer length=llGetListLength(params);
                 string seatName=llList2String(llParseStringKeepNulls(llList2String(params, 7), ["§"], []), 0);
@@ -379,7 +380,7 @@ ProcessLine(string sLine, key av, string ncName, string path, integer page) {
             lmid = (key)llList2String(params, 3);
         }
         else {
-            lmid = av;
+            lmid = avKey;
         }
         llMessageLinked(LINK_SET, num, llList2String(params, 2), lmid);
         llSleep((float)llList2String(params, 4));
@@ -428,7 +429,7 @@ ProcessLine(string sLine, key av, string ncName, string path, integer page) {
             }
         }
         else {
-            llMessageLinked(LINK_SET, UNKNOWN_COMMAND, sLine, av);
+            llMessageLinked(LINK_SET, UNKNOWN_COMMAND, sLine, avKey);
         }
     }
 }
@@ -478,6 +479,7 @@ default{
             integer page=(integer)llList2String(paramSet1List, 1);
             string prompt=llList2String(paramSet1List, 2);
             
+            integer avSeat=(llListFindList(Slots, [id]) + 8) / 8;
             //parse the NC content
             integer length=llGetListLength(allData);
             integer index=3;
@@ -498,12 +500,12 @@ default{
                     if(!llSubStringIndex(data, "SCHMO")) { //finds SCHMO and SCHMOE
                         run_assignSlots = TRUE;
                     }
-                    ProcessLine(llList2String(allData, index), id, ncName, path, page);
+                    ProcessLine(llList2String(allData, index), id, avSeat, ncName, path, page);
                 }
                 else {
                     //get all menu relevant data
                     if(!llSubStringIndex(data, "MENU")) {
-                        list parts=llParseStringKeepNulls(insertPlaceholder(data, id, ncName, path, page), ["|"], []);
+                        list parts=llParseStringKeepNulls(insertPlaceholder(data, id, avSeat, ncName, path, page), ["|"], []);
                         string cmd=llList2String(parts, 0);
                         if(cmd=="MENUPROMPT") {
                             prompt=llList2String(parts, 1);
