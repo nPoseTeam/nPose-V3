@@ -30,6 +30,7 @@ string DefaultCardName;
 #define DOACTION 207
 #define ADJUSTOFFSET 208
 #define SWAPTO 210
+#define DO 220
 #define PREPARE_MENU_STEP3_READER 221
 #define DOPOSE_READER 222
 #define DOBUTTON_READER 223
@@ -72,14 +73,14 @@ vector ScaleRef; //perhaps we want to do rezzing etc. relative to the current sc
 
 string NC_READER_CONTENT_SEPARATOR="%&§";
 
-//PluginCommands=[string name, integer num, integer sendToProps]
+//PluginCommands=[string name, integer num, integer sendToProps, integer sendUntouchedParams]
 list PluginCommands=[
-    "PLUGINCOMMAND", PLUGIN_COMMAND_REGISTER, 0,
-    "DEFAULTCARD", DEFAULT_CARD, 0,
-    "OPTION", OPTIONS, 0,
-    "UDPBOOL", UDPBOOL, 0,
-    "UDPLIST", UDPLIST, 0,
-    "MACRO", MACRO, 0
+    "PLUGINCOMMAND", PLUGIN_COMMAND_REGISTER, 0, 0,
+    "DEFAULTCARD", DEFAULT_CARD, 0, 0,
+    "OPTION", OPTIONS, 0, 0,
+    "UDPBOOL", UDPBOOL, 0, 0,
+    "UDPLIST", UDPLIST, 0, 0,
+    "MACRO", MACRO, 0, 0
 ];
 
 UpdateDefaultCard() {
@@ -259,6 +260,25 @@ ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path,
     sLine=insertPlaceholder(sLine, avKey, avSeat, ncName, path, page);
     list params = llParseStringKeepNulls(sLine, ["|"], []);
     string action = llList2String(params, 0);
+    string perms;
+    list temp=llParseString2List(action, ["{", "}"], []);
+    if(llGetListLength(temp)>1) {
+        action=llList2String(temp, 0);
+        perms=llToLower(llStringTrim(llList2String(temp, 1), STRING_TRIM));
+    }
+    //check the permissions, could be equal to the isAllowed function in the menu script, but we currently don't have enough script space
+    //so we only check for single integer values
+    // any integer counts as a seatNumber:
+    //        TRUE if the (menu) user sits on the seat with the given number
+    if(perms!="") {
+        if((string)((integer)perms) == perms) {
+            //is an single integer (seat number)
+            if(avSeat!=(integer)perms) {
+                return;
+            }
+        }
+    }
+
     integer slotNumber;
     if(action == "ANIM") {
         if(SlotMax<LastStrideCount) {
@@ -288,8 +308,10 @@ ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path,
         When multiple SCHMO lines are in the same notecard, only the menu users' seats will change.
         When multiple SCHMOE lines are in the same notecard, all seats will change.
         */
+        // Note: "SCHMO|1|..." is the same as "SCHMOE{1}|1|...."
+        
         integer slotNumber = (integer)llList2String(params,1)-1;
-        if(slotNumber * STRIDE < llGetListLength(Slots)) { //sanity
+        if(slotNumber>=0 && slotNumber * STRIDE < llGetListLength(Slots)) { //sanity
              if(action == "SCHMOE" || (action == "SCHMO" && llList2Key(Slots, slotNumber * STRIDE + 4) == avKey)) {
                 integer index=2;
                 integer length=llGetListLength(params);
@@ -386,7 +408,30 @@ ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path,
         llSleep((float)llList2String(params, 4));
         llRegionSay(ChatChannel, llDumpList2String(["LINKMSG",num,llList2String(params, 2),lmid], "|"));
     }
+    else if (action == "ON_SIT" || action == "ON_UNSIT") {
+        //Syntax: ON_SIT|seatNumber|command ... [%&§comand ...]
+        //example
+        //  ON_SIT|1|LINKMSG|1234|This is a test|%AVKEY%
+        //if you want to set the ON_SIT command only for the menu user (like the SCHMO command) then use the new command permissions:
+        //example:
+        //  ON_SIT{2}|2|PROP|propName|<0,0,0>|<0,0,0>
+        //  ON_UNSIT{2}|2|PROPDIE|propName
+
+        integer slotNumber = (integer)llList2String(params, 1)-1;
+        if(slotNumber>=0 && slotNumber * STRIDE < llGetListLength(Slots)) { //sanity
+            integer index=slotNumber * STRIDE + 5 + (action == "ON_UNSIT");
+            string msg=llList2String(Slots, index) + NC_READER_CONTENT_SEPARATOR + llDumpList2String(llDeleteSubList(paramsOriginal, 0, 1), "|");
+            msg=llDumpList2String(llParseString2List(msg, [NC_READER_CONTENT_SEPARATOR], []), NC_READER_CONTENT_SEPARATOR);
+            Slots = llListReplaceList(
+                Slots,
+                [msg],
+                index,
+                index
+            );
+        }
+    }
     else if (action == "SATMSG") {
+        //DEPRECATED use ON_SIT
         //set index for normal (we building Slots list) cards containing ANIM or SCHMOE lines
         integer index = (SlotMax - 1) * STRIDE + 5;
         //change that index if we have SCHMO lines
@@ -401,6 +446,7 @@ ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path,
         );
     }
     else if (action == "NOTSATMSG") {
+        //DEPRECATED use ON_UNSIT
         //set index for normal (we building Slots list) cards containing ANIM or SCHMOE lines
         integer index = (SlotMax - 1) * STRIDE + 6;
         //change that index if we have SCHMO lines
@@ -422,10 +468,13 @@ ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path,
         if(~index) {
             integer num=llList2Integer(PluginCommands, index+1);
             string str=llDumpList2String(llDeleteSubList(params, 0, 0), "|");
-            llMessageLinked(LINK_SET, num, str, "");
+            if(llList2Integer(PluginCommands, index+3)) {
+                str=llDumpList2String(llDeleteSubList(paramsOriginal, 0, 0), "|");
+            }
+            llMessageLinked(LINK_SET, num, str, avKey);
             if(llList2Integer(PluginCommands, index+2)) {
                 //this should also be send to props
-                llRegionSay(ChatChannel, llList2Json(JSON_ARRAY, [llList2Json(JSON_ARRAY, ["LINKMSG", num, str, ""])]));
+                llRegionSay(ChatChannel, llList2Json(JSON_ARRAY, [llList2Json(JSON_ARRAY, ["LINKMSG", num, str, avKey])]));
             }
         }
         else {
@@ -465,9 +514,12 @@ default{
             //let our scripts know the chat channel for props and adjusters
             llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)ChatChannel, NULL_KEY);
         }
-        else if(num == DOPOSE_READER || num == DOBUTTON_READER || num==PREPARE_MENU_STEP3_READER) {
+        else if(num == DOPOSE_READER || num == DOBUTTON_READER || num==PREPARE_MENU_STEP3_READER || num==DO) {
             list allData=llParseStringKeepNulls(str, [NC_READER_CONTENT_SEPARATOR], []);
             str = "";
+            if(num==DO) {
+                allData=["", "", ""] + allData;
+            }
             //allData: [ncName, paramSet1, "", contentLine1, contentLine2, ...]
             string ncName=llList2String(allData, 0);
             if(ncName==DefaultCardName && num == DOPOSE_READER) {
@@ -612,9 +664,9 @@ default{
             string action=llList2String(parts, 0);
             integer index=llListFindList(PluginCommands, [action]);
             if(~index) {
-                PluginCommands=llDeleteSubList(PluginCommands, index, index+2);
+                PluginCommands=llDeleteSubList(PluginCommands, index, index+3);
             }
-            PluginCommands+=[action, (integer)llList2String(parts, 1), (integer)llList2String(parts, 2)];
+            PluginCommands+=[action, (integer)llList2String(parts, 1), (integer)llList2String(parts, 2), (integer)llList2String(parts, 3)];
         }
         else if(num == DIALOG_TIMEOUT) {
             if(Cur2default && (llGetObjectPrimCount(llGetKey()) == llGetNumberOfPrims()) && (DefaultCardName != "")) {

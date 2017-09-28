@@ -31,6 +31,7 @@ list REPLACE_NUM=[
 	209, "SETOFFSET", "menu to core call used only for adjusting offsets to correct AV size.", 
 	210, "SWAPTO", "menu to core to change seats.", 
 	212, "DUMPALL", "menu call to core used to signal in memory data dump of all saved pose sets to owner's local chat. This chat is used to permanently update the .config notecard.", 
+	220, "DO", "Multi purpose call. The string part is parsed like Notecard content.", 
 	221, "PREPARE_MENU_STEP3_READER", "This message is sent from the NC Reader to the core to initiate a remenu operation",
 	222, "DOPOSE_READER", "With the addition of 'nPose NC Reader' script for cache of pose set button selections, this is used to send the pose command to the core.", 
 	223, "DOBUTTON_READER", "With the addition of 'nPose NC Reader' script for cache of pose set button selections, this is used to send the button command to the core.", 
@@ -52,9 +53,10 @@ list REPLACE_NUM=[
 	-240, "OPTIONS", "a global option string", 
 	-241, "FACIALS_FLAG", "any string received by the slave with arb number -241 will be assigned to the permissions.  This should either be 'on' or 'off'.", 
 	-242, "DEFAULT_CARD", "",
-//eventHandling -700 - -799
-	-700, "ON_SAT", "generic event",
-	-701, "ON_NOT_SAT", "generic event",
+//eventHandling -600 - -799
+	-600, "ADD_TIMER", "adds a timer with a user defined message",
+	-700, "ON_ENTER", "generic event",
+	-701, "ON_EXIT", "generic event",
 	-702, "ON_NEW", "generic event",
 	-703, "ON_CHANGE", "generic event",
 	-704, "ON_LOST", "generic event",
