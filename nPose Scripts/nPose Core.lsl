@@ -409,7 +409,7 @@ ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path,
         llRegionSay(ChatChannel, llDumpList2String(["LINKMSG",num,llList2String(params, 2),lmid], "|"));
     }
     else if (action == "ON_SIT" || action == "ON_UNSIT") {
-        //Syntax: ON_SIT|seatNumber|command ... [%&§comand ...]
+        //Syntax: ON_SIT|seatNumber|any command ...
         //example
         //  ON_SIT|1|LINKMSG|1234|This is a test|%AVKEY%
         //if you want to set the ON_SIT command only for the menu user (like the SCHMO command) then use the new command permissions:
@@ -420,11 +420,13 @@ ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path,
         integer slotNumber = (integer)llList2String(params, 1)-1;
         if(slotNumber>=0 && slotNumber * STRIDE < llGetListLength(Slots)) { //sanity
             integer index=slotNumber * STRIDE + 5 + (action == "ON_UNSIT");
-            string msg=llList2String(Slots, index) + NC_READER_CONTENT_SEPARATOR + llDumpList2String(llDeleteSubList(paramsOriginal, 0, 1), "|");
-            msg=llDumpList2String(llParseString2List(msg, [NC_READER_CONTENT_SEPARATOR], []), NC_READER_CONTENT_SEPARATOR);
+            string msg=llList2String(Slots, index);
+            if(llStringLength(msg)) {
+                msg+=NC_READER_CONTENT_SEPARATOR;
+            }
             Slots = llListReplaceList(
                 Slots,
-                [msg],
+                [msg + llDumpList2String(llDeleteSubList(paramsOriginal, 0, 1), "|")],
                 index,
                 index
             );
