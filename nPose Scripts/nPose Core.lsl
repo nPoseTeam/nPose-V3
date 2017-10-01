@@ -111,26 +111,21 @@ integer FindEmptySlot() {
     return -1;
 }
 
-list SeatedAvs(){
-    list avs = [];
+assignSlots(string cardName){
+    //Get the seated Avs
+    list avqueue;
     integer n = llGetNumberOfPrims();
     for(; n >= llGetObjectPrimCount(llGetKey()); --n) {
         //only check link numbers greater than the number of actual prims, these will be the AV link numbers.
         key id = llGetLinkKey(n);
         if(llGetAgentSize(id) != ZERO_VECTOR) {
-            avs = [id] + avs;
+            avqueue = [id] + avqueue;
         }
     }
-    return avs;
-}
-
-assignSlots(string cardName){
-    list avqueue = SeatedAvs();
     /*clean up the Slots list with regard to AV key's in the list by
     removing extra AV keys from the Slots list, they are no longer seated.
     */
     integer x;
-    integer n;
     for(; x < SlotMax; ++x) {
         //look in the avqueue for the key in the Slots list
         if(!~llListFindList(avqueue, [llList2Key(Slots, x*STRIDE+4)])) {
@@ -155,7 +150,7 @@ assignSlots(string cardName){
         //remove the 'now' extra seats from Slots list
         Slots = llDeleteSubList(Slots, (SlotMax)*STRIDE, -1);
         //unsit extra seated AV's
-        for(; n<llGetListLength(avqueue); ++n) {
+        for(n=0; n<llGetListLength(avqueue); ++n) {
             if(!~llListFindList(Slots, [llList2Key(avqueue, n)])) {
                 llMessageLinked(LINK_SET, UNSIT, llList2String(avqueue, n), NULL_KEY);
             }
@@ -207,6 +202,7 @@ assignSlots(string cardName){
     llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(Slots, "^"), cardName);
 }
 
+/*
 SwapTwoSlots(integer currentseatnum, integer newseatnum) {
     if(newseatnum <= SlotMax) {
         integer slotNum;
@@ -239,19 +235,30 @@ SwapTwoSlots(integer currentseatnum, integer newseatnum) {
     }
     llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(Slots, "^"), NULL_KEY);
 }
+*/
+SwapTwoAvatars(integer seatNumber1, integer seatNumber2) {
+    integer index1=(seatNumber1 - 1) * STRIDE + 4;
+    integer index2=(seatNumber2 - 1) * STRIDE + 4;
+    if(index1>=0 && index2>=0 && index1 < llGetListLength(Slots) && index2 < llGetListLength(Slots)) { //sanity
+        Slots=llListReplaceList(llListReplaceList(Slots, [llList2Key(Slots, index2)], index1, index1), [llList2Key(Slots, index1)], index2, index2);
+        llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(Slots, "^"), NULL_KEY);
+    }
+}
 
 string insertPlaceholder(string sLine, key avKey, integer avSeat, string ncName, string path, integer page) {
-    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%CARDNAME%"], []), ncName);
-    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%AVKEY%"], []), (string)avKey);
-    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%AVSEAT%"], []), (string)avSeat);
-    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%PATH%"], []), path);
-    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%PAGE%"], []), (string)page);
-    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%DISPLAYNAME%"], []), llGetDisplayName(avKey));
-    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%USERNAME%"], []), llGetUsername(avKey));
-    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%SCALECUR%"], []), (string)llGetScale());
-    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%SCALEREF%"], []), (string)ScaleRef);
-    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%POSITION%"], []), (string)llGetPos());
-    sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%ROTATION%"], []), (string)llGetRot());
+    if(~llSubStringIndex(sLine, "%")) {
+        sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%CARDNAME%"], []), ncName);
+        sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%AVKEY%"], []), (string)avKey);
+        sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%AVSEAT%"], []), (string)avSeat);
+        sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%PATH%"], []), path);
+        sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%PAGE%"], []), (string)page);
+        sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%DISPLAYNAME%"], []), llGetDisplayName(avKey));
+        sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%USERNAME%"], []), llGetUsername(avKey));
+        sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%SCALECUR%"], []), (string)llGetScale());
+        sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%SCALEREF%"], []), (string)ScaleRef);
+        sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%POSITION%"], []), (string)llGetPos());
+        sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%ROTATION%"], []), (string)llGetRot());
+    }
     return sLine;
 }
 
@@ -417,9 +424,8 @@ ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path,
         //  ON_SIT{2}|2|PROP|propName|<0,0,0>|<0,0,0>
         //  ON_UNSIT{2}|2|PROPDIE|propName
 
-        integer slotNumber = (integer)llList2String(params, 1)-1;
-        if(slotNumber>=0 && slotNumber * STRIDE < llGetListLength(Slots)) { //sanity
-            integer index=slotNumber * STRIDE + 5 + (action == "ON_UNSIT");
+        integer index=((integer)llList2String(params, 1)-1) * STRIDE + 5 + (action == "ON_UNSIT");
+        if(index>=0 && index < llGetListLength(Slots)) { //sanity
             string msg=llList2String(Slots, index);
             if(llStringLength(msg)) {
                 msg+=NC_READER_CONTENT_SEPARATOR;
@@ -612,11 +618,11 @@ default{
         else if (num == SWAP) {
             //swap the two slots
             //usage LINKMSG|202|1,2
-            if(llGetListLength(Slots)/STRIDE >= 2) {
-                list seats2Swap = llCSV2List(str);
-                SwapTwoSlots((integer)llList2String(seats2Swap, 0), (integer)llList2String(seats2Swap, 1));
-            }
+            list seats2Swap = llCSV2List(str);
+            SwapTwoAvatars((integer)llList2String(seats2Swap, 0), (integer)llList2String(seats2Swap, 1));
         }
+
+/*
         else if(num == SWAPTO) {
             //move clicker to a new seat#
             //new seat# occupant will then occupy the old seat# of menu user.
@@ -632,8 +638,17 @@ default{
                 llWhisper(0, "avatar is not assigned a slot: " + (string)id);
             }
             else{ 
-                SwapTwoSlots(oldseat, (integer)str); 
+                SwapTwoAvatars(oldseat, (integer)str); 
             }
+        }
+*/
+
+        else if(num == SWAPTO) {
+            //move clicker to a new seat#
+            //new seat# occupant will then occupy the old seat# of menu user.
+            //usage:  LINKMSG|210|3|%AVKEY%  Will swap the user with the id %AVKEY% to seat3 and seat3 occupant moves to existing %AVKEY%'s seat#
+            //this is intended as an internal call for ChangeSeat button but can be used by any plugin, LINKMSG, or SAT/NOTSATMSG
+            SwapTwoAvatars((integer)str, llListFindList(Slots, [id])/STRIDE + 1);
         }
         else if (num == (SEAT_UPDATE + 2000000)) {
             //slave sent Slots list after adjuster moved the AV.  we need to keep our Slots list up to date. replace Slots list
