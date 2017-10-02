@@ -8,27 +8,6 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 "Full perms" means having the modify, copy, and transfer permissions enabled in Second Life and/or other virtual world platforms derived from Second Life (such as OpenSim).  If the platform should allow more fine-grained permissions, then "full perms" will mean the most permissive possible set of permissions allowed by the platform.
 */
 
-//default options settings.  Change these to suit personal preferences
-string Permissions = "public"; //default permit option Public, Locked, Group
-integer Sit2GetMenu;  //required to be seated to get a menu
-float MenuDistance = 30.0;
-integer OptionUseDisplayNames=1; //use display names instead of usernames in changeSeat/unsit menu
-integer OptionAutoLanguage=1; //if disabled, only the default language will be used, if enabled the script tries to determine the agent language
-
-list Slots; //this Slots list is not complete. it only contains seated AV key and seat numbers
-string MenuNc = ".Change Menu Order"; //holds the name of the menu order notecard to read.
-//key toucherid;
-list MenuPaths;
-list MenuButtons;
-list MenuPermPath;
-list MenuPermPerms;
-
-key ScriptId;
-
-list UserDefinedPermissionsList;
-list MacroNames;
-list MacroValues;
-
 #define DEFAULT_PREFIX "SET"
 
 #define DIALOG -900
@@ -98,6 +77,30 @@ list PluginParamsList;
 //Button comments marker
 #define MARKER_COMMENT_START "/*"
 #define MARKER_COMMENT_END "*/"
+
+
+//default options settings.  Change these to suit personal preferences
+string Permissions = "public"; //default permit option Public, Locked, Group
+integer Sit2GetMenu;  //required to be seated to get a menu
+float MenuDistance = 30.0;
+integer OptionUseDisplayNames=1; //use display names instead of usernames in changeSeat/unsit menu
+integer OptionAutoLanguage=1; //if disabled, only the default language will be used, if enabled the script tries to determine the agent language
+string OptionDefaultLanguagePrefix=DEFAULT_PREFIX; //mainly for debug purposes. Set autoLanguage=0 and defaultLanguagePrefix to a 2 letter language code to see the language of your choice
+
+list Slots; //this Slots list is not complete. it only contains seated AV key and seat numbers
+string MenuNc = ".Change Menu Order"; //holds the name of the menu order notecard to read.
+//key toucherid;
+list MenuPaths;
+list MenuButtons;
+list MenuPermPath;
+list MenuPermPerms;
+
+key ScriptId;
+
+list UserDefinedPermissionsList;
+list MacroNames;
+list MacroValues;
+
 
 /*
 debug(list message){
@@ -497,7 +500,7 @@ default{
                 }
                 if(path=="" || path=="Main") {
                     //Deprecated: "Main" shouldn't be used any more
-                    path=DEFAULT_PREFIX;
+                    path=OptionDefaultLanguagePrefix;
                     if(OptionAutoLanguage) {
                         string agentLanguage=llToUpper(llGetAgentLanguage(toucherid));
                         if(llStringLength(agentLanguage)>2) {
@@ -783,6 +786,7 @@ default{
                     else if(optionItem == "menudist") {MenuDistance = (float)optionSetting;}
                     else if(optionItem == "usedisplaynames") {OptionUseDisplayNames = optionSettingFlag;}
                     else if(optionItem == "autolanguage") {OptionAutoLanguage = optionSettingFlag;}
+                    else if(optionItem == "defaultlanguageprefix") {OptionDefaultLanguagePrefix = llToUpper(optionSetting);}
                 }
             }
         }

@@ -26,7 +26,7 @@ list REPLACE_NUM=[
 	204, "DUMP", "menu to core to have core chat out in local the current pose set data.  This is used to trigger the core event which saves current in memory data", 
 	205, "STOPADJUST", "menu to core as a menu selection to stop adjusting.  The core send out chat to kill the adjusters.", 
 	206, "SYNC", "menu sends out used by the core and linked out to slaves.  The slaves do the actual sync.", 
-	207, "DOBUTTON (depecated)", "Use DOPOSE instead", 
+	207, "DOBUTTON (deprecated)", "Use DOPOSE instead", 
 	208, "ADJUSTOFFSET", "menu to core call used only for adjusting offsets to correct AV size.", 
 	209, "SETOFFSET", "menu to core call used only for adjusting offsets to correct AV size.", 
 	210, "SWAPTO", "menu to core to change seats.", 
