@@ -27,7 +27,7 @@ string DefaultCardName;
 #define DUMP 204
 #define STOPADJUST 205
 #define SYNC 206
-#define DOACTION 207
+#define DOBUTTON 207
 #define ADJUSTOFFSET 208
 #define SWAPTO 210
 #define DO 220
@@ -83,7 +83,7 @@ list PluginCommands=[
     "UDPBOOL", UDPBOOL, 0, 0,
     "UDPLIST", UDPLIST, 0, 0,
     "MACRO", MACRO, 0, 0,
-    "DOCARD", DOPOSE, 0, 0
+    "DOCARD", DOBUTTON, 0, 0
 ];
 
 UpdateDefaultCard() {
