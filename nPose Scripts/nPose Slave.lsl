@@ -208,9 +208,10 @@ RezNextAdjuster(integer slotnum) {
 
 default {
     state_entry() {
-        llMessageLinked(LINK_SET, REQUEST_CHATCHANNEL, "", "");
         Primcount = llGetNumberOfPrims();
         Newprimcount = Primcount;
+        llSleep(1.5);
+        llMessageLinked(LINK_SET, REQUEST_CHATCHANNEL, "", "");
     }
  
     link_message(integer sender, integer num, string str, key id) {

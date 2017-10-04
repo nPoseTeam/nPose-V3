@@ -456,7 +456,7 @@ default{
             BuildMenus([]);
         }
         else {
-            llSleep(1.0); //be sure that the NC reader script finished resetting
+            llSleep(1.5); //be sure that the NC reader script finished resetting
             llMessageLinked(LINK_SET, NC_READER_REQUEST, MenuNc, ScriptId);
         }
     }

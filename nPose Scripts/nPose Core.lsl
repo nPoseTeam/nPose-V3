@@ -582,9 +582,9 @@ default{
         }
         ChatChannel = (integer)("0x7F" + llGetSubString((string)llGetKey(), 0, 5));
         //let our scripts know the chat channel for props and adjusters
-        llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)ChatChannel, NULL_KEY);
         integer listener = llListen(ChatChannel, "", "", "");
-        llSleep(1.0); //be sure that the NC reader script finished resetting
+        llSleep(1.5); //wait for other scripts
+        llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)ChatChannel, NULL_KEY);
         UpdateDefaultCard();
     }
     link_message(integer sender, integer num, string str, key id) {
@@ -839,10 +839,10 @@ default{
 
     changed(integer change) {
         if(change & CHANGED_INVENTORY) {
+            llSleep(0.5); //be sure that the NC reader is ready
             if(llGetInventoryType(LastAssignSlotsCardName) == INVENTORY_NOTECARD) {
                 if(LastAssignSlotsCardId!=llGetInventoryKey(LastAssignSlotsCardName)) {
                     //the last used nc changed, "redo" the nc
-                    llSleep(1.0); //be sure that the NC reader script finished resetting
                     llMessageLinked(LINK_SET, DOPOSE, LastAssignSlotsCardName, LastAssignSlotsAvatarId); 
                 }
                 else {
