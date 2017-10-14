@@ -379,9 +379,16 @@ ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path,
     }
 
     if(action == "ANIM") {
-        Slots += [llList2String(params, 1), (vector)llList2String(params, 2),
-            llEuler2Rot((vector)llList2String(params, 3) * DEG_TO_RAD), llList2String(params, 4), llList2Key(OldSitters, 0), "", "",
-            llGetSubString(llList2String(params, 5), 0, 12) + "§" + "seat"+(string)(llGetListLength(Slots)/STRIDE+1) + "§" + action + "§" + ncName];
+        Slots += [
+            llList2String(params, 1),
+            (vector)llList2String(params, 2),
+            llEuler2Rot((vector)llList2String(params, 3) * DEG_TO_RAD),
+            llList2String(params, 4),
+            llList2Key(OldSitters, 0),
+            "",
+            "",
+            llGetSubString(llList2String(params, 5), 0, 12) + "§" + "seat"+(string)(llGetListLength(Slots)/STRIDE+1) + "§" + action + "§" + ncName
+        ];
         OldSitters=llDeleteSubList(OldSitters, 0, 0);
     }
     else if (action == "SCHMO" || action == "SCHMOE") {
@@ -524,7 +531,7 @@ ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path,
     else if (action == "SATMSG" || action == "NOTSATMSG") {
         //DEPRECATED use ON_SIT
         //set index for normal (we building Slots list) cards containing ANIM or SCHMOE lines
-        integer index = llGetListLength(Slots)/STRIDE -1 + 5 + (action == "NOTSATMSG");
+        integer index = llGetListLength(Slots) - STRIDE + 5 + (action == "NOTSATMSG");
         //change that index if we have SCHMO lines
         if((integer)llList2String(paramsOriginal, 4) >= 1) {
             index = ((integer)llList2String(params, 4)-1) * STRIDE + 5 + (action == "NOTSATMSG");
