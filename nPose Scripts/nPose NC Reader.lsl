@@ -7,16 +7,18 @@
 // "Full perms" means having the modify, copy, and transfer permissions enabled in Second Life and/or other virtual world platforms derived from Second Life (such as OpenSim).  If the platform should allow more fine-grained permissions, then "full perms" will mean the most permissive possible set of permissions allowed by the platform.
 //
 // Documentation:
-// https://github.com/HowardBaxton/nPose/wiki
+// https://github.com/nPoseTeam/nPose-V3/wiki
 // Report Bugs to:
-// https://github.com/HowardBaxton/nPose/issues
+// https://github.com/nPoseTeam/nPose-V3/issues
 // or sent an IM to: slmember1 Resident (Leona)
 //
 // Have fun
 // Leona
 
-string NC_READER_CONTENT_SEPARATOR="%&§";
 integer MEMORY_TO_BE_USED=60000;
+integer OPEN_SIMULATOR_MAX_CARDS_IN_MEMORY=50;
+
+string NC_READER_CONTENT_SEPARATOR="%&§";
 
 integer DOPOSE=200;
 integer DOBUTTON=207;
@@ -42,7 +44,7 @@ integer NC_READ_STACK_CONTENT=2;
 integer NC_READ_STACK_STRIDE=3;
 
 list ResponseStack;
-//this is used to ensure that the requests are servered in the right order
+//this is used to ensure that the requests are served in the right order
 integer RESPONSE_STACK_NC_NAME=0;
 integer RESPONSE_STACK_MENU_NAME=1;
 integer RESPONSE_STACK_PLACEHOLDER=2;
@@ -53,11 +55,23 @@ integer RESPONSE_STACK_STRIDE=5;
 integer CacheMiss; //only used for statistical data
 integer Requests; //only used for statistical data
 
+integer SecondLifeDetected;
+
 checkMemory() {
 	//if memory is low, discard the oldest cache entry
-	while(llGetUsedMemory()>MEMORY_TO_BE_USED) {
-		CacheNcNames=llDeleteSubList(CacheNcNames, 0, 0);
-		CacheContent=llDeleteSubList(CacheContent, 0, 0);
+	if(SecondLifeDetected) {
+		while(llGetUsedMemory()>MEMORY_TO_BE_USED) {
+			CacheNcNames=llDeleteSubList(CacheNcNames, 0, 0);
+			CacheContent=llDeleteSubList(CacheContent, 0, 0);
+		}
+	}
+	else {
+		//in OpenSimulator we are not able to detect the current used memory
+		integer numberOfCards=llGetListLength(CacheNcNames);
+		if(numberOfCards>OPEN_SIMULATOR_MAX_CARDS_IN_MEMORY) {
+			CacheNcNames=llDeleteSubList(CacheNcNames, 0, numberOfCards - OPEN_SIMULATOR_MAX_CARDS_IN_MEMORY - 1);
+			CacheContent=llDeleteSubList(CacheContent, 0, numberOfCards - OPEN_SIMULATOR_MAX_CARDS_IN_MEMORY - 1);
+		}
 	}
 }
 
@@ -132,6 +146,9 @@ processResponseStack() {
 }
 
 default {
+	state_entry() {
+		SecondLifeDetected=llGetEnv("sim_channel")=="Second Life Server";
+	}
 	link_message(integer sender, integer num, string str, key id) {
 		if(num==DOPOSE) {
 			//str (separated by NC_READER_CONTENT_SEPARATOR): ncName, userDefinedData1, userDefinedData1

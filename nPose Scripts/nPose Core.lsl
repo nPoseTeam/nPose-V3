@@ -92,11 +92,11 @@ UpdateDefaultCard() {
     }
     else {
         //this is the old default notcard detection.
-        integer nn;
-        integer stop = llGetInventoryNumber(INVENTORY_NOTECARD);
-        for(; nn < stop; nn++) {
-            string cardName = llGetInventoryName(INVENTORY_NOTECARD, nn);
-            if((llSubStringIndex(cardName, DEFAULT_PREFIX+":") == 0)) {
+        integer index;
+        integer length = llGetInventoryNumber(INVENTORY_NOTECARD);
+        for(index=0; index < length; index++) {
+            string cardName = llGetInventoryName(INVENTORY_NOTECARD, index);
+            if((llSubStringIndex(cardName, DEFAULT_PREFIX + ":") == 0)) {
                 llMessageLinked(LINK_SET, DEFAULT_CARD, cardName, NULL_KEY);
                 return;
             }
@@ -105,10 +105,10 @@ UpdateDefaultCard() {
 }
 
 integer FindEmptySlot(integer preferredSlotNumber) {
-    integer index=4;
+    integer index;
     integer length=llGetListLength(Slots);
     list slotNumbers;
-    for(; index < length; index+=STRIDE) {
+    for(index=4; index < length; index+=STRIDE) {
         if(llList2String(Slots, index)=="") {
             slotNumbers+=index/STRIDE;
         }
@@ -143,8 +143,8 @@ assignSlots(string cardName) {
     if(llGetListLength(Slots)) {
         //Get the seated Avs and the named seat they are sitting on
         list validSitters; // stride: [sitterKey, (integer)namedSeatNumber]
-        integer index = llGetNumberOfPrims();
-        for(; index>1; index--) {
+        integer index;
+        for(index = llGetNumberOfPrims(); index>1; index--) {
             key id=llGetLinkKey(index);
             if(llGetAgentSize(id) != ZERO_VECTOR) {
                 //is an Avatar
@@ -411,10 +411,10 @@ ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path,
         integer slotNumber = (integer)llList2String(params,1)-1;
         if(slotNumber>=0 && slotNumber * STRIDE < llGetListLength(Slots)) { //sanity
              if(action == "SCHMOE" || (action == "SCHMO" && llList2Key(Slots, slotNumber * STRIDE + 4) == avKey)) {
-                integer index=2;
+                integer index;
                 integer length=llGetListLength(params);
                 string seatName=llList2String(llParseStringKeepNulls(llList2String(params, 7), ["§"], []), 0);
-                for(; index<length; index++) {
+                for(index=2; index<length; index++) {
                     if(index==2) {
                         Slots=llListReplaceList(Slots, [llList2String(params, index)],
                             slotNumber * STRIDE, slotNumber * STRIDE);
@@ -583,9 +583,9 @@ string buildParamSet1(string path, integer page, string prompt, list additionalB
 
 default{
     state_entry() {
-        integer n;
-        for(; n<=llGetNumberOfPrims(); ++n) {
-           llLinkSitTarget(n,<0.0,0.0,0.5>,ZERO_ROTATION);
+        integer index;
+        for(index=0; index<=llGetNumberOfPrims(); ++index) {
+           llLinkSitTarget(index, <0.0,0.0,0.5>, ZERO_ROTATION);
         }
         ChatChannel = (integer)("0x7F" + llGetSubString((string)llGetKey(), 0, 5));
         //let our scripts know the chat channel for props and adjusters
@@ -619,10 +619,10 @@ default{
             integer avSeat=(llListFindList(Slots, [id]) + 8) / 8;
             //parse the NC content
             integer length=llGetListLength(allData);
-            integer index=3;
+            integer index;
             integer run_assignSlots;
             integer slotResetFinished;
-            for(; index<length; index++) {
+            for(index=3; index<length; index++) {
                 string data = llList2String(allData, index);
                 if(num!=PREPARE_MENU_STEP3_READER) {
                     if(!llSubStringIndex(data, "ANIM") && !slotResetFinished) {
@@ -733,7 +733,7 @@ default{
             str = "";
             integer index;
             integer length=llGetListLength(Slots);
-            for(; index<length; index+=STRIDE) {
+            for(index=0; index<length; index+=STRIDE) {
                 Slots=llListReplaceList(Slots, [
                     (vector)llList2String(Slots, index+1), (rotation)llList2String(Slots, index+2),
                     llList2String(Slots, index+3), (key)llList2String(Slots, index+4)
@@ -771,7 +771,7 @@ default{
             list optionsToSet = llParseStringKeepNulls(str, ["~","|"], []);
             integer length = llGetListLength(optionsToSet);
             integer index;
-            for(; index<length; ++index) {
+            for(index=0; index<length; ++index) {
                 list optionsItems = llParseString2List(llList2String(optionsToSet, index), ["="], []);
                 string optionItem = llToLower(llStringTrim(llList2String(optionsItems, 0), STRING_TRIM));
                 string optionString = llList2String(optionsItems, 1);

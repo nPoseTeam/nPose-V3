@@ -44,6 +44,8 @@ string LastAnimRunning;
 integer Seatcount;
 list AvatarOffsets;
 
+integer SecondLifeDetected;
+
 list Adjusters = [];
 list AnimsList; //[string command, string animation name]  use a list to layer multiple animations.
 list Slots;
@@ -106,9 +108,9 @@ doSeats(integer slotNum, key avKey) {
 
 list SeatedAvs() {
     list avs = [];
-    integer n = llGetNumberOfPrims();
-    for(; n >= llGetObjectPrimCount(llGetKey()); --n) {
-        key id = llGetLinkKey(n);
+    integer index;
+    for(index=llGetNumberOfPrims(); index>=llGetObjectPrimCount(llGetKey()); --index) {
+        key id = llGetLinkKey(index);
         if(llGetAgentSize(id) != ZERO_VECTOR) {
             avs = [id] + avs;
         }
@@ -140,6 +142,10 @@ MoveLinkedAv(integer linknum, vector avpos, rotation avrot) {
                 localpos = llGetLocalPos();
             }
             avpos.z += 0.4;
+            if(!SecondLifeDetected) {
+                //Open Simulator doesn't move just seated avatars
+                llSleep(0.2);
+            }
             llSetLinkPrimitiveParamsFast(linknum, [PRIM_POSITION, ((avpos - (llRot2Up(avrot) * size.z * 0.02638)) * localrot) + localpos, PRIM_ROTATION, avrot * localrot / llGetRootRotation()]);
         }
     }    
@@ -210,6 +216,7 @@ default {
     state_entry() {
         Primcount = llGetNumberOfPrims();
         Newprimcount = Primcount;
+        SecondLifeDetected=llGetEnv("sim_channel")=="Second Life Server";
         llSleep(1.5);
         llMessageLinked(LINK_SET, REQUEST_CHATCHANNEL, "", "");
     }
@@ -278,7 +285,7 @@ default {
             list optionsToSet = llParseStringKeepNulls(str, ["~","|"], []);
             integer length = llGetListLength(optionsToSet);
             integer index;
-            for(; index<length; ++index) {
+            for(index=0; index<length; ++index) {
                 list optionsItems = llParseString2List(llList2String(optionsToSet, index), ["="], []);
                 string optionItem = llToLower(llStringTrim(llList2String(optionsItems, 0), STRING_TRIM));
                 string optionString = llList2String(optionsItems, 1);
@@ -453,7 +460,7 @@ default {
             }
         }
         //check all the Slots for next seated AV, call for next seated AV to move and animate.
-        for(; Seatcount < Stop-1; ) {
+        for(Seatcount=Seatcount; Seatcount < Stop-1; ) {
             Seatcount += 1;
             if(llList2Key(Slots, Seatcount*8+4) != "") {
                 doSeats(Seatcount, llList2String(Slots, (Seatcount)*8+4));
@@ -464,7 +471,7 @@ default {
             //TODO: we should use a llSleep instead of a counter for lower CPU time impact
             integer counter;
             integer stop = 1500;
-            for( ; counter<stop; ++counter) { }
+            for(counter=0; counter<stop; ++counter) { }
             DoSync = 2;
             for (Seatcount = 0; Seatcount < Stop; ++Seatcount){
                 if(llList2String(Slots, (Seatcount)*8+4) != "") {
@@ -493,7 +500,7 @@ default {
                 //we have lost a sitter so find out who and remove them from the list.
                 integer n;
                 integer stop = llGetListLength(Lastanim)/2;
-                for(; n<stop; ++n) {
+                for(n=0; n<stop; ++n) {
                     if(AvLinkNum((key)llList2String(Lastanim, n*2)) == -1) {
                         integer index = llListFindList(AnimsList, [(key)llList2String(Lastanim, n*2)]);
                         if(index != -1) {

@@ -291,7 +291,7 @@ list sanitizeButtons(string buttons, string lookupTable) {
     list sanitizedButtonsList;
     integer index;
     integer length=llGetListLength(buttonsList);
-    for(; index<length; index++) {
+    for(index=0; index<length; index++) {
         string currentButton=llList2String(buttonsList, index);
         if(currentButton!="") {
             list temp=sanitizeButton(currentButton, lookupTable);
@@ -338,7 +338,7 @@ string resolveText(string text) {
     integer decode;
     integer macro;
     text="";
-    for(; index<length; index++) {
+    for(index=0; index<length; index++) {
         string tempString=llList2String(tempList, index);
         if(tempString==MARKER_COMMENT_START) {
             remove=TRUE;
@@ -434,7 +434,7 @@ default {
         //init our invisible character set
         CodingBase=llGetListLength(ZERO_WIDTH_UTF_CHARACTERS_BASE64);
         integer index;
-        for(; index<CodingBase; index++) {
+        for(index=0; index<CodingBase; index++) {
             CodingCharacterSet+=llBase64ToString(llList2String(ZERO_WIDTH_UTF_CHARACTERS_BASE64, index));
         }
     }
@@ -477,7 +477,7 @@ default {
             list optionsToSet = llParseStringKeepNulls(str, ["~","|"], []);
             integer length = llGetListLength(optionsToSet);
             integer index;
-            for(; index<length; ++index) {
+            for(index=0; index<length; ++index) {
                 list optionsItems = llParseString2List(llList2String(optionsToSet, index), ["="], []);
                 string optionItem = llToLower(llStringTrim(llList2String(optionsItems, 0), STRING_TRIM));
                 string optionString = llList2String(optionsItems, 1);
