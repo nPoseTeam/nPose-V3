@@ -54,7 +54,8 @@ list REPLACE_NUM=[
 	-241, "FACIALS_FLAG", "any string received by the slave with arb number -241 will be assigned to the permissions.  This should either be 'on' or 'off'.", 
 	-242, "DEFAULT_CARD", "",
 //eventHandling -600 - -799
-	-600, "ADD_TIMER", "adds a timer with a user defined message",
+	-600, "TIMER_ADD", "adds a timer with a user defined message",
+	-601, "TIMER_REMOVE", "removes a timer",
 	-700, "ON_ENTER", "generic event",
 	-701, "ON_EXIT", "generic event",
 	-702, "ON_NEW", "generic event",
