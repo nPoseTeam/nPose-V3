@@ -175,12 +175,17 @@ default {
 			if(Requests) {
 				hitRate=100.0 - (float)CacheMiss / (float)Requests * 100.0;
 			}
+			string grid;
+			if(!SecondLifeDetected) {
+				grid=" NOT";
+			}
 			llSay(0,
 				"Memory Used by " + llGetScriptName() + ": " + (string)llGetUsedMemory() + 
 				" of " + (string)llGetMemoryLimit() + 
 				", Leaving " + (string)llGetFreeMemory() + " memory free.\nWe served " +
 				(string)Requests + " requests with a cache hit rate of " + 
-				(string)llRound(hitRate) + "%."
+				(string)llRound(hitRate) + "%." + 
+				"\nGrid: " + grid + " Second Life."
 			);
 		}
 	}
