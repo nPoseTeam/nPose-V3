@@ -198,7 +198,8 @@ default {
 				", Leaving " + (string)llGetFreeMemory() + " memory free.\nWe served " +
 				(string)Requests + " requests with a cache hit rate of " + 
 				(string)llRound(hitRate) + "%." + 
-				"\nGridType: " + (string)GridType
+				"\nGridType: " + (string)GridType + 
+				"\n" + (string)llGetListLength(CacheNcNames) + " cards cached."
 			);
 		}
 	}
