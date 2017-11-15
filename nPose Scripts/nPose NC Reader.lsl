@@ -15,8 +15,9 @@
 // Have fun
 // Leona
 
-integer MEMORY_TO_BE_USED=60000;
-integer OPEN_SIMULATOR_MAX_CARDS_IN_MEMORY=50;
+integer MEMORY_TO_BE_USED_SL=60000;
+integer MEMORY_TO_BE_USED_IW=120000;
+integer CARDS_TO_BE_USED=50;
 
 string NC_READER_CONTENT_SEPARATOR="%&§";
 
@@ -55,12 +56,23 @@ integer RESPONSE_STACK_STRIDE=5;
 integer CacheMiss; //only used for statistical data
 integer Requests; //only used for statistical data
 
-integer SecondLifeDetected;
+integer GridType;
+integer GRID_TYPE_OTHER=0; 
+integer GRID_TYPE_SL=1; //Second Life
+integer GRID_TYPE_IW=2; //InWorldz
+integer GRID_TYPE_DW=4; //DigiWorldz
+string GRID_TYPE_SL_STRING="Second Life Server";
+string GRID_TYPE_IW_STRING="Halcyon Server";
+string GRID_TYPE_DW_STRING="OpenSim";
 
 checkMemory() {
 	//if memory is low, discard the oldest cache entry
-	if(SecondLifeDetected) {
-		while(llGetUsedMemory()>MEMORY_TO_BE_USED) {
+	if((GridType && GRID_TYPE_SL) || (GridType && GRID_TYPE_IW)) {
+		integer memoryToBeUsed=MEMORY_TO_BE_USED_SL;
+		if(GridType && GRID_TYPE_IW) {
+			memoryToBeUsed=MEMORY_TO_BE_USED_IW;
+		}
+		while(llGetUsedMemory()>memoryToBeUsed) {
 			CacheNcNames=llDeleteSubList(CacheNcNames, 0, 0);
 			CacheContent=llDeleteSubList(CacheContent, 0, 0);
 		}
@@ -68,9 +80,9 @@ checkMemory() {
 	else {
 		//in OpenSimulator we are not able to detect the current used memory
 		integer numberOfCards=llGetListLength(CacheNcNames);
-		if(numberOfCards>OPEN_SIMULATOR_MAX_CARDS_IN_MEMORY) {
-			CacheNcNames=llDeleteSubList(CacheNcNames, 0, numberOfCards - OPEN_SIMULATOR_MAX_CARDS_IN_MEMORY - 1);
-			CacheContent=llDeleteSubList(CacheContent, 0, numberOfCards - OPEN_SIMULATOR_MAX_CARDS_IN_MEMORY - 1);
+		if(numberOfCards>CARDS_TO_BE_USED) {
+			CacheNcNames=llDeleteSubList(CacheNcNames, 0, numberOfCards - CARDS_TO_BE_USED - 1);
+			CacheContent=llDeleteSubList(CacheContent, 0, numberOfCards - CARDS_TO_BE_USED - 1);
 		}
 	}
 }
@@ -147,7 +159,12 @@ processResponseStack() {
 
 default {
 	state_entry() {
-		SecondLifeDetected=llGetEnv("sim_channel")=="Second Life Server";
+		string simChannel=llGetEnv("sim_channel");
+		GridType=
+			GRID_TYPE_SL * (simChannel==GRID_TYPE_SL_STRING) + 
+			GRID_TYPE_DW * (simChannel==GRID_TYPE_DW_STRING) + 
+			GRID_TYPE_IW * (simChannel==GRID_TYPE_IW_STRING)
+		;
 	}
 	link_message(integer sender, integer num, string str, key id) {
 		if(num==DOPOSE) {
@@ -175,17 +192,13 @@ default {
 			if(Requests) {
 				hitRate=100.0 - (float)CacheMiss / (float)Requests * 100.0;
 			}
-			string grid;
-			if(!SecondLifeDetected) {
-				grid=" NOT";
-			}
 			llSay(0,
 				"Memory Used by " + llGetScriptName() + ": " + (string)llGetUsedMemory() + 
 				" of " + (string)llGetMemoryLimit() + 
 				", Leaving " + (string)llGetFreeMemory() + " memory free.\nWe served " +
 				(string)Requests + " requests with a cache hit rate of " + 
 				(string)llRound(hitRate) + "%." + 
-				"\nGrid: " + grid + " Second Life."
+				"\nGridType: " + (string)GridType
 			);
 		}
 	}
