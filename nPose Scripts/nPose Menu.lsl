@@ -650,7 +650,7 @@ default{
                                 }
                             }
                             else if((integer)pluginActionParams) {
-                                llMessageLinked(LINK_SET, (integer)pluginActionParams, llDumpList2String([slotNumber, avatarInSlot], "|"), id);
+                                llMessageLinked(LINK_SET, (integer)pluginActionParams, llDumpList2String([slotNumber+1, avatarInSlot], "|"), id);
                             }
                         }
                         //set path to plugin root path
