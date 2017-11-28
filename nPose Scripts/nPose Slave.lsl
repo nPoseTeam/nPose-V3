@@ -303,8 +303,6 @@ default {
         else if(num == ADJUSTER_REPORT) {    //heard from an adjuster so a new position must be used, upate Slots and chat out new position.
             integer index = llListFindList(Adjusters, [id]);
             if(index != -1) {
-                string primName = llGetObjectName();
-                llSetObjectName(llGetLinkName(1));
                 list params = llParseString2List(str, ["|"], []);
                 vector newpos = ((vector)llList2String(params, 0) - llGetRootPosition()) / llGetRootRotation();
                 rotation newrot = (rotation)llList2String(params, 1) / llGetRootRotation();
@@ -331,7 +329,6 @@ default {
                     sendSTR += llDumpList2String(slice, "|") + "|" + seatName;
                     llRegionSayTo(llGetOwner(), 0, "\nSet card for this data is '" + ncName + "'." + "\n"+sendSTR);
                 }
-                llSetObjectName(primName);
                 llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(Slots, "^"), NULL_KEY);
                 //gotta send a message back to the core other than with SEAT_UPDATE so the core knows it came from here and updates Slots list there.
                 llMessageLinked(LINK_SET, (SEAT_UPDATE + 2000000), llDumpList2String(Slots, "^"), NULL_KEY);                
@@ -339,8 +336,6 @@ default {
         }
         else if(num == DUMP) {
             integer n;
-            string primName = llGetObjectName();
-            llSetObjectName(llGetLinkName(1));
             for(n = 0; n < llGetListLength(Slots)/STRIDE; ++n) {
                 list temp=llParseStringKeepNulls(llList2String(Slots, n*STRIDE+7), ["§"], []);
                 string seatName;
@@ -358,7 +353,6 @@ default {
                 llRegionSayTo(llGetOwner(), 0, "\nSet card for this data is '" + ncName + "'." + "\n"+sendSTR);
             }
             llRegionSay(Chatchannel, "posdump");
-            llSetObjectName(primName);
         }
         else if(num==PLUGIN_ACTION || num==PLUGIN_MENU) {
             //offset menu
