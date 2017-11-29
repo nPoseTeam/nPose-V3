@@ -8,7 +8,9 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 "Full perms" means having the modify, copy, and transfer permissions enabled in Second Life and/or other virtual world platforms derived from Second Life (such as OpenSim).  If the platform should allow more fine-grained permissions, then "full perms" will mean the most permissive possible set of permissions allowed by the platform.
 */
 integer UNSIT = -222;
-integer MEMORY_TO_BE_USED=58000;
+integer MEMORY_TO_BE_USED_SL=58000;
+integer MEMORY_TO_BE_USED_IW=116000;
+integer OFFSETS_TO_BE_USED=15;
 
 integer SEND_CHATCHANNEL = 1;
 integer REZ_ADJUSTERS = 2;
@@ -68,6 +70,15 @@ list OFFSET_BUTTONS = [
     "0.01", BUTTON_OFFSET_ZERO
 ];
 
+integer GridType;
+integer GRID_TYPE_OTHER=0; 
+integer GRID_TYPE_SL=1; //Second Life
+integer GRID_TYPE_IW=2; //InWorldz
+integer GRID_TYPE_DW=4; //DigiWorldz
+string GRID_TYPE_SL_STRING="Second Life Server";
+string GRID_TYPE_IW_STRING="Halcyon Server";
+string GRID_TYPE_DW_STRING="OpenSim";
+
 
 //helper
 string deleteNodes(string path, integer start, integer end) {
@@ -89,8 +100,21 @@ string buildParamSet1(string path, integer page, string prompt, list additionalB
 
 checkMemory() {
     //if memory is low, discard the oldest cache entry
-    while(llGetUsedMemory()>MEMORY_TO_BE_USED && llGetListLength(AvatarOffsets)) {
-        AvatarOffsets=llDeleteSubList(AvatarOffsets, 0, 1);
+    if((GridType && GRID_TYPE_SL) || (GridType && GRID_TYPE_IW)) {
+        integer memoryToBeUsed=MEMORY_TO_BE_USED_SL;
+        if(GridType && GRID_TYPE_IW) {
+            memoryToBeUsed=MEMORY_TO_BE_USED_IW;
+        }
+        while(llGetUsedMemory()>memoryToBeUsed && llGetListLength(AvatarOffsets)) {
+            AvatarOffsets=llDeleteSubList(AvatarOffsets, 0, 1);
+        }
+    }
+    else {
+        //in OpenSimulator we are not able to detect the current used memory
+        integer numberOfOffsets=llGetListLength(AvatarOffsets);
+        if(numberOfOffsets>OFFSETS_TO_BE_USED) {
+            AvatarOffsets=llDeleteSubList(AvatarOffsets, 0, numberOfOffsets - OFFSETS_TO_BE_USED - 1);
+        }
     }
 }
 
@@ -214,6 +238,12 @@ RezNextAdjuster(integer slotnum) {
 
 default {
     state_entry() {
+        string simChannel=llGetEnv("sim_channel");
+        GridType=
+            GRID_TYPE_SL * (simChannel==GRID_TYPE_SL_STRING) + 
+            GRID_TYPE_DW * (simChannel==GRID_TYPE_DW_STRING) + 
+            GRID_TYPE_IW * (simChannel==GRID_TYPE_IW_STRING)
+        ;
         Primcount = llGetNumberOfPrims();
         Newprimcount = Primcount;
         SecondLifeDetected=llGetEnv("sim_channel")=="Second Life Server";
