@@ -8,7 +8,9 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 "Full perms" means having the modify, copy, and transfer permissions enabled in Second Life and/or other virtual world platforms derived from Second Life (such as OpenSim).  If the platform should allow more fine-grained permissions, then "full perms" will mean the most permissive possible set of permissions allowed by the platform.
 */
 integer UNSIT = -222;
-integer MEMORY_TO_BE_USED=58000;
+integer MEMORY_TO_BE_USED_SL=58000;
+integer MEMORY_TO_BE_USED_IW=116000;
+integer OFFSETS_TO_BE_USED=15;
 
 integer SEND_CHATCHANNEL = 1;
 integer REZ_ADJUSTERS = 2;
@@ -44,6 +46,8 @@ string LastAnimRunning;
 integer Seatcount;
 list AvatarOffsets;
 
+integer SecondLifeDetected;
+
 list Adjusters = [];
 list AnimsList; //[string command, string animation name]  use a list to layer multiple animations.
 list Slots;
@@ -66,6 +70,15 @@ list OFFSET_BUTTONS = [
     "0.01", BUTTON_OFFSET_ZERO
 ];
 
+integer GridType;
+integer GRID_TYPE_OTHER=0; 
+integer GRID_TYPE_SL=1; //Second Life
+integer GRID_TYPE_IW=2; //InWorldz
+integer GRID_TYPE_DW=4; //DigiWorldz
+string GRID_TYPE_SL_STRING="Second Life Server";
+string GRID_TYPE_IW_STRING="Halcyon Server";
+string GRID_TYPE_DW_STRING="OpenSim";
+
 
 //helper
 string deleteNodes(string path, integer start, integer end) {
@@ -87,8 +100,21 @@ string buildParamSet1(string path, integer page, string prompt, list additionalB
 
 checkMemory() {
     //if memory is low, discard the oldest cache entry
-    while(llGetUsedMemory()>MEMORY_TO_BE_USED && llGetListLength(AvatarOffsets)) {
-        AvatarOffsets=llDeleteSubList(AvatarOffsets, 0, 1);
+    if((GridType && GRID_TYPE_SL) || (GridType && GRID_TYPE_IW)) {
+        integer memoryToBeUsed=MEMORY_TO_BE_USED_SL;
+        if(GridType && GRID_TYPE_IW) {
+            memoryToBeUsed=MEMORY_TO_BE_USED_IW;
+        }
+        while(llGetUsedMemory()>memoryToBeUsed && llGetListLength(AvatarOffsets)) {
+            AvatarOffsets=llDeleteSubList(AvatarOffsets, 0, 1);
+        }
+    }
+    else {
+        //in OpenSimulator we are not able to detect the current used memory
+        integer numberOfOffsets=llGetListLength(AvatarOffsets);
+        if(numberOfOffsets>OFFSETS_TO_BE_USED) {
+            AvatarOffsets=llDeleteSubList(AvatarOffsets, 0, numberOfOffsets - OFFSETS_TO_BE_USED - 1);
+        }
     }
 }
 
@@ -106,9 +132,9 @@ doSeats(integer slotNum, key avKey) {
 
 list SeatedAvs() {
     list avs = [];
-    integer n = llGetNumberOfPrims();
-    for(; n >= llGetObjectPrimCount(llGetKey()); --n) {
-        key id = llGetLinkKey(n);
+    integer index;
+    for(index=llGetNumberOfPrims(); index>=llGetObjectPrimCount(llGetKey()); --index) {
+        key id = llGetLinkKey(index);
         if(llGetAgentSize(id) != ZERO_VECTOR) {
             avs = [id] + avs;
         }
@@ -140,6 +166,10 @@ MoveLinkedAv(integer linknum, vector avpos, rotation avrot) {
                 localpos = llGetLocalPos();
             }
             avpos.z += 0.4;
+            if(!SecondLifeDetected) {
+                //Open Simulator doesn't move just seated avatars
+                llSleep(0.2);
+            }
             llSetLinkPrimitiveParamsFast(linknum, [PRIM_POSITION, ((avpos - (llRot2Up(avrot) * size.z * 0.02638)) * localrot) + localpos, PRIM_ROTATION, avrot * localrot / llGetRootRotation()]);
         }
     }    
@@ -208,9 +238,17 @@ RezNextAdjuster(integer slotnum) {
 
 default {
     state_entry() {
-        llMessageLinked(LINK_SET, REQUEST_CHATCHANNEL, "", "");
+        string simChannel=llGetEnv("sim_channel");
+        GridType=
+            GRID_TYPE_SL * (simChannel==GRID_TYPE_SL_STRING) + 
+            GRID_TYPE_DW * (simChannel==GRID_TYPE_DW_STRING) + 
+            GRID_TYPE_IW * (simChannel==GRID_TYPE_IW_STRING)
+        ;
         Primcount = llGetNumberOfPrims();
         Newprimcount = Primcount;
+        SecondLifeDetected=llGetEnv("sim_channel")=="Second Life Server";
+        llSleep(1.5);
+        llMessageLinked(LINK_SET, REQUEST_CHATCHANNEL, "", "");
     }
  
     link_message(integer sender, integer num, string str, key id) {
@@ -277,7 +315,7 @@ default {
             list optionsToSet = llParseStringKeepNulls(str, ["~","|"], []);
             integer length = llGetListLength(optionsToSet);
             integer index;
-            for(; index<length; ++index) {
+            for(index=0; index<length; ++index) {
                 list optionsItems = llParseString2List(llList2String(optionsToSet, index), ["="], []);
                 string optionItem = llToLower(llStringTrim(llList2String(optionsItems, 0), STRING_TRIM));
                 string optionString = llList2String(optionsItems, 1);
@@ -295,8 +333,6 @@ default {
         else if(num == ADJUSTER_REPORT) {    //heard from an adjuster so a new position must be used, upate Slots and chat out new position.
             integer index = llListFindList(Adjusters, [id]);
             if(index != -1) {
-                string primName = llGetObjectName();
-                llSetObjectName(llGetLinkName(1));
                 list params = llParseString2List(str, ["|"], []);
                 vector newpos = ((vector)llList2String(params, 0) - llGetRootPosition()) / llGetRootRotation();
                 rotation newrot = (rotation)llList2String(params, 1) / llGetRootRotation();
@@ -323,7 +359,6 @@ default {
                     sendSTR += llDumpList2String(slice, "|") + "|" + seatName;
                     llRegionSayTo(llGetOwner(), 0, "\nSet card for this data is '" + ncName + "'." + "\n"+sendSTR);
                 }
-                llSetObjectName(primName);
                 llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(Slots, "^"), NULL_KEY);
                 //gotta send a message back to the core other than with SEAT_UPDATE so the core knows it came from here and updates Slots list there.
                 llMessageLinked(LINK_SET, (SEAT_UPDATE + 2000000), llDumpList2String(Slots, "^"), NULL_KEY);                
@@ -331,8 +366,6 @@ default {
         }
         else if(num == DUMP) {
             integer n;
-            string primName = llGetObjectName();
-            llSetObjectName(llGetLinkName(1));
             for(n = 0; n < llGetListLength(Slots)/STRIDE; ++n) {
                 list temp=llParseStringKeepNulls(llList2String(Slots, n*STRIDE+7), ["§"], []);
                 string seatName;
@@ -350,7 +383,6 @@ default {
                 llRegionSayTo(llGetOwner(), 0, "\nSet card for this data is '" + ncName + "'." + "\n"+sendSTR);
             }
             llRegionSay(Chatchannel, "posdump");
-            llSetObjectName(primName);
         }
         else if(num==PLUGIN_ACTION || num==PLUGIN_MENU) {
             //offset menu
@@ -452,7 +484,7 @@ default {
             }
         }
         //check all the Slots for next seated AV, call for next seated AV to move and animate.
-        for(; Seatcount < Stop-1; ) {
+        for(Seatcount=Seatcount; Seatcount < Stop-1; ) {
             Seatcount += 1;
             if(llList2Key(Slots, Seatcount*8+4) != "") {
                 doSeats(Seatcount, llList2String(Slots, (Seatcount)*8+4));
@@ -463,7 +495,7 @@ default {
             //TODO: we should use a llSleep instead of a counter for lower CPU time impact
             integer counter;
             integer stop = 1500;
-            for( ; counter<stop; ++counter) { }
+            for(counter=0; counter<stop; ++counter) { }
             DoSync = 2;
             for (Seatcount = 0; Seatcount < Stop; ++Seatcount){
                 if(llList2String(Slots, (Seatcount)*8+4) != "") {
@@ -492,7 +524,7 @@ default {
                 //we have lost a sitter so find out who and remove them from the list.
                 integer n;
                 integer stop = llGetListLength(Lastanim)/2;
-                for(; n<stop; ++n) {
+                for(n=0; n<stop; ++n) {
                     if(AvLinkNum((key)llList2String(Lastanim, n*2)) == -1) {
                         integer index = llListFindList(AnimsList, [(key)llList2String(Lastanim, n*2)]);
                         if(index != -1) {
@@ -509,6 +541,10 @@ default {
                 Currentanim = "";
                 LastAnimRunning = "";
             }
+        }
+        if(change & CHANGED_REGION) {
+            llSleep(1.0);
+            llMessageLinked(LINK_SET, SYNC, "", NULL_KEY);
         }
     }
 }

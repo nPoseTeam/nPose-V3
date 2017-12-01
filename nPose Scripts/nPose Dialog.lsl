@@ -81,6 +81,7 @@ string TemplateDialogPrompt="%PROMPT%\nPath: %NICE_PATH%\nPage: %CURRENT_PAGE%/%
 string TemplateDialogTimeoutText="\n(Timeout in %TIMEOUT% seconds.)";
 integer OptionDialogTimeout=120;
 integer OptionUsePageBackward=FALSE;
+string OptionReplaceRoot="Main";
 
 /*
 debug(list message){
@@ -218,8 +219,12 @@ Dialog(key recipient, string prompt, list menuButtons, list utilityButtons, inte
     else {
         dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%PROMPT%"], []), "");
     }
-    dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%PATH%"], []), path);
-    dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%NICE_PATH%"], []), resolveText(path));
+    string pathDisplayString=path;
+    if(OptionReplaceRoot) {
+        pathDisplayString=llDumpList2String([OptionReplaceRoot] + llDeleteSubList(llParseStringKeepNulls(pathDisplayString, [":"], []), 0, 0), ":");
+    }
+    dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%PATH%"], []), pathDisplayString);
+    dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%NICE_PATH%"], []), resolveText(pathDisplayString));
     dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%CURRENT_PAGE%"], []), (string)(page+1));
     dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%TOTAL_PAGES%"], []), (string)numberOfPages);
     dialogPrompt=llDumpList2String(llParseStringKeepNulls(dialogPrompt, ["%TIMEOUT%"], []), (string)OptionDialogTimeout);
@@ -286,7 +291,7 @@ list sanitizeButtons(string buttons, string lookupTable) {
     list sanitizedButtonsList;
     integer index;
     integer length=llGetListLength(buttonsList);
-    for(; index<length; index++) {
+    for(index=0; index<length; index++) {
         string currentButton=llList2String(buttonsList, index);
         if(currentButton!="") {
             list temp=sanitizeButton(currentButton, lookupTable);
@@ -333,7 +338,7 @@ string resolveText(string text) {
     integer decode;
     integer macro;
     text="";
-    for(; index<length; index++) {
+    for(index=0; index<length; index++) {
         string tempString=llList2String(tempList, index);
         if(tempString==MARKER_COMMENT_START) {
             remove=TRUE;
@@ -429,7 +434,7 @@ default {
         //init our invisible character set
         CodingBase=llGetListLength(ZERO_WIDTH_UTF_CHARACTERS_BASE64);
         integer index;
-        for(; index<CodingBase; index++) {
+        for(index=0; index<CodingBase; index++) {
             CodingCharacterSet+=llBase64ToString(llList2String(ZERO_WIDTH_UTF_CHARACTERS_BASE64, index));
         }
     }
@@ -472,7 +477,7 @@ default {
             list optionsToSet = llParseStringKeepNulls(str, ["~","|"], []);
             integer length = llGetListLength(optionsToSet);
             integer index;
-            for(; index<length; ++index) {
+            for(index=0; index<length; ++index) {
                 list optionsItems = llParseString2List(llList2String(optionsToSet, index), ["="], []);
                 string optionItem = llToLower(llStringTrim(llList2String(optionsItems, 0), STRING_TRIM));
                 string optionString = llList2String(optionsItems, 1);
@@ -489,7 +494,8 @@ default {
                 }
                 else if(num==OPTIONS) {
                     if(optionItem == "dialogtimeout") {OptionDialogTimeout = (integer)optionSetting;}
-                    if(optionItem == "dialogbackward") {OptionUsePageBackward = optionSettingFlag;}
+                    else if(optionItem == "dialogbackward") {OptionUsePageBackward = optionSettingFlag;}
+                    else if(optionItem == "dialogreplaceroot") {OptionReplaceRoot = optionString;}
                 }
             }
         }
