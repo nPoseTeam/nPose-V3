@@ -1,5 +1,7 @@
-The nPose scripts are licensed under the GPLv2 (http://www.gnu.org/licenses/gpl-2.0.txt), with the following addendum:
+If you want to download the scripts, please use this link: https://github.com/nPoseTeam/nPose-V3/releases/latest  
+The master branch may or may not contain the latest released version.
 
+The nPose scripts are licensed under the GPLv2 (http://www.gnu.org/licenses/gpl-2.0.txt), with the following addendum:  
 The nPose scripts are free to be copied, modified, and redistributed, subject to the following conditions:
 
     - If you distribute the nPose scripts, you must leave them full perms.

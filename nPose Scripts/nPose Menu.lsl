@@ -12,16 +12,8 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 
 #define DIALOG -900
 #define DIALOG_RESPONSE -901
-#define DIALOG_TIMEOUT -902
+
 #define DOPOSE 200
-#define ADJUST 201
-#define SWAP 202
-#define DUMP 204
-#define STOPADJUST 205
-#define SYNC 206
-#define DOBUTTON 207
-#define ADJUSTOFFSET 208
-#define SETOFFSET 209
 #define SWAPTO 210
 #define NC_READER_REQUEST 224
 #define NC_READER_RESPONSE 225
@@ -42,10 +34,8 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 #define PLUGIN_MENU -832
 #define PLUGIN_MENU_DONE -833
 
-#define EXTERNAL_UTIL_REQUEST -888
 #define MEMORY_USAGE 34334
 #define SEAT_UPDATE 35353
-#define VICTIMS_LIST -238
 #define OPTIONS -240
 
 
@@ -70,9 +60,11 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 #define MY_PLUGIN_MENU_UNSIT "npose_unsit"
 #define MY_PLUGIN_MENU_CHANGE_SEAT "npose_changeseat"
 
+#define MME_PLUGIN_MENU_NAME "npose_mme"
+
 //store plugins base paths
 list PluginBasePathList;
-list PluginParamsList;
+list PluginParamsList; //PluginName|PluginMenuParams|PluginActionParams
 
 //Button comments marker
 #define MARKER_COMMENT_START "/*"
@@ -89,6 +81,7 @@ string OptionDefaultLanguagePrefix=DEFAULT_PREFIX; //mainly for debug purposes. 
 
 list Slots; //this Slots list is not complete. it only contains seated AV key and seat numbers
 string MenuNc = ".Change Menu Order"; //holds the name of the menu order notecard to read.
+string MmeNc =".nPose MenuMemoryExtension"; //holds the name of the nPose MenuMemoryExtension configuration NC
 //key toucherid;
 list MenuPaths;
 list MenuButtons;
@@ -101,12 +94,19 @@ list UserDefinedPermissionsList;
 list MacroNames;
 list MacroValues;
 
+integer UseMme; //MenuMemoryExtension
+integer UseChangeMenuOrder;
 
-/*
+list MmePluginBasePathList;
+list MmePluginWorkerNumberList;
+integer MyWorkerNumber;
+
+integer TotalNumberOfValidCards; //only for your info
+integer TotalNumberOfStoredCards; //only for your info
+
 debug(list message){
     llOwnerSay((((llGetScriptName() + "\n##########\n#>") + llDumpList2String(message,"\n#>")) + "\n##########"));
 }
-*/
 
 DoMenu(key rcpt, string path, integer page, string prompt, list additionalButtons) {
     list choices;
@@ -329,45 +329,45 @@ integer logicalXor(integer conditionA, integer conditionB) {
 }
 
 BuildMenus(list cardNames) {//builds the user defined menu buttons
-    MenuPaths = [];
-    MenuButtons = [];
-    MenuPermPath = [];
-    MenuPermPerms = [];
-    PluginBasePathList=[];
-    PluginParamsList=[];
-
     integer length = llGetListLength(cardNames);
-    integer fromContents;
-    if(!length) {
-        fromContents = TRUE;
+    if(!UseChangeMenuOrder) {
         length = llGetInventoryNumber(INVENTORY_NOTECARD);
     }
     integer indexNC;
-    for(indexNC=0; indexNC<length; ++indexNC) {//step through the notecards backwards so that default notecard is first in the contents
-        string name = llList2String(cardNames, indexNC);
-        if(fromContents) {
-            name = llGetInventoryName(INVENTORY_NOTECARD, indexNC);
+    for(indexNC=0; indexNC<length; ++indexNC) {//step through the notecards
+        string path = llList2String(cardNames, indexNC);
+        if(!UseChangeMenuOrder) {
+            path = llGetInventoryName(INVENTORY_NOTECARD, indexNC);
         }
-        integer permsIndex1 = llSubStringIndex(name,"{");
-        integer permsIndex2 = llSubStringIndex(name,"}");
-        string menuPerms;
-        if(permsIndex1>0 && permsIndex2>permsIndex1) { // found
-            menuPerms = llGetSubString(name, permsIndex1+1, permsIndex2+-1);
-            name = llDeleteSubString(name, permsIndex1, permsIndex2);
-        }
-        list pathParts = llParseStringKeepNulls(name, [":"], []);
-        string prefix = llList2String(pathParts, 0);
+        AddMenuButton(path, FALSE);
+    }
+}
 
-        if(prefix==DEFAULT_PREFIX || (llStringLength(prefix)==2 && llToUpper(prefix)==prefix)) { // found
-            if(menuPerms) {
-                MenuPermPath += llDumpList2String(pathParts, ":");
-                MenuPermPerms += menuPerms;
+AddMenuButton(string path, integer addUnconditional) {
+    integer permsIndex1 = llSubStringIndex(path,"{");
+    integer permsIndex2 = llSubStringIndex(path,"}");
+    string menuPerms;
+    if(permsIndex1>0 && permsIndex2>permsIndex1) { // found
+        menuPerms = llGetSubString(path, permsIndex1+1, permsIndex2+-1);
+        path = llDeleteSubString(path, permsIndex1, permsIndex2);
+    }
+    list pathParts = llParseStringKeepNulls(path, [":"], []);
+    string prefix = llList2String(pathParts, 0);
+
+    if(prefix==DEFAULT_PREFIX || (llStringLength(prefix)==2 && llToUpper(prefix)==prefix)) { // found
+        TotalNumberOfValidCards+=!addUnconditional;
+        if(menuPerms) {
+            MenuPermPath += llDumpList2String(pathParts, ":");
+            MenuPermPerms += menuPerms;
+        }
+        integer storeCard=TRUE;
+        if(UseMme && !addUnconditional) {
+            if(getMmeWorkerNumber(path)!=MyWorkerNumber) {
+                storeCard=FALSE;
             }
-            if(!~llListFindList(PluginBasePathList, [prefix])) {
-                //register nPose menu to be responsible for all used languages (all trees in the forest)
-                PluginBasePathList+=[prefix];
-                PluginParamsList+=[MY_PLUGIN_MENU];
-            }
+        }
+        if(storeCard) {
+            TotalNumberOfStoredCards+=!addUnconditional;
             while(llGetListLength(pathParts)>1) {
                 string last = llList2String(pathParts, -1);
                 string parentPath = llDumpList2String(llDeleteSubList(pathParts, -1, -1), ":");
@@ -376,7 +376,7 @@ BuildMenus(list cardNames) {//builds the user defined menu buttons
                     list children = llParseStringKeepNulls(llList2String(MenuButtons, indexParentPath), ["|"], []);
                     if(!~llListFindList(children, [last])) {
                         children += [last];
-                        if(fromContents) {
+                        if(!UseChangeMenuOrder) {
                             children = llListSort(children, 1, 1);
                         }
                         MenuButtons = llListReplaceList(MenuButtons, [llDumpList2String(children, "|")], indexParentPath, indexParentPath);
@@ -448,16 +448,57 @@ list getPluginParams(string path) {
     return [path, MY_PLUGIN_MENU, "", ""];
 }
 
-default{
-    state_entry() {
-        ScriptId=llGetInventoryKey(llGetScriptName());
-        if(llGetInventoryType(MenuNc) != INVENTORY_NOTECARD) {
-            BuildMenus([]);
+integer getMmeWorkerNumber(string path) {
+    //returns:
+    //WorkerNumber
+    
+    while(path!="") {
+        integer index=llListFindList(MmePluginBasePathList, [path]);
+        if(~index) {
+            return llList2Integer(MmePluginWorkerNumberList, index);
         }
         else {
-            llSleep(1.5); //be sure that the NC reader script finished resetting
+            path=deleteNodes(path, -1, -1);
+        }
+    }
+    return 0;
+}
+
+
+init() {
+    MenuPaths = [];
+    MenuButtons = [];
+    MenuPermPath = [];
+    MenuPermPerms = [];
+    PluginBasePathList=[];
+    PluginParamsList=[];
+    MmePluginBasePathList=[];
+    MmePluginWorkerNumberList=[];
+    TotalNumberOfValidCards=0;
+    TotalNumberOfStoredCards=0;
+
+    UseMme=llGetInventoryType(MmeNc)==INVENTORY_NOTECARD;
+    UseChangeMenuOrder=llGetInventoryType(MenuNc)==INVENTORY_NOTECARD;
+    ScriptId=llGetInventoryKey(llGetScriptName());
+    //Notice: the MenuMemoryExtension does not work (well) if you also use the ".Change Menu Order" mechanism
+    //My point of view (Leona): avoid the ".Change Menu Order" and use Button Comments to sort the menu manually
+    if(UseMme || UseChangeMenuOrder) {
+        llSleep(1.5); //be sure that the NC reader script finished resetting
+        if(UseMme) {
+            llMessageLinked(LINK_SET, NC_READER_REQUEST, MmeNc, ScriptId);
+        }
+        if(UseChangeMenuOrder) {
             llMessageLinked(LINK_SET, NC_READER_REQUEST, MenuNc, ScriptId);
         }
+    }
+    else {
+        BuildMenus([]);
+    }
+}
+
+default{
+    state_entry() {
+        init();
     }
     
     touch_start(integer total_number) {
@@ -541,6 +582,7 @@ default{
                 //BackButton
                 if(getNodes(path, -1, -1)==BACKBTN) {
                     path=deleteNodes(path, -2, -1);
+                    page=0;
                     num=PREPARE_MENU_STEP2;
                 }
                 else {
@@ -791,8 +833,48 @@ default{
         }
         else if(num == NC_READER_RESPONSE) {
             if(id==ScriptId) {
-                BuildMenus(llList2List(llParseStringKeepNulls(str, [NC_READER_CONTENT_SEPARATOR], []), 3, -1));
-                str = "";
+                if(!llSubStringIndex(str, MenuNc)) {
+                    //Change Menu Order
+                    BuildMenus(llList2List(llParseStringKeepNulls(str, [NC_READER_CONTENT_SEPARATOR], []), 3, -1));
+                    str = "";
+                }
+                else {
+                    //parse mme
+                    list mmeConfig=llList2List(llParseStringKeepNulls(str, [NC_READER_CONTENT_SEPARATOR], []), 3, -1);
+                    integer currentMmeConfigWorkerNumber;
+                    while(llGetListLength(mmeConfig)) {
+                        string line=llList2String(mmeConfig, 0);
+                        mmeConfig=llDeleteSubList(mmeConfig, 0, 0);
+                        string trimmedLine=llStringTrim(line, STRING_TRIM);
+                        if(llGetSubString(trimmedLine, 0, 0)=="[" && llGetSubString(trimmedLine, -1, -1)=="]") {
+                            //this is a line with the worker number. Example: [1]
+                            currentMmeConfigWorkerNumber=(integer)llDeleteSubString(llDeleteSubString(trimmedLine, 0, 0), -1, -1);
+                        }
+                        else {
+                            //this is a line with a path. Example: SET:Female
+                            MmePluginBasePathList+=[line];
+                            MmePluginWorkerNumberList+=[currentMmeConfigWorkerNumber];
+                            string pluginName=MY_PLUGIN_MENU;
+                            if(currentMmeConfigWorkerNumber) {
+                                pluginName=MME_PLUGIN_MENU_NAME + (string)currentMmeConfigWorkerNumber;
+                            }
+                            PluginBasePathList+=[line];
+                            PluginParamsList+=[pluginName];
+                        }
+                    }
+                    //add buttons
+                    integer index;
+                    integer length=llGetListLength(MmePluginBasePathList);
+                    for(index=0; index<length; index++) {
+                        string path=llList2String(MmePluginBasePathList, index);
+                        if(getMmeWorkerNumber(deleteNodes(path, -1, -1))==MyWorkerNumber) {
+                            AddMenuButton(path, TRUE);
+                        }
+                    }
+                    if(!UseChangeMenuOrder) {
+                        BuildMenus([]);
+                    }
+                }
             }
         }
         else if(num == USER_PERMISSION_UPDATE) {
@@ -826,28 +908,19 @@ default{
             }
         }
         else if(num == MEMORY_USAGE) {//dump memory stats to local
-            llSay(0,"Memory Used by " + llGetScriptName() + ": " + (string)llGetUsedMemory() + " of " + (string)llGetMemoryLimit()
-                 + ",Leaving " + (string)llGetFreeMemory() + " memory free.");
+            llSay(0,
+                "Memory used by " + llGetScriptName() + ": " + (string)llGetUsedMemory() + " of " + (string)llGetMemoryLimit()
+                + ", leaving " + (string)llGetFreeMemory() + " memory free. \n"
+                + "Storing " + (string)TotalNumberOfStoredCards + " out of " + (string)TotalNumberOfValidCards + " valid Notecards."
+            );
         }
 //end handle link message inputs
     }
 
     changed(integer change) {
         if(change & CHANGED_INVENTORY) {
-            ScriptId=llGetInventoryKey(llGetScriptName());
-            if(llGetInventoryType(MenuNc) != INVENTORY_NOTECARD) {
-                BuildMenus([]);
-            }
-            else {
-                llSleep(1.0); //be sure that the NC reader script finished resetting
-                llMessageLinked(LINK_SET, NC_READER_REQUEST, MenuNc, ScriptId);
-            }
+            init();
         }
-/* Leona: This have to be done in all scripts or in none of them. If we do it only in one script, the scripts may get out of sync
-        if(change & CHANGED_OWNER) {
-            llResetScript();
-        }
-*/
     }
 
     on_rez(integer params) {
