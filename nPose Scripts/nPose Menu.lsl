@@ -54,21 +54,21 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 //NC Reader
 #define NC_READER_CONTENT_SEPARATOR "%&§"
 
-//own plugins related
+//plugins related
 #define MY_PLUGIN_MENU "npose_menu"
 #define MY_PLUGIN_MENU_PICK_SEAT "npose_pickseat"
 #define MY_PLUGIN_MENU_UNSIT "npose_unsit"
 #define MY_PLUGIN_MENU_CHANGE_SEAT "npose_changeseat"
-
 #define MME_PLUGIN_MENU_NAME "npose_mme"
-
-//store plugins base paths
-list PluginBasePathList;
-list PluginParamsList; //PluginName|PluginMenuParams|PluginActionParams
 
 //Button comments marker
 #define MARKER_COMMENT_START "/*"
 #define MARKER_COMMENT_END "*/"
+
+//holds the name of the menu order notecard to read.
+#define CHANGE_MENU_ORDER_NC_NAME ".Change Menu Order"
+//holds the name of the nPose MenuMemoryExtension configuration NC
+#define MME_NC_NAME ".nPose MenuMemoryExtension"
 
 
 //default options settings.  Change these to suit personal preferences
@@ -80,13 +80,17 @@ integer OptionAutoLanguage=1; //if disabled, only the default language will be u
 string OptionDefaultLanguagePrefix=DEFAULT_PREFIX; //mainly for debug purposes. Set autoLanguage=0 and defaultLanguagePrefix to a 2 letter language code to see the language of your choice
 
 list Slots; //this Slots list is not complete. it only contains seated AV key and seat numbers
-string MenuNc = ".Change Menu Order"; //holds the name of the menu order notecard to read.
-string MmeNc =".nPose MenuMemoryExtension"; //holds the name of the nPose MenuMemoryExtension configuration NC
-//key toucherid;
+
 list MenuPaths;
 list MenuButtons;
 list MenuPermPath;
 list MenuPermPerms;
+
+list PluginBasePathList; //store plugins base paths
+list PluginParamsList; //PluginName|PluginMenuParams|PluginActionParams
+
+list MmePluginBasePathList;
+list MmePluginWorkerNumberList;
 
 key ScriptId;
 
@@ -97,16 +101,16 @@ list MacroValues;
 integer UseMme; //MenuMemoryExtension
 integer UseChangeMenuOrder;
 
-list MmePluginBasePathList;
-list MmePluginWorkerNumberList;
 integer MyWorkerNumber;
 
 integer TotalNumberOfValidCards; //only for your info
 integer TotalNumberOfStoredCards; //only for your info
 
+/*
 debug(list message){
     llOwnerSay((((llGetScriptName() + "\n##########\n#>") + llDumpList2String(message,"\n#>")) + "\n##########"));
 }
+*/
 
 DoMenu(key rcpt, string path, integer page, string prompt, list additionalButtons) {
     list choices;
@@ -449,6 +453,7 @@ list getPluginParams(string path) {
 }
 
 integer getMmeWorkerNumber(string path) {
+    //gets the MenuMemoryExtension worker number for the provided path.
     //returns:
     //WorkerNumber
     
@@ -477,18 +482,18 @@ init() {
     TotalNumberOfValidCards=0;
     TotalNumberOfStoredCards=0;
 
-    UseMme=llGetInventoryType(MmeNc)==INVENTORY_NOTECARD;
-    UseChangeMenuOrder=llGetInventoryType(MenuNc)==INVENTORY_NOTECARD;
+    UseMme=llGetInventoryType(MME_NC_NAME)==INVENTORY_NOTECARD;
+    UseChangeMenuOrder=llGetInventoryType(CHANGE_MENU_ORDER_NC_NAME)==INVENTORY_NOTECARD;
     ScriptId=llGetInventoryKey(llGetScriptName());
     //Notice: the MenuMemoryExtension does not work (well) if you also use the ".Change Menu Order" mechanism
     //My point of view (Leona): avoid the ".Change Menu Order" and use Button Comments to sort the menu manually
     if(UseMme || UseChangeMenuOrder) {
         llSleep(1.5); //be sure that the NC reader script finished resetting
         if(UseMme) {
-            llMessageLinked(LINK_SET, NC_READER_REQUEST, MmeNc, ScriptId);
+            llMessageLinked(LINK_SET, NC_READER_REQUEST, MME_NC_NAME, ScriptId);
         }
         if(UseChangeMenuOrder) {
-            llMessageLinked(LINK_SET, NC_READER_REQUEST, MenuNc, ScriptId);
+            llMessageLinked(LINK_SET, NC_READER_REQUEST, CHANGE_MENU_ORDER_NC_NAME, ScriptId);
         }
     }
     else {
@@ -833,7 +838,7 @@ default{
         }
         else if(num == NC_READER_RESPONSE) {
             if(id==ScriptId) {
-                if(!llSubStringIndex(str, MenuNc)) {
+                if(!llSubStringIndex(str, CHANGE_MENU_ORDER_NC_NAME)) {
                     //Change Menu Order
                     BuildMenus(llList2List(llParseStringKeepNulls(str, [NC_READER_CONTENT_SEPARATOR], []), 3, -1));
                     str = "";
