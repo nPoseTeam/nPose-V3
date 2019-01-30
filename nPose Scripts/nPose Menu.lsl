@@ -8,67 +8,67 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 "Full perms" means having the modify, copy, and transfer permissions enabled in Second Life and/or other virtual world platforms derived from Second Life (such as OpenSim).  If the platform should allow more fine-grained permissions, then "full perms" will mean the most permissive possible set of permissions allowed by the platform.
 */
 
-#define DEFAULT_PREFIX "SET"
+string DEFAULT_PREFIX="SET";
 
-#define DIALOG -900
-#define DIALOG_RESPONSE -901
+integer DIALOG=-900;
+integer DIALOG_RESPONSE=-901;
 
-#define DOPOSE 200
-#define SWAPTO 210
-#define NC_READER_REQUEST 224
-#define NC_READER_RESPONSE 225
-#define UNSIT -222
-#define DOMENU -800
-#define DOMENU_ACCESSCTRL -801
-#define UDPBOOL -804
-#define UDPLIST -805
-#define USER_PERMISSION_UPDATE -806
-#define MACRO -807
-#define PLUGIN_MENU_REGISTER -810
-#define MENU_SHOW -815
-#define PREPARE_MENU_STEP1 -820
-#define PREPARE_MENU_STEP2 -821
-#define PREPARE_MENU_STEP3 -822
-#define PLUGIN_ACTION -830
-#define PLUGIN_ACTION_DONE -831
-#define PLUGIN_MENU -832
-#define PLUGIN_MENU_DONE -833
+integer DOPOSE=200;
+integer SWAPTO=210;
+integer NC_READER_REQUEST=224;
+integer NC_READER_RESPONSE=225;
+integer UNSIT=-222;
+integer DOMENU=-800;
+integer DOMENU_ACCESSCTRL=-801;
+integer UDPBOOL=-804;
+integer UDPLIST=-805;
+integer USER_PERMISSION_UPDATE=-806;
+integer MACRO=-807;
+integer PLUGIN_MENU_REGISTER=-810;
+integer MENU_SHOW=-815;
+integer PREPARE_MENU_STEP1=-820;
+integer PREPARE_MENU_STEP2=-821;
+integer PREPARE_MENU_STEP3=-822;
+integer PLUGIN_ACTION=-830;
+integer PLUGIN_ACTION_DONE=-831;
+integer PLUGIN_MENU=-832;
+integer PLUGIN_MENU_DONE=-833;
 
-#define MEMORY_USAGE 34334
-#define SEAT_UPDATE 35353
-#define OPTIONS -240
+integer MEMORY_USAGE=34334;
+integer SEAT_UPDATE=35353;
+integer OPTIONS=-240;
 
 
 //dialog buttons
-#define BACKBTN "^"
+string BACKBTN="^";
 
 // userDefinedPermissions
-#define PERMISSION_GROUP "group"
-#define PERMISSION_OWNER "owner"
-#define PERMISSION_SEATED "seated"
-#define PERMISSION_OCCUPIED "occupied"
-#define PERMISSION_OWNSEAT "ownseat"
-#define USER_DEFINED_PERMISSION_TYPE_LIST "list"
-#define USER_DEFINED_PERMISSION_TYPE_BOOL "bool"
+string PERMISSION_GROUP="group";
+string PERMISSION_OWNER="owner";
+string PERMISSION_SEATED="seated";
+string PERMISSION_OCCUPIED="occupied";
+string PERMISSION_OWNSEAT="ownseat";
+string USER_DEFINED_PERMISSION_TYPE_LIST="list";
+string USER_DEFINED_PERMISSION_TYPE_BOOL="bool";
 
 //NC Reader
-#define NC_READER_CONTENT_SEPARATOR "%&§"
+string NC_READER_CONTENT_SEPARATOR="%&§";
 
 //plugins related
-#define MY_PLUGIN_MENU "npose_menu"
-#define MY_PLUGIN_MENU_PICK_SEAT "npose_pickseat"
-#define MY_PLUGIN_MENU_UNSIT "npose_unsit"
-#define MY_PLUGIN_MENU_CHANGE_SEAT "npose_changeseat"
-#define MME_PLUGIN_MENU_NAME "npose_mme"
+string MY_PLUGIN_MENU="npose_menu";
+string MY_PLUGIN_MENU_PICK_SEAT="npose_pickseat";
+string MY_PLUGIN_MENU_UNSIT="npose_unsit";
+string MY_PLUGIN_MENU_CHANGE_SEAT="npose_changeseat";
+string MME_PLUGIN_MENU_NAME="npose_mme";
 
 //Button comments marker
-#define MARKER_COMMENT_START "/*"
-#define MARKER_COMMENT_END "*/"
+string MARKER_COMMENT_START="/*";
+string MARKER_COMMENT_END="*/";
 
 //holds the name of the menu order notecard to read.
-#define CHANGE_MENU_ORDER_NC_NAME ".Change Menu Order"
+string CHANGE_MENU_ORDER_NC_NAME=".Change Menu Order";
 //holds the name of the nPose MenuMemoryExtension configuration NC
-#define MME_NC_NAME ".nPose MenuMemoryExtension"
+string MME_NC_NAME=".nPose MenuMemoryExtension";
 
 
 //default options settings.  Change these to suit personal preferences
