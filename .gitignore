@@ -1,4 +1,15 @@
 #################
+## lslForge: remove the *.lsl files in very simple projects to not confuse the users
+#################
+*.lsl
+
+
+#################
+## gfm_viewer
+#################
+.*.md.html
+
+#################
 ## Eclipse
 #################
 
