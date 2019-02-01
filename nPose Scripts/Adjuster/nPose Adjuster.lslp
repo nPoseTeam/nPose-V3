@@ -278,6 +278,7 @@ default {
 						llDie();
 					}
 					else if(cmd=="SA_DUMP") {
+						//currently not used
 						llSleep(0.1 * (float)MySlotNumber); //to ensure that the user will get the messages in a nice order
 						llRegionSayTo(llGetOwner(), 0, getDump());
 					}

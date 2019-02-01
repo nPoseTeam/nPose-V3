@@ -53,7 +53,7 @@ list SlotsFacials; //We need this for the Text output of the adjusters
 list SlotsAvatar;
 list SlotsSeatName;
 
-list AnimationQueue;
+list AnimationQueue; // 3-strided list: [AvatarKey, AnimationsToStop, Animations to start], use startAnimations() to add new animations to it
 integer AnimationQueueRequestPending; //0: no Pending request; timestamp: pending request
 
 integer OptionQuietAdjusters;
@@ -135,10 +135,6 @@ integer getAvatarLinkNumber(key avatarKey) {
 	return linkCount;
 }
 
-integer getAvatarSlotNumber(key avatarKey) {
-	return llListFindList(SlotsAvatar, [avatarKey]);
-}
-
 moveLinkedAvatar(integer slotNumber) {
 	key avatarKey=llList2Key(SlotsAvatar, slotNumber);
 	if(avatarKey) {
@@ -188,7 +184,7 @@ moveLinkedAvatar(integer slotNumber) {
 }
 
 setAvatarOffset(key avatar, vector offset) {
-	integer slotNumber=getAvatarSlotNumber(avatar);
+	integer slotNumber=llListFindList(SlotsAvatar, [avatar]);
 	if(~slotNumber) {
 		integer avatarOffsetsIndex = llListFindList(AvatarOffsets, [avatar]);
 		if(offset == ZERO_VECTOR && avatarOffsetsIndex >= 0) {
@@ -275,28 +271,31 @@ addRemoveAdjusters(integer newNumberOfAdjuster) {
 	}
 }
 
-string getRunningAnim(key avatarKey) {
+startAnimations(key avatarKey, string animationsToStart) {
+	//Use this function to start new animations
+	//it takes care that previous animations are stopped
+	
+	//Get the running animations
+	string runningAnimations;
 	integer index=llListFindList(RunningAnimations, [avatarKey]);
 	if(~index) {
-		return llList2String(RunningAnimations, index+1);
+		runningAnimations=llList2String(RunningAnimations, index+1);
 	}
 	else {
-		return "Sit";
+		runningAnimations="Sit";
 	}
-}
-setRunningAnim(key avatarKey, string animationsToStart) {
-	integer index=llListFindList(RunningAnimations, [avatarKey]);
+	//add to queue
+	AnimationQueue+=[avatarKey, runningAnimations, animationsToStart];
+	
+	//Update RunningAnimations
+	index=llListFindList(RunningAnimations, [avatarKey]);
 	if(~index) {
 		RunningAnimations=llListReplaceList(RunningAnimations, [avatarKey, animationsToStart], index, index);
 	}
 	else {
 		RunningAnimations+=[avatarKey, animationsToStart];
 	}
-}
 
-animationQueueAdd(key avatarKey, string animationsToStart) {
-	AnimationQueue+=[avatarKey, getRunningAnim(avatarKey), animationsToStart];
-	setRunningAnim(avatarKey, animationsToStart);
 	animationQueueCheck();
 }
 
@@ -324,6 +323,32 @@ animationQueueCheck() {
 			AnimationQueueRequestPending=0;
 		}
 	}
+}
+
+string vectorToString(vector value, integer precision) {
+	return
+		 "<" +
+		floatToString(value.x, precision) + 
+		", " +
+		floatToString(value.y, precision) + 
+		", " +
+		floatToString(value.z, precision) + 
+		">"
+	;
+}
+
+string floatToString(float value,  integer precision) {
+	// precision: number of decimal places
+	// return (string)value;
+	string valueString=(string)((float)llRound(value*llPow(10,precision))/llPow(10,precision));
+	string char;
+	do {
+		char=llGetSubString(valueString, -1, -1);
+		if(char=="." || char=="0") {
+			valueString=llDeleteSubString(valueString, -1, -1);
+		}
+	} while (char=="0");
+	return valueString;
 }
 
 default {
@@ -461,7 +486,7 @@ default {
 					//Update Avatar Positions
 					moveLinkedAvatar(index);
 					//Update Animations
-					animationQueueAdd(currentAvatar, llList2String(SlotsAnimation, index));
+					startAnimations(currentAvatar, llList2String(SlotsAnimation, index));
 				}
 				//Update Adjusters
 				sendAdjusterUpdate(index);
@@ -483,12 +508,12 @@ default {
 			for(index=0; index<length; index++) {
 				key avatarKey=llList2Key(SlotsAvatar, index);
 				if(avatarKey!=NULL_KEY && avatarKey!="") {
-					animationQueueAdd(avatarKey, "Sit");
+					startAnimations(avatarKey, "Sit");
 					temp+=[avatarKey, llList2String(SlotsAnimation, index)];
 				}
 			}
 			while(llGetListLength(temp)) {
-				animationQueueAdd(llList2Key(temp, 0), llList2String(temp, 1));
+				startAnimations(llList2Key(temp, 0), llList2String(temp, 1));
 				temp=llDeleteSubList(temp, 0, 1);
 			}
 		}
@@ -539,7 +564,36 @@ default {
 			}
 		}
 		else if(num == DUMP) {
-			llRegionSay(AdjusterChannel, addCommand("", ["SA_DUMP"]));
+			integer index;
+			integer length=llGetListLength(SlotsAnimation);
+			for(index=0; index<length; index++) {
+				list seatName=llParseStringKeepNulls(llList2String(SlotsSeatName, index), ["§"], []);
+				string output="\nSet card for this data is '" + llList2String(seatName, 3) + "', SeatNumber: " + (string)(index+1);
+				string action=llList2String(seatName, 2);
+				output+="\n\n" + action;
+				if(llSubStringIndex(action, "ANIM")!=0) {
+					output+="|" + (string)(index+1);
+				}
+				output+="|" + (string)llList2String(SlotsAnimation, index);
+				if(AdjusterListenerHandle) {
+					output+="|" + vectorToString(llList2Vector(AdjusterList, index*ADJUSTER_LIST_STRIDE + 1), 3);
+					output+="|" + vectorToString(RAD_TO_DEG * llRot2Euler(llList2Rot(AdjusterList, index*ADJUSTER_LIST_STRIDE + 2)), 2);
+				}
+				else {
+					output+="|" + vectorToString(llList2Vector(SlotsPos, index), 3);
+					output+="|" + vectorToString(RAD_TO_DEG * llRot2Euler(llList2Rot(SlotsRot, index)), 2);
+				}
+				string facials=llList2String(SlotsFacials, index);
+				string userSeatName=llList2String(seatName, 0);
+				if(facials!="" || userSeatName!="") {
+					output+="|" + facials;
+				}
+				if(userSeatName!="") {
+					output+="|" + userSeatName;
+				}
+				llRegionSayTo(llGetOwner(), 0, output);
+			}
+//			llRegionSay(AdjusterChannel, addCommand("", ["SA_DUMP"]));
 		}
 
 		else if(num==PLUGIN_ACTION || num==PLUGIN_MENU) {
