@@ -80,6 +80,13 @@ string GRID_TYPE_SL_STRING="Second Life Server";
 string GRID_TYPE_IW_STRING="Halcyon Server";
 string GRID_TYPE_DW_STRING="OpenSim";
 
+vector RootPosition;
+rotation RootRotation;
+vector RootScale;
+vector OptionScaleRef; //perhaps we want to do rezzing etc. relative to the current scale of the object. If yes: we need a reference scale.
+integer OptionUseScaleRef=TRUE;
+
+
 debug(list message){
 	llOwnerSay((((llGetScriptName() + "\n##########\n#>") + llDumpList2String(message,"\n#>")) + "\n##########"));
 }
@@ -175,7 +182,7 @@ moveLinkedAvatar(integer slotNumber) {
 			//TODO: check tis formula
 			llSetLinkPrimitiveParamsFast(linkNumber, [
 				PRIM_ROT_LOCAL, localRot * avRot * offsetRot,
-				PRIM_POS_LOCAL, localPos + avPos * localRot + offsetPos * localRot * avRot
+				PRIM_POS_LOCAL, vectorScale(OptionUseScaleRef, OptionScaleRef, RootScale, localPos + avPos * localRot + offsetPos * localRot * avRot)
 			]);
 		}
 	}	
@@ -221,7 +228,10 @@ sendAdjusterUpdate(integer slotNumber) {
 			"SA_UPDATE",
 			slotNumber,
 			OptionAdjustRefRoot,
-			OptionQuietAdjusters, 
+			OptionQuietAdjusters,
+			OptionUseScaleRef,
+			OptionScaleRef,
+			RootScale,
 			llList2String(SlotsAnimation, slotNumber), //Animation
 			llList2String(SlotsPos, slotNumber), //Postition
 			llList2String(SlotsRot, slotNumber), //Rotation
@@ -347,6 +357,21 @@ string floatToString(float value,  integer precision) {
 	return valueString;
 }
 
+vector vectorScale(integer scaleIt, vector reference, vector current, vector target) {
+	if(scaleIt) {
+		//only scale the target if the option is set
+		if(reference.x!=0.0 && reference.y!=0.0 && reference.z!=0.0) {
+			//only use a scale factor if the reference is set / avoid division by zero
+			target=<
+				target.x * current.x / reference.x,
+				target.y * current.y / reference.y,
+				target.z * current.z / reference.z
+			>;
+		}
+	}
+	return target;
+}
+
 default {
 	state_entry() {
 		getAdjusterName();
@@ -423,12 +448,16 @@ default {
 	}
  
 	link_message(integer sender, integer num, string str, key id) {
-		if(num == ADJUSTOFFSET || num == SETOFFSET) {
-			setAvatarOffset(id, (vector)str);
-		}
-		else if(num == SEAT_UPDATE){
+		if(num == SEAT_UPDATE){
 			list slots = llParseStringKeepNulls(str, ["^"], []);
 			str = "";
+			
+			//get updated root pos/rot/scale
+			list temp=llGetLinkPrimitiveParams(llGetNumberOfPrims()>1, [PRIM_POSITION, PRIM_ROTATION, PRIM_SIZE]);
+			RootPosition=llList2Vector(temp, 0);
+			RootRotation=llList2Rot(temp, 1);
+			RootScale=llList2Vector(temp, 2);
+			
 			integer numberOfSlots=llGetListLength(slots)/8;
 			
 			SlotsAnimation=[];
@@ -483,6 +512,9 @@ default {
 				//Update Adjusters
 				sendAdjusterUpdate(index);
 			}
+		}
+		else if(num == ADJUSTOFFSET || num == SETOFFSET) {
+			setAvatarOffset(id, (vector)str);
 		}
 		else if(num == UNSIT) {
 			key avatarUuid=(key)str;
@@ -550,8 +582,11 @@ default {
 				if(optionItem == "quietadjusters") {
 					OptionQuietAdjusters = optionSettingFlag;
 				}
-				if(optionItem == "adjustrefroot") {
+				else if(optionItem == "adjustrefroot") {
 					OptionAdjustRefRoot = optionSettingFlag;
+				}
+				else if(optionItem == "scaleref") {
+					OptionScaleRef = (vector)optionString;
 				}
 			}
 		}
