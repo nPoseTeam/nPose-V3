@@ -82,7 +82,9 @@ list PluginCommands=[
 	"UDPBOOL", UDPBOOL, 0, 0,
 	"UDPLIST", UDPLIST, 0, 0,
 	"MACRO", MACRO, 0, 0,
-	"DOCARD", DOBUTTON, 0, 0
+	"DOCARD", DOBUTTON, 0, 0,
+	"TIMER", -600, 0, 1, //If ON_(UN)SIT is known without registration
+	"TIMER_REMOVE", -601, 0, 0 //then we also should know the TIMER(_REMOVE) commands
 ];
 
 UpdateDefaultCard() {
