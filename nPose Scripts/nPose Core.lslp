@@ -139,64 +139,62 @@ integer FindEmptySlot(integer preferredSlotNumber) {
 }
 
 assignSlots(string cardName) {
-	if(llGetListLength(Slots)) {
-		//Get the seated Avs and the named seat they are sitting on
-		list validSitters; // stride: [sitterKey, (integer)namedSeatNumber]
-		integer index;
-		for(index = llGetNumberOfPrims(); index>1; index--) {
-			key id=llGetLinkKey(index);
-			if(llGetAgentSize(id) != ZERO_VECTOR) {
-				//is an Avatar
-				validSitters = [id, 0] + validSitters;
-			}
-			else {
-				//is a prim
-				key sitter=llAvatarOnLinkSitTarget(index);
-				if(sitter) {
-					integer indexValidSitters=llListFindList(validSitters, [sitter]);
-					if(~indexValidSitters) {
-						validSitters=llListReplaceList(validSitters, [(integer)llGetLinkName(index)], indexValidSitters+1, indexValidSitters+1);
-					}
+	//Get the seated Avs and the named seat they are sitting on
+	list validSitters; // stride: [sitterKey, (integer)namedSeatNumber]
+	integer index;
+	for(index = llGetNumberOfPrims(); index>1; index--) {
+		key id=llGetLinkKey(index);
+		if(llGetAgentSize(id) != ZERO_VECTOR) {
+			//is an Avatar
+			validSitters = [id, 0] + validSitters;
+		}
+		else {
+			//is a prim
+			key sitter=llAvatarOnLinkSitTarget(index);
+			if(sitter) {
+				integer indexValidSitters=llListFindList(validSitters, [sitter]);
+				if(~indexValidSitters) {
+					validSitters=llListReplaceList(validSitters, [(integer)llGetLinkName(index)], indexValidSitters+1, indexValidSitters+1);
 				}
 			}
 		}
-		//check if all Avatars in our Slots list are valid
-		integer length=llGetListLength(Slots);
-		for(index=4; index<length; index+=STRIDE) {
-			if(llGetListLength(validSitters)) {
-				integer indexValidSitters=llListFindList(validSitters, [llList2Key(Slots, index)]);
-				if(~indexValidSitters) {
-					validSitters=llDeleteSubList(validSitters, indexValidSitters, indexValidSitters+1);
-				}
-				else {
-					Slots=llListReplaceList(Slots, [""], index, index);
-				}
+	}
+	//check if all Avatars in our Slots list are valid
+	integer length=llGetListLength(Slots);
+	for(index=4; index<length; index+=STRIDE) {
+		if(llGetListLength(validSitters)) {
+			integer indexValidSitters=llListFindList(validSitters, [llList2Key(Slots, index)]);
+			if(~indexValidSitters) {
+				validSitters=llDeleteSubList(validSitters, indexValidSitters, indexValidSitters+1);
 			}
 			else {
 				Slots=llListReplaceList(Slots, [""], index, index);
 			}
 		}
-		//our Slots list is now valid and the validSitters list contains "extra" sitters from a Slots list change
-		//and new sitter(s). The list is sorted by the time they sit down
-		//so all we have to do is trying to place them in the Slots list
-		//if they are sitting on a numbered seat we should first try to sit them in the corresponding slot.
-		while(llGetListLength(validSitters)) {
-			key id=llList2Key(validSitters, 0);
-			integer emptySlot=FindEmptySlot(llList2Integer(validSitters, 1)-1);
-			if(~emptySlot) {
-				Slots=llListReplaceList(Slots, [id], emptySlot*STRIDE+4, emptySlot*STRIDE+4);
-				//check if the menu should be displayed
-				if(CurMenuOnSit) {
-					if(!llGetListLength(OldSitters) || !(~llListFindList(OldSitters, [id]))) {
-						llMessageLinked(LINK_SET, DOMENU, "", id);
-					}
+		else {
+			Slots=llListReplaceList(Slots, [""], index, index);
+		}
+	}
+	//our Slots list is now valid and the validSitters list contains "extra" sitters from a Slots list change
+	//and new sitter(s). The list is sorted by the time they sit down
+	//so all we have to do is trying to place them in the Slots list
+	//if they are sitting on a numbered seat we should first try to sit them in the corresponding slot.
+	while(llGetListLength(validSitters)) {
+		key id=llList2Key(validSitters, 0);
+		integer emptySlot=FindEmptySlot(llList2Integer(validSitters, 1)-1);
+		if(~emptySlot) {
+			Slots=llListReplaceList(Slots, [id], emptySlot*STRIDE+4, emptySlot*STRIDE+4);
+			//check if the menu should be displayed
+			if(CurMenuOnSit) {
+				if(!llGetListLength(OldSitters) || !(~llListFindList(OldSitters, [id]))) {
+					llMessageLinked(LINK_SET, DOMENU, "", id);
 				}
 			}
-			else {
-				llMessageLinked(LINK_SET, UNSIT, id, NULL_KEY);
-			}
-			validSitters=llDeleteSubList(validSitters, 0 , 1);
 		}
+		else {
+			llMessageLinked(LINK_SET, UNSIT, id, NULL_KEY);
+		}
+		validSitters=llDeleteSubList(validSitters, 0 , 1);
 	}
 	OldSitters=[];
 	llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(Slots, "^"), cardName);
