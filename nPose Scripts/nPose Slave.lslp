@@ -11,7 +11,6 @@ integer MEMORY_TO_BE_USED_SL=58000;
 integer MEMORY_TO_BE_USED_IW=116000;
 integer OFFSETS_TO_BE_USED=15;
 
-integer SEND_CHATCHANNEL = 1;
 integer ADJUST = 201;
 integer DUMP = 204;
 integer STOPADJUST = 205;
@@ -27,7 +26,6 @@ integer PLUGIN_MENU_DONE = -833;
 
 integer MENU_USAGE = 34334;
 integer SEAT_UPDATE = 35353;
-integer REQUEST_CHATCHANNEL = 999999;
 
 string MY_PLUGIN_MENU_OFFSET="npose_offset";
 float CurrentOffsetDelta = 0.2;
@@ -249,10 +247,8 @@ addRemoveAdjusters(integer newNumberOfAdjuster) {
 		if(newNumberOfAdjuster>numberOfAdjusters) {
 			if(llGetInventoryType(CurrentAdjusterName) == INVENTORY_OBJECT) {
 				vector myPos=llGetPos();
-				//build the rez paremeter. Upper 3 Bytes for the channel, lower Byte for data
-				integer rezParam = (AdjusterChannel << 8);
 				while(newNumberOfAdjuster>numberOfAdjusters) {
-					llRezAtRoot(CurrentAdjusterName, myPos, ZERO_VECTOR, ZERO_ROTATION, rezParam);
+					llRezAtRoot(CurrentAdjusterName, myPos, ZERO_VECTOR, ZERO_ROTATION, 0);
 					AdjusterList+=[NULL_KEY, llList2Vector(SlotsPos, numberOfAdjusters), llList2Rot(SlotsRot, numberOfAdjusters)];
 					numberOfAdjusters++;
 				}
@@ -361,8 +357,7 @@ default {
 			GRID_TYPE_IW * (simChannel==GRID_TYPE_IW_STRING)
 		;
 		SecondLifeDetected=llGetEnv("sim_channel")=="Second Life Server";
-		llSleep(1.5);
-		llMessageLinked(LINK_SET, REQUEST_CHATCHANNEL, "", "");
+		AdjusterChannel=(integer)("0x7F" + llGetSubString((string)llGetKey(), 0, 5));
 	}
 	
 	listen(integer channel, string name, key id, string message) {
@@ -428,10 +423,7 @@ default {
 	}
  
 	link_message(integer sender, integer num, string str, key id) {
-		if(num == SEND_CHATCHANNEL) {  //got chatchannel from the core.
-			AdjusterChannel = ((integer)str)-1;
-		}
-		else if(num == ADJUSTOFFSET || num == SETOFFSET) {
+		if(num == ADJUSTOFFSET || num == SETOFFSET) {
 			setAvatarOffset(id, (vector)str);
 		}
 		else if(num == SEAT_UPDATE){
@@ -696,5 +688,8 @@ default {
 		if(change & CHANGED_INVENTORY) {
 			getAdjusterName();
 		}
+	}
+	on_rez(integer start_param) {
+		AdjusterChannel=(integer)("0x7F" + llGetSubString((string)llGetKey(), 0, 5));
 	}
 }

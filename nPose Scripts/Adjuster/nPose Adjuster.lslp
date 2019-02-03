@@ -167,13 +167,11 @@ default {
 		llSetTimerEvent(0.0);
 		llSetText("", ZERO_VECTOR, 0.0);
 		IsAnimeshAdjuster=llGetLinkNumber(); //a plain adjuster has only 1 prim, an animesh adjuster is a linkset of 2 prims
-		if (param) {
-			AdjusterChannel = (integer)((0x00FFFFFF & (param >> 8)) + 0x7F000000);
-			llListen(AdjusterChannel, "", "", "");
-			MyParentId=llList2Key(llGetObjectDetails(llGetKey(), [OBJECT_REZZER_KEY]), 0);
-			llRegionSayTo(MyParentId, AdjusterChannel, addCommand("", ["AS_UPDATE_REQUEST"]));
-			getParentPos();
-		}
+		MyParentId=llList2Key(llGetObjectDetails(llGetKey(), [OBJECT_REZZER_KEY]), 0);
+		AdjusterChannel=(integer)("0x7F" + llGetSubString((string)MyParentId, 0, 5));
+		llListen(AdjusterChannel, "", "", "");
+		llRegionSayTo(MyParentId, AdjusterChannel, addCommand("", ["AS_UPDATE_REQUEST"]));
+		getParentPos();
 	}
 
 	touch_start(integer total_number){
