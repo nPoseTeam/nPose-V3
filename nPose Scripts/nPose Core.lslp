@@ -470,7 +470,7 @@ ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path,
 				
 				//build the rez paremeter. Upper 3 Bytes for the chatchannel, lower Byte for data
 				integer rezParam = (ChatChannel << 8);
-				rezParam=rezParam | (quietMode << 1) | ((propGroup & 0x2F) << 2);
+				rezParam=rezParam | (quietMode << 1) | ((propGroup & 0x3F) << 2);
 				if(llVecMag(vDelta) > 9.9) {
 					//too far to rez it direct.  need to do a prop move
 					llRezAtRoot(obj, llGetPos(), ZERO_VECTOR, rot, rezParam);
