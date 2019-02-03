@@ -14,7 +14,7 @@ The nPose scripts are free to be copied, modified, and redistributed, subject to
 
 Documentation: https://github.com/nPoseTeam/nPose-V3/wiki  
 Support group: secondlife:///app/group/f61cb811-89c4-cec7-daa9-067b3f851f9a/about  
-Headquarter/Shop: http://maps.secondlife.com/secondlife/Oefelein/114/49/48  
+Headquarter/Shop: http://maps.secondlife.com/secondlife/Newt/131/197/60
 Report issues to: https://github.com/nPoseTeam/nPose-V3/issues  
 or (if you don't have a GitHub account) send a IM to  
 Howard: Howard Baxton (english)  
