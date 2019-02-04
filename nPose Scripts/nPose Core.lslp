@@ -67,10 +67,6 @@ list OldSitters; //a list which stores the Avatar uuids on a Slots list reset
 integer CurMenuOnSit; //default menuonsit option
 integer Cur2default;  //default action to revert back to default pose when last sitter has stood
 vector ScaleRef; //perhaps we want to do rezzing etc. relative to the current scale of the object. If yes: we need a reference scale.
-vector RootPosition;
-rotation RootRotation;
-vector RootScale;
-
 string SeatAssignList="a";
 //SeatAssignList contains a list (separated by ",") with seatnumbers and keyword. //a(scending), d(escending), r(andom)
 
@@ -349,10 +345,10 @@ string insertPlaceholder(string sLine, key avKey, integer avSeat, string ncName,
 		sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%PAGE%"], []), (string)page);
 		sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%DISPLAYNAME%"], []), llGetDisplayName(avKey));
 		sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%USERNAME%"], []), llGetUsername(avKey));
-		sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%SCALECUR%"], []), (string)RootScale);
+		sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%SCALECUR%"], []), (string)llGetScale());
 		sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%SCALEREF%"], []), (string)ScaleRef);
-		sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%POSITION%"], []), (string)RootPosition);
-		sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%ROTATION%"], []), (string)RootRotation);
+		sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%POSITION%"], []), (string)llGetPos());
+		sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%ROTATION%"], []), (string)llGetRot());
 	}
 	return sLine;
 }
@@ -605,13 +601,6 @@ default{
 		else if(num == DOPOSE_READER || num == DOBUTTON_READER || num==PREPARE_MENU_STEP3_READER || num==DO) {
 			list allData=llParseStringKeepNulls(str, [NC_READER_CONTENT_SEPARATOR], []);
 			str = "";
-			
-			//get updated root pos/rot/scale
-			list temp=llGetLinkPrimitiveParams(llGetNumberOfPrims()>1, [PRIM_POSITION, PRIM_ROTATION, PRIM_SIZE]);
-			RootPosition=llList2Vector(temp, 0);
-			RootRotation=llList2Rot(temp, 1);
-			RootScale=llList2Vector(temp, 2);
-
 			if(num==DO) {
 				allData=["", "", ""] + allData;
 			}

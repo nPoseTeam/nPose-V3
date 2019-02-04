@@ -45,10 +45,6 @@ rotation ParentRot;
 vector ParentRootPos;
 rotation ParentRootRot;
 
-integer OptionUseScaleRef;
-vector OptionScaleRef;
-vector ParentRootScale;
-
 
 
 // JSON Message Format:
@@ -166,21 +162,6 @@ string floatToString(float value,  integer precision) {
 	return valueString;
 }
 
-vector vectorScale(integer scaleIt, vector reference, vector current, vector target) {
-	if(scaleIt) {
-		//only scale the target if the option is set
-		if(reference.x!=0.0 && reference.y!=0.0 && reference.z!=0.0) {
-			//only use a scale factor if the reference is set / avoid division by zero
-			target=<
-				target.x * current.x / reference.x,
-				target.y * current.y / reference.y,
-				target.z * current.z / reference.z
-			>;
-		}
-	}
-	return target;
-}
-
 default {
 	on_rez(integer param) {
 		llSetTimerEvent(0.0);
@@ -213,52 +194,29 @@ default {
 							MySlotNumber=(integer)llList2String(commandParts, 1);
 							setNewPosition=TRUE;
 						}
-
 						MyAdjustRefRoot=(integer)llList2String(commandParts, 2);
-
 						MyQuietAdjusters=(integer)llList2String(commandParts, 3);
-
-						if(OptionUseScaleRef!=(integer)llList2String(commandParts, 4)) {
-							OptionUseScaleRef=(integer)llList2String(commandParts, 4);
+						if(MyAnimations!=llList2String(commandParts, 4)) {
+							MyAnimations=llList2String(commandParts, 4);
 							setNewPosition=TRUE;
 						}
-
-						if(OptionScaleRef!=(vector)llList2String(commandParts, 5)) {
-							OptionScaleRef=(vector)llList2String(commandParts, 5);
+						if(MyInitialNcPosition!=(vector)llList2String(commandParts, 5)) {
+							MyInitialNcPosition=(vector)llList2String(commandParts, 5);
 							setNewPosition=TRUE;
 						}
-
-						if(ParentRootScale!=(vector)llList2String(commandParts, 6)) {
-							ParentRootScale=(vector)llList2String(commandParts, 6);
+						if(MyInitialNcRotation!=(rotation)llList2String(commandParts, 6)) {
+							MyInitialNcRotation=(rotation)llList2String(commandParts, 6);
 							setNewPosition=TRUE;
 						}
-
-						if(MyAnimations!=llList2String(commandParts, 7)) {
-							MyAnimations=llList2String(commandParts, 7);
-							setNewPosition=TRUE;
-						}
-
-						if(MyInitialNcPosition!=(vector)llList2String(commandParts, 8)) {
-							MyInitialNcPosition=(vector)llList2String(commandParts, 8);
-							setNewPosition=TRUE;
-						}
-
-						if(MyInitialNcRotation!=(rotation)llList2String(commandParts, 9)) {
-							MyInitialNcRotation=(rotation)llList2String(commandParts, 9);
-							setNewPosition=TRUE;
-						}
-
-						MyFacials=llList2String(commandParts, 10);
-
-						MySitterKey=(key)llList2String(commandParts, 11);
+						MyFacials=llList2String(commandParts, 7);
+						MySitterKey=(key)llList2String(commandParts, 8);
 						if(MySitterKey!=NULL_KEY && MySitterKey!="") {
 							llSetLinkAlpha(ANIMESH_LINK_NUMBER, ANIMESH_ALPHA_FOR_OCCUPIED_SEATS, ALL_SIDES);
 						}
 						else {
 							llSetLinkAlpha(ANIMESH_LINK_NUMBER, ANIMESH_ALPHA_FOR_UNOCCUPIED_SEATS, ALL_SIDES);
 						}
-
-						list temp=llParseStringKeepNulls(llList2String(commandParts, 12), ["§"], []);
+						list temp=llParseStringKeepNulls(llList2String(commandParts, 9), ["§"], []);
 						MyUserSeatName=llList2String(temp, 0);
 						MySeatName=llList2String(temp, 1);
 						if(MyAction!=llList2String(temp, 2)) {
@@ -274,11 +232,11 @@ default {
 						if(setNewPosition) {
 							//set new pos/rot
 							if(MyAdjustRefRoot) {
-								MyCurrentGlobalPosition = ParentRootPos + vectorScale(OptionUseScaleRef, OptionScaleRef, ParentRootScale, MyInitialNcPosition * ParentRootRot);
+								MyCurrentGlobalPosition = ParentRootPos + MyInitialNcPosition * ParentRootRot;
 								MyCurrentGlobalRotation = MyInitialNcRotation * ParentRootRot;
 							}
 							else {
-								MyCurrentGlobalPosition = ParentPos + vectorScale(OptionUseScaleRef, OptionScaleRef, ParentRootScale, MyInitialNcPosition * ParentRot);
+								MyCurrentGlobalPosition = ParentPos + MyInitialNcPosition * ParentRot;
 								MyCurrentGlobalRotation = MyInitialNcRotation * ParentRot;
 							}
 							llSetLinkPrimitiveParamsFast(LINK_THIS, [PRIM_POSITION, MyCurrentGlobalPosition, PRIM_ROTATION, MyCurrentGlobalRotation]);
@@ -354,9 +312,6 @@ default {
 			else {
 				MyCurrentNcPosition = (MyCurrentGlobalPosition - ParentPos) / ParentRot;
 				MyCurrentNcRotation = MyCurrentGlobalRotation / ParentRot;
-			}
-			if(OptionScaleRef.x!=0.0 && OptionScaleRef.y!=0.0 && OptionScaleRef.z!=0.0) {
-				MyCurrentNcPosition=vectorScale(OptionUseScaleRef, ParentRootScale, OptionScaleRef, MyCurrentNcPosition);
 			}
 			llRegionSayTo(MyParentId, AdjusterChannel, addCommand("", ["AS_POS_ROT", MyCurrentNcPosition, MyCurrentNcRotation]));
 
