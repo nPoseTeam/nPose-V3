@@ -271,6 +271,10 @@ startAnimations(key avatarKey, string animationsToStart) {
 	//Use this function to start new animations
 	//it takes care that previous animations are stopped
 	
+	if(animationsToStart=="") {
+		animationsToStart="Sit";
+	}
+	
 	//Get the running animations
 	string runningAnimations;
 	integer index=llListFindList(RunningAnimations, [avatarKey]);
@@ -549,6 +553,14 @@ default {
 
 				if(optionItem == "quietadjusters") {
 					OptionQuietAdjusters = optionSettingFlag;
+					if(AdjusterListenerHandle) {
+						//update adjusters on the fly
+						integer adjusterListLength=llGetListLength(AdjusterList);
+						integer adjusterListIndex;
+						for(adjusterListIndex=0; adjusterListIndex<adjusterListLength; adjusterListIndex++) {
+							sendAdjusterUpdate(adjusterListIndex);
+						}
+					}
 				}
 				if(optionItem == "adjustrefroot") {
 					OptionAdjustRefRoot = optionSettingFlag;
