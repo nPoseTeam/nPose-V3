@@ -13,22 +13,14 @@ string DefaultCardName;
 
 //define block start
 string DEFAULT_PREFIX="SET";
-string ADMIN_HUD_NAME="npose admin hud";
 integer STRIDE=8;
 integer MEMORY_USAGE=34334;
 integer SEAT_UPDATE=35353;
 integer REQUEST_CHATCHANNEL=999999;
 integer SEND_CHATCHANNEL=1;
-//integer REREZ_ADJUSTERS=2;
-//integer ADJUSTER_REPORT=3;
 integer DOPOSE=200;
-integer ADJUST=201;
 integer SWAP=202;
-integer DUMP=204;
-integer STOPADJUST=205;
-integer SYNC=206;
 integer DOBUTTON=207;
-integer ADJUSTOFFSET=208;
 integer SWAPTO=210;
 integer DO=220;
 integer PREPARE_MENU_STEP3_READER=221;
@@ -52,7 +44,6 @@ integer PREPARE_MENU_STEP2=-821;
 
 integer PLUGIN_ACTION_DONE=-831;
 integer DIALOG_TIMEOUT=-902;
-integer HUD_REQUEST=-999;
 //define block end
 
 integer ChatChannel;
@@ -447,7 +438,23 @@ ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path,
 	}
 	else if (action == "PROP") {
 		string obj = llList2String(params, 1);
-		if(llGetInventoryType(obj) == INVENTORY_OBJECT) {
+		//Wildcard Handling
+		list objects;
+		if(llGetSubString(obj, -1, -1)=="*") {
+			obj=llDeleteSubString(obj, -1, -1);
+			integer length=llGetInventoryNumber(INVENTORY_OBJECT);
+			integer index;
+			for(index=0; index<length; index++) {
+				string inventoryName=llGetInventoryName(INVENTORY_OBJECT, index);
+				if(!llSubStringIndex(inventoryName, obj)) {
+					objects+=[inventoryName];
+				}
+			}
+		}
+		else if (llGetInventoryType(obj)==INVENTORY_OBJECT){
+			objects=[obj];
+		}
+		if(objects) {
 			//the old die command for explicit props. should be removed soon.
 			list strParm2 = llParseString2List(llList2String(params, 2), ["="], []);
 			if(llList2String(strParm2, 1) == "die") {
@@ -473,14 +480,19 @@ ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path,
 				//build the rez paremeter. Upper 3 Bytes for the chatchannel, lower Byte for data
 				integer rezParam = (ChatChannel << 8);
 				rezParam=rezParam | (quietMode << 1) | ((propGroup & 0x3F) << 2);
-				if(llVecMag(vDelta) > 9.9) {
-					//too far to rez it direct.  need to do a prop move
-					llRezAtRoot(obj, llGetPos(), ZERO_VECTOR, rot, rezParam);
-					llSleep(1.0);
-					llRegionSay(ChatChannel, llDumpList2String(["MOVEPROP", obj, (string)pos], "|"));
-				}
-				else {
-					llRezAtRoot(obj, pos, ZERO_VECTOR, rot, rezParam);
+				integer farAway=llVecMag(vDelta) > 9.9;
+				while(llGetListLength(objects)) {
+					obj=llList2String(objects, 0);
+					objects=llDeleteSubList(objects, 0, 0);
+					if(farAway) {
+						//too far to rez it direct.  need to do a prop move
+						llRezAtRoot(obj, llGetPos(), ZERO_VECTOR, rot, rezParam);
+						llSleep(1.0);
+						llRegionSay(ChatChannel, llDumpList2String(["MOVEPROP", obj, (string)pos], "|"));
+					}
+					else {
+						llRezAtRoot(obj, pos, ZERO_VECTOR, rot, rezParam);
+					}
 				}
 			}
 		}
@@ -733,6 +745,7 @@ default{
 			}
 		}
 		*/
+		/*
 		else if(num == HUD_REQUEST) {
 			if(llGetInventoryType(ADMIN_HUD_NAME)!=INVENTORY_NONE && str == "RezHud") {
 				llRezObject(ADMIN_HUD_NAME, llGetPos() + <0,0,1>, ZERO_VECTOR, llGetRot(), ChatChannel);
@@ -741,6 +754,7 @@ default{
 				llRegionSayTo(HudId, ChatChannel, "/die");
 			}
 		}
+		*/
 		else if(num == DEFAULT_CARD) {
 			DefaultCardName=str;
 			llMessageLinked(LINK_SET, DOPOSE, DefaultCardName, id);
@@ -785,6 +799,7 @@ default{
 		}
 	}
 
+/*
 	object_rez(key id) {
 		if(llKey2Name(id) == ADMIN_HUD_NAME) {
 			HudId = id;
@@ -792,44 +807,64 @@ default{
 			llRegionSayTo(HudId, ChatChannel, "parent|"+(string)llGetKey());
 		}
 	}
-
+*/
 	listen(integer channel, string name, key id, string message) {
-		list temp = llParseString2List(message, ["|"], []);
-		if(llGetListLength(temp) >= 2 || llGetSubString(message,0,4) == "ping" || llGetSubString(message,0,8) == "PROPRELAY") {
-			if(llGetOwnerKey(id) == llGetOwner()) {
-				if(message == "ping") {
-					llRegionSayTo(id, ChatChannel, "pong|" + (string)llGetPos());
-					llMessageLinked(LINK_SET, ON_PROP_REZZED, llDumpList2String([name, id, channel], "|"), NULL_KEY);
+		if(llJsonValueType(message, [])==JSON_ARRAY) {
+			list commandLines=llJson2List(message);
+			while(llGetListLength(commandLines)) {
+				list commandParts=llJson2List(llList2String(commandLines, 0));
+				//execute
+				string cmd=llList2String(commandParts, 0);
+				//commands are prefixed with PC (Prop->Core) or CP (Core->Prop)
+				if(cmd=="PC_DO") {
+					//modern version of PROPRELAY
+					//JSON Syntax: ["PC_DO", key id, string data(lines separated by NC_READER_CONTENT_SEPARATOR)]
+					llMessageLinked(
+						LINK_SET,
+						DO,
+						llDumpList2String(llDeleteSubList(commandParts, 0, 1), NC_READER_CONTENT_SEPARATOR),
+						(key)llList2String(commandParts, 1)
+					);
 				}
-				else if(llGetSubString(message,0,8) == "PROPRELAY") {
-					list msg = llParseString2List(message, ["|"], []);
-					llMessageLinked(LINK_SET,llList2Integer(msg,1),llList2String(msg,2),llList2Key(msg,3));
+				else if(cmd=="PC_REZZED") {
+					//modern version of "ping", no "pong" required
+					//JSON Syntax: ["PC_REZZED", string param1, ....]
+					llMessageLinked(
+						LINK_SET,
+						ON_PROP_REZZED,
+						llDumpList2String([name, id, channel] + llDeleteSubList(commandParts, 0, 0), "|"),
+						NULL_KEY
+					);
 				}
-				else if(name == "pos_adjuster_hud") {
-				}
-				else {
-					list params = llParseString2List(message, ["|"], []);
-					vector newpos = (vector)llList2String(params, 0) - llGetPos();
-					newpos = newpos / llGetRot();
-					rotation newrot = (rotation)llList2String(params, 1) / llGetRot();
-					llRegionSayTo(llGetOwner(), 0, "\nPROP|" + name + "|" + (string)newpos + "|" + (string)(llRot2Euler(newrot) * RAD_TO_DEG)
-					 + "|" + llList2String(params, 2));
-				}
+				//remove command from list
+				commandLines=llDeleteSubList(commandLines, 0, 0);
 			}
 		}
-		else if(name == llKey2Name(HudId)) {
-			//need to process hud commands
-			if(message == "adjust") {
-				llMessageLinked(LINK_SET, ADJUST, "", "");
-			}
-			else if(message == "stopadjust") {
-				llMessageLinked(LINK_SET, STOPADJUST, "", "");
-			}
-			else if(message == "posdump") {
-				llMessageLinked(LINK_SET, DUMP, "", "");
-			}
-			else if(message == "hudsync") {
-				llMessageLinked(LINK_SET, SYNC, "", "");
+		else {
+			//this is the old message format, don't use it anymore
+
+			list temp = llParseString2List(message, ["|"], []);
+			if(llGetListLength(temp) >= 2 || llGetSubString(message,0,4) == "ping" || llGetSubString(message,0,8) == "PROPRELAY") {
+				if(llGetOwnerKey(id) == llGetOwner()) {
+					if(message == "ping") {
+						llRegionSayTo(id, ChatChannel, "pong|" + (string)llGetPos());
+						llMessageLinked(LINK_SET, ON_PROP_REZZED, llDumpList2String([name, id, channel], "|"), NULL_KEY);
+					}
+					else if(llGetSubString(message,0,8) == "PROPRELAY") {
+						list msg = llParseString2List(message, ["|"], []);
+						llMessageLinked(LINK_SET,llList2Integer(msg,1),llList2String(msg,2),llList2Key(msg,3));
+					}
+					else if(name == "pos_adjuster_hud") {
+					}
+					else {
+						list params = llParseString2List(message, ["|"], []);
+						vector newpos = (vector)llList2String(params, 0) - llGetPos();
+						newpos = newpos / llGetRot();
+						rotation newrot = (rotation)llList2String(params, 1) / llGetRot();
+						llRegionSayTo(llGetOwner(), 0, "\nPROP|" + name + "|" + (string)newpos + "|" + (string)(llRot2Euler(newrot) * RAD_TO_DEG)
+						 + "|" + llList2String(params, 2));
+					}
+				}
 			}
 		}
 	}

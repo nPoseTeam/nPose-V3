@@ -1,98 +1,187 @@
+key MyParentId;
+integer ChatChannel;
+integer ATTACH_POINT = ATTACH_HUD_TOP_RIGHT;
+float TIMEOUT=60.0;
+string MY_OBJECT_NAME="nPose Admin HUD*";
 
-vector touchedposZ;
-vector touchedpos;
-string seatNumOut="seat1";
-integer posRotFlag = 1;
-key parentID;
-float moveMultiplier = 1.0;
-integer freeLockedFlag = 1;
-integer chatchannel;
-integer attachPoint = 35;
-float YPos;
-float XPos;
+integer ADJUST = 201;
+integer DUMP = 204;
+integer STOPADJUST = 205;
+integer SYNC = 206;
 
+string SOUND_NAME="nPose Button Feedback";
+integer FeedbackSoundAvailable;
 
+integer permissionRequestMode; //0: nothing; 1:attach; 2:detach
 
+sayToCore(string text) {
+	llRegionSayTo(MyParentId, ChatChannel, text);
+}
 
-dobuttons(float xPos, float yPos, key id){
-	if (yPos>.75){
-		llRegionSayTo(parentID, chatchannel, "adjust");
-	}else if (yPos>.5 && yPos<.74999){
-		llRegionSayTo(parentID, chatchannel, "stopadjust");
-	}else if (yPos>.25 && yPos<.4999){
-		llRegionSayTo(parentID, chatchannel, "posdump");
-	}else if (yPos<.24999){
-		llRegionSayTo(parentID, chatchannel, "hudsync");
+buttonFeedback() {
+	llPlaySound(SOUND_NAME, 0.9);
+}
+
+doDetach(key avatar) {
+	if(llGetPermissionsKey()==avatar && (llGetPermissions() & PERMISSION_ATTACH)) {
+		llDetachFromAvatar();
+	}
+	else {
+		permissionRequestMode=2;
+		llRequestPermissions(avatar, PERMISSION_ATTACH);
 	}
 }
 
-default
-{
-	state_entry()
-	{
-		llMinEventDelay(0.05);
-		touchedpos=ZERO_VECTOR;
-		llListen(chatchannel, "", "", "");
+doAttachTemp(key avatar, integer attachmentPoint) {
+	if(llGetPermissionsKey()==avatar && (llGetPermissions() & PERMISSION_ATTACH)) {
+		llAttachToAvatarTemp(attachmentPoint);
 	}
+	else {
+		permissionRequestMode=1;
+		llRequestPermissions(avatar, PERMISSION_ATTACH);
+	}
+}
 
-	touch_start(integer total_number)
-	{
-		touchedpos = llDetectedTouchST(0);
-		XPos = touchedpos.x;
-		YPos = touchedpos.y;
-		if (XPos>0.5){
-//		if ((YPos<0.08) || (YPos>0.85) || (XPos>0.91)){
-			dobuttons(XPos, YPos, llDetectedKey(0));
-		}else if (YPos<.5 && XPos<.24999){
-			llRegionSayTo(parentID, chatchannel, "stopadjust");
-			llSleep(1.0);
-			llDetachFromAvatar();
+doButtons(float xPos, float yPos, key id) {
+	if(xPos<0.02) {
+		//nothing
+	}
+	else if(xPos<0.5) {
+		//maybe left side buttons
+		if(yPos<0.04) {
+			//nothing
+		}
+		else if(yPos<0.38) {
+			//Lower left Button: Sync Animations
+			buttonFeedback();
+			sayToCore(addCommand("", ["PC_DO", llGetOwner(), "LINKMSG|" + (string)SYNC]));
+		}
+		else if(yPos<0.52) {
+			//Middle left Button: Mute Adjusters
+			buttonFeedback();
+			sayToCore(addCommand("", ["PC_DO", llGetOwner(), "OPTION|quietAdjusters=1"]));
+		}
+		else if(yPos<0.76) {
+			//Upper left Button: Start Adjust
+			buttonFeedback();
+			sayToCore(addCommand("", ["PC_DO", llGetOwner(), "LINKMSG|" + (string)ADJUST]));
+		} 
+	}
+	else if(xPos<0.976) {
+		//maybe right side buttons
+		if(yPos<0.04) {
+			//nothing
+		}
+		else if(yPos<0.38) {
+			//Lower right Button: Dump Poses
+			buttonFeedback();
+			sayToCore(addCommand("", ["PC_DO", llGetOwner(), "LINKMSG|" + (string)DUMP]));
+		}
+		else if(yPos<0.52) {
+			//Middle right Button: Unmute Adjusters
+			buttonFeedback();
+			sayToCore(addCommand("", ["PC_DO", llGetOwner(), "OPTION|quietAdjusters=0"]));
+		}
+		else if(yPos<0.76) {
+			//Upper right Button: Stop Adjust
+			buttonFeedback();
+			sayToCore(addCommand("", ["PC_DO", llGetOwner(), "LINKMSG|" + (string)STOPADJUST]));
+		}
+		else if(yPos<0.83) {
+			//nothing
+		}
+		else if(yPos<0.93) {
+			//maybe close button
+			if(xPos>0.91 && xPos<0.97) {
+				//close Button
+				buttonFeedback();
+				string cmd;
+//				cmd=addCommand(cmd, ["PC_DO", llGetOwner(), "LINKMSG|" + (string)DUMP]);
+				cmd=addCommand(cmd, ["PC_DO", llGetOwner(), "LINKMSG|" + (string)STOPADJUST]);
+				sayToCore(cmd);
+				doDetach(llGetOwner());
+			}
 		}
 	}
-	listen(integer channel, string name, key id, string message)
-	{
-		if (channel == chatchannel){
-			if (llGetOwnerKey(id) == llGetOwner()){
-				list params = llParseStringKeepNulls(message, ["|"], []);
-				if (llList2String(params, 0) == "/die"){
-					 llDetachFromAvatar();
-				}else if (llList2String(params, 0) == "parent"){
-					parentID = (key)llList2String(params, 1);
+}
+
+execute(list msg, key id) {
+	string cmd=llList2String(msg, 0);
+	if(cmd=="PROPDIE" || cmd=="CP_DIE") {
+		// PROPDIE[|propNameList[|propGroupList]]
+		if(llList2String(msg, 1)==MY_OBJECT_NAME) {
+			doDetach(llGetOwner());
+		}
+	}
+}
+
+string addCommand(string commands, list commandWithParamList) {
+	if(commands=="") {
+		return llList2Json(JSON_ARRAY, [llList2Json(JSON_ARRAY, commandWithParamList)]);
+	}
+	else {
+		return llList2Json(JSON_ARRAY, llJson2List(commands) + [llList2Json(JSON_ARRAY, commandWithParamList)]);
+	}
+}
+
+
+default {
+	touch_start(integer num_detected) {
+		vector touchedPos = llDetectedTouchST(0);
+		doButtons(touchedPos.x, touchedPos.y, llDetectedKey(0));
+	}
+
+	listen(integer channel, string name, key id, string message) {
+		if(id==MyParentId) {
+			//check if the message is in JSON format (JSON Format should be used always)
+			if(llJsonValueType(message, [])==JSON_ARRAY) {
+				list commandLines=llJson2List(message);
+				while(llGetListLength(commandLines)) {
+					list commandParts=llJson2List(llList2String(commandLines, 0));
+					execute(commandParts, id);
+					commandLines=llDeleteSubList(commandLines, 0, 0);
 				}
 			}
 		}
 	}
 
-	on_rez(integer param)
-	{
-		if (param)
-		{
-			llSetTimerEvent(60.0);
-			chatchannel = param;
-			llListen(chatchannel, "", "", "");
-			llRequestPermissions(llGetOwner(), PERMISSION_ATTACH | PERMISSION_TRACK_CAMERA);
+	on_rez(integer param) {
+		llSetTimerEvent(0.0);
+		FeedbackSoundAvailable=llGetInventoryType(SOUND_NAME)==INVENTORY_SOUND;
+		MyParentId=llList2Key(llGetObjectDetails(llGetKey(), [OBJECT_REZZER_KEY]), 0);
+		if(llGetAgentSize(MyParentId)) {
+			//rezzed by avatar
+		}
+		else {
+			//rezzed by object
+			ChatChannel=(integer)("0x7F" + llGetSubString((string)MyParentId, 0, 5));
+			llListen(ChatChannel, "", "", "");
+			sayToCore(addCommand("", ["PC_REZZED"]));
+			doAttachTemp(llGetOwner(), ATTACH_POINT);
+			llSetTimerEvent(TIMEOUT);
 		}
 	}
-	changed(integer change){
-		if (change & CHANGED_OWNER ){
-			key ownerinit = llGetOwner();
-		}
-	}
-	run_time_permissions(integer vBitPermissions){
-		if( vBitPermissions & PERMISSION_ATTACH ){
-			 if(!llGetAttached()){
-				llAttachToAvatarTemp(attachPoint);
+
+	run_time_permissions(integer perm){
+		if(perm & PERMISSION_ATTACH) {
+			 if(!llGetAttached()) {
+				llAttachToAvatarTemp(ATTACH_POINT);
+				llSetTimerEvent(0.0);
 			}
-		}else{
-			llOwnerSay("Permission to attach denied");
+		}
+		else {
+			llOwnerSay("Permission to attach denied.");
 			llDie();
 		}
 	}
 	timer(){
-		llSetTimerEvent(0.0);
-		if (!llGetAttached()){
+		if (!llGetAttached()) {
 			llDie();
 		}
 	}
+	changed(integer change) {
+		if(change & CHANGED_INVENTORY) {
+			FeedbackSoundAvailable=llGetInventoryType(SOUND_NAME)==INVENTORY_SOUND;
+		}
+	}
 }
-
