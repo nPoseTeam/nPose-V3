@@ -361,7 +361,7 @@ default {
 			GRID_TYPE_IW * (simChannel==GRID_TYPE_IW_STRING)
 		;
 		SecondLifeDetected=llGetEnv("sim_channel")=="Second Life Server";
-		AdjusterChannel=(integer)("0x7F" + llGetSubString((string)llGetKey(), 0, 5));
+		AdjusterChannel=(integer)("0x7F" + llGetSubString((string)llGetKey(), 1, 6));
 	}
 	
 	listen(integer channel, string name, key id, string message) {
@@ -702,6 +702,6 @@ default {
 		}
 	}
 	on_rez(integer start_param) {
-		AdjusterChannel=(integer)("0x7F" + llGetSubString((string)llGetKey(), 0, 5));
+		AdjusterChannel=(integer)("0x7F" + llGetSubString((string)llGetKey(), 1, 6));
 	}
 }

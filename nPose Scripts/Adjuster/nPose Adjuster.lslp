@@ -168,7 +168,7 @@ default {
 		llSetText("", ZERO_VECTOR, 0.0);
 		IsAnimeshAdjuster=llGetLinkNumber(); //a plain adjuster has only 1 prim, an animesh adjuster is a linkset of 2 prims
 		MyParentId=llList2Key(llGetObjectDetails(llGetKey(), [OBJECT_REZZER_KEY]), 0);
-		AdjusterChannel=(integer)("0x7F" + llGetSubString((string)MyParentId, 0, 5));
+		AdjusterChannel=(integer)("0x7F" + llGetSubString((string)MyParentId, 1, 6));
 		llListen(AdjusterChannel, "", "", "");
 		llRegionSayTo(MyParentId, AdjusterChannel, addCommand("", ["AS_UPDATE_REQUEST"]));
 		getParentPos();
