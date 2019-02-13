@@ -47,8 +47,6 @@ integer DIALOG_TIMEOUT=-902;
 //define block end
 
 integer ChatChannel;
-integer ExplicitFlag;
-key HudId;
 string LastAssignSlotsCardName;
 key LastAssignSlotsCardId;
 key LastAssignSlotsAvatarId;
@@ -192,132 +190,7 @@ assignSlots(string cardName) {
 	OldSitters=[];
 	llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(Slots, "^"), cardName);
 }
-/*
-assignSlots(string cardName){
-	//Get the seated Avs
-	list avqueue;
-	integer n = llGetNumberOfPrims();
-	for(; n >= llGetObjectPrimCount(llGetKey()); --n) {
-		//only check link numbers greater than the number of actual prims, these will be the AV link numbers.
-		key id = llGetLinkKey(n);
-		if(llGetAgentSize(id) != ZERO_VECTOR) {
-			avqueue = [id] + avqueue;
-		}
-	}
-	// clean up the Slots list with regard to AV key's in the list by
-	// removing extra AV keys from the Slots list, they are no longer seated.
-	integer x;
-	for(; x < SlotMax; ++x) {
-		//look in the avqueue for the key in the Slots list
-		if(!~llListFindList(avqueue, [llList2Key(Slots, x*STRIDE+4)])) {
-			//if the key is not in the avqueue, remove it from the Slots list
-			Slots = llListReplaceList(Slots, [""], x*STRIDE+4, x*STRIDE+4);
-		}
-	}
-	//we need to check if less seats are available, more seats would not need slots assigned at this point, they just empty seats.
-	if(SlotMax < LastStrideCount) {
-		//new pose set has less seats available
-		//AV's that were in a available seats are already assigned so leave them be
-		for(x = SlotMax; x <= LastStrideCount; ++x) {//only need to worry about the 'extra' slots so limit the count
-			if(llList2Key(Slots, x*STRIDE+4) != "") {
-				//this is a 'now' extra sitter
-				integer emptySlot = FindEmptySlot();//find an empty slot for them if available
-				if((emptySlot >= 0) && (emptySlot < SlotMax)) {
-					//if a real seat available, seat them
-					Slots = llListReplaceList(Slots, [llList2Key(Slots, x*STRIDE+4)], emptySlot*STRIDE+4, emptySlot*STRIDE+4);
-				}
-			}
-		}
-		//remove the 'now' extra seats from Slots list
-		Slots = llDeleteSubList(Slots, (SlotMax)*STRIDE, -1);
-		//unsit extra seated AV's
-		for(n=0; n<llGetListLength(avqueue); ++n) {
-			if(!~llListFindList(Slots, [llList2Key(avqueue, n)])) {
-				llMessageLinked(LINK_SET, UNSIT, llList2String(avqueue, n), NULL_KEY);
-			}
-		}
-	}
-	//step through the avqueue list and check if everyone is accounted for
-	//newest sitters last in avqueue list so step through increamentally
-	integer nn;
-	for(; nn<llGetListLength(avqueue); ++nn) {
-		key thisKey = llList2Key(avqueue, nn);
-		integer index = llListFindList(Slots, [llList2Key(avqueue, nn)]);
-		integer emptySlot = FindEmptySlot();
-		if(!~index) {
-			//this AV not in Slots list
-			key newAvatar;
-			//check if they on a numbered seat
-			integer slotNum=-1;
-			for(n = 1; n <= llGetObjectPrimCount(llGetKey()); ++n) {
-				//find out which prim this new AV is seated on and grab the slot number if it's a numbered prim.
-				integer x = (integer)llGetSubString(llGetLinkName(n), 4, -1);
-				if((x > 0) && (x <= SlotMax)) {
-					if(llAvatarOnLinkSitTarget(n) == thisKey) {
-						if(llList2String(Slots, (x-1)*STRIDE+4) == "") {
-							slotNum = (integer)llGetLinkName(n);
-							Slots = llListReplaceList(Slots, [thisKey], (slotNum-1)*STRIDE+4, (slotNum-1)*STRIDE+4);
-							newAvatar=thisKey;
-						}
-					}
-				}
-			}
-			if(!~llListFindList(Slots, [thisKey])) {
-				if(~emptySlot) {
-					//they not on numbered seat so grab the lowest available seat for them, we have one available
-					Slots = llListReplaceList(Slots, [thisKey], (emptySlot * STRIDE) + 4, (emptySlot * STRIDE) + 4);
-					newAvatar=thisKey;
-				}
-				else {
-					llMessageLinked(LINK_SET, UNSIT, thisKey, NULL_KEY);
-				}
-			}
-			if(newAvatar) {
-				if(CurMenuOnSit) {
-					llMessageLinked(LINK_SET, DOMENU, "", newAvatar);
-				}
-			}
-		}
-	}
-	LastStrideCount = SlotMax;
-	llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(Slots, "^"), cardName);
-}
-*/
 
-/*
-SwapTwoSlots(integer currentseatnum, integer newseatnum) {
-	if(newseatnum <= SlotMax) {
-		integer slotNum;
-		integer OldSlot;
-		integer NewSlot;
-		for(; slotNum < SlotMax; ++slotNum) {
-			list tempSeat = llParseStringKeepNulls(llList2String(Slots, slotNum*STRIDE+7), ["§"], []);
-			string strideSeat = llList2String(tempSeat, 1);
-			tempSeat =[];
-			if(strideSeat == "seat" + (string)(currentseatnum)) {
-				OldSlot= slotNum;
-			}
-			if(strideSeat == "seat" + (string)(newseatnum)) {
-				NewSlot= slotNum;
-			}
-		}
-
-		list curslot = llList2List(Slots, NewSlot*STRIDE, NewSlot*STRIDE+3)
-				+ [llList2Key(Slots, OldSlot*STRIDE+4)]
-				+ llList2List(Slots, NewSlot*STRIDE+5, NewSlot*STRIDE+7);
-		Slots = llListReplaceList(Slots, llList2List(Slots, OldSlot*STRIDE, OldSlot*STRIDE+3)
-				+ [llList2Key(Slots, NewSlot*STRIDE+4)]
-				+ llList2List(Slots, OldSlot*STRIDE+5, OldSlot*STRIDE+7), OldSlot*STRIDE, (OldSlot+1)*STRIDE-1);
-
-		Slots = llListReplaceList(Slots, curslot, NewSlot*STRIDE, (NewSlot+1)*STRIDE-1);
-	}
-	else {
-		llRegionSayTo(llList2Key(Slots, llListFindList(Slots, ["seat"+(string)currentseatnum])-4),
-			 0, "Seat "+(string)newseatnum+" is not available for this pose set");
-	}
-	llMessageLinked(LINK_SET, SEAT_UPDATE, llDumpList2String(Slots, "^"), NULL_KEY);
-}
-*/
 SwapTwoAvatars(integer seatNumber1, integer seatNumber2) {
 	integer index1=(seatNumber1 - 1) * STRIDE + 4;
 	integer index2=(seatNumber2 - 1) * STRIDE + 4;
@@ -702,26 +575,6 @@ default{
 			SwapTwoAvatars((integer)llList2String(seats2Swap, 0), (integer)llList2String(seats2Swap, 1));
 		}
 
-/*
-		else if(num == SWAPTO) {
-			//move clicker to a new seat#
-			//new seat# occupant will then occupy the old seat# of menu user.
-			//usage:  LINKMSG|210|3  Will swap menu user to seat3 and seat3 occupant moves to existing menu user's seat#
-			//this is intended as an internal call for ChangeSeat button but can be used by any plugin, LINKMSG, or SAT/NOTSATMSG
-			integer slotIndex = llListFindList(Slots, [id])/STRIDE;
-			list tempSeat = llParseStringKeepNulls(llList2String(Slots, slotIndex*STRIDE+7), ["§"], []);
-			string strideSeat = llList2String(tempSeat, 1);
-			tempSeat =[];
-
-			integer oldseat = (integer)llGetSubString(strideSeat, 4,-1);
-			if (oldseat <= 0) {
-				llWhisper(0, "avatar is not assigned a slot: " + (string)id);
-			}
-			else{ 
-				SwapTwoAvatars(oldseat, (integer)str); 
-			}
-		}
-*/
 
 		else if(num == SWAPTO) {
 			//move clicker to a new seat#
@@ -730,31 +583,6 @@ default{
 			//this is intended as an internal call for ChangeSeat button but can be used by any plugin, LINKMSG, or SAT/NOTSATMSG
 			SwapTwoAvatars((integer)str, llListFindList(Slots, [id])/STRIDE + 1);
 		}
-		/*
-		else if (num == (SEAT_UPDATE + 2000000)) {
-			//slave sent Slots list after adjuster moved the AV.  we need to keep our Slots list up to date. replace Slots list
-			Slots=llParseStringKeepNulls(str, ["^"], []);
-			str = "";
-			integer index;
-			integer length=llGetListLength(Slots);
-			for(index=0; index<length; index+=STRIDE) {
-				Slots=llListReplaceList(Slots, [
-					(vector)llList2String(Slots, index+1), (rotation)llList2String(Slots, index+2),
-					llList2String(Slots, index+3), (key)llList2String(Slots, index+4)
-				], index+1, index + 4);
-			}
-		}
-		*/
-		/*
-		else if(num == HUD_REQUEST) {
-			if(llGetInventoryType(ADMIN_HUD_NAME)!=INVENTORY_NONE && str == "RezHud") {
-				llRezObject(ADMIN_HUD_NAME, llGetPos() + <0,0,1>, ZERO_VECTOR, llGetRot(), ChatChannel);
-			}
-			else if(num == HUD_REQUEST && str == "RemoveHud") {
-				llRegionSayTo(HudId, ChatChannel, "/die");
-			}
-		}
-		*/
 		else if(num == DEFAULT_CARD) {
 			DefaultCardName=str;
 			llMessageLinked(LINK_SET, DOPOSE, DefaultCardName, id);
@@ -799,15 +627,6 @@ default{
 		}
 	}
 
-/*
-	object_rez(key id) {
-		if(llKey2Name(id) == ADMIN_HUD_NAME) {
-			HudId = id;
-			llSleep(2.0);
-			llRegionSayTo(HudId, ChatChannel, "parent|"+(string)llGetKey());
-		}
-	}
-*/
 	listen(integer channel, string name, key id, string message) {
 		if(llJsonValueType(message, [])==JSON_ARRAY) {
 			list commandLines=llJson2List(message);
