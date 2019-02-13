@@ -16,23 +16,18 @@ string DEFAULT_PREFIX="SET";
 integer STRIDE=8;
 integer MEMORY_USAGE=34334;
 integer SEAT_UPDATE=35353;
-integer REQUEST_CHATCHANNEL=999999;
-integer SEND_CHATCHANNEL=1;
 integer DOPOSE=200;
 integer SWAP=202;
-integer DOBUTTON=207;
 integer SWAPTO=210;
 integer DO=220;
 integer PREPARE_MENU_STEP3_READER=221;
 integer DOPOSE_READER=222;
 integer DOBUTTON_READER=223;
-integer CORERELAY=300;
 integer PLUGIN_COMMAND_REGISTER=310;
 integer UNKNOWN_COMMAND=311;
 integer UNSIT=-222;
 integer OPTIONS=-240;
 integer DEFAULT_CARD=-242;
-integer ON_PROP_REZZED=-790;
 integer DOMENU=-800;
 integer UDPBOOL=-804;
 integer UDPLIST=-805;
@@ -44,9 +39,12 @@ integer PREPARE_MENU_STEP2=-821;
 
 integer PLUGIN_ACTION_DONE=-831;
 integer DIALOG_TIMEOUT=-902;
+
+integer PROP_CHANNEL=-500;
+integer PARENT_CHANNEL=-501;
+
 //define block end
 
-integer ChatChannel;
 string LastAssignSlotsCardName;
 key LastAssignSlotsCardId;
 key LastAssignSlotsAvatarId;
@@ -71,7 +69,7 @@ list PluginCommands=[
 	"UDPBOOL", UDPBOOL, 0, 0,
 	"UDPLIST", UDPLIST, 0, 0,
 	"MACRO", MACRO, 0, 0,
-	"DOCARD", DOBUTTON, 0, 0,
+	"DOCARD", DOPOSE, 0, 0,
 	"TIMER", -600, 0, 1, //If ON_(UN)SIT is known without registration
 	"TIMER_REMOVE", -601, 0, 0 //then we also should know the TIMER(_REMOVE) commands
 ];
@@ -309,74 +307,18 @@ ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path,
 			}
 		}
 	}
-	else if (action == "PROP") {
-		string obj = llList2String(params, 1);
-		//Wildcard Handling
-		list objects;
-		if(llGetSubString(obj, -1, -1)=="*") {
-			obj=llDeleteSubString(obj, -1, -1);
-			integer length=llGetInventoryNumber(INVENTORY_OBJECT);
-			integer index;
-			for(index=0; index<length; index++) {
-				string inventoryName=llGetInventoryName(INVENTORY_OBJECT, index);
-				if(!llSubStringIndex(inventoryName, obj)) {
-					objects+=[inventoryName];
-				}
-			}
-		}
-		else if (llGetInventoryType(obj)==INVENTORY_OBJECT){
-			objects=[obj];
-		}
-		if(objects) {
-			//the old die command for explicit props. should be removed soon.
-			list strParm2 = llParseString2List(llList2String(params, 2), ["="], []);
-			if(llList2String(strParm2, 1) == "die") {
-				llRegionSay(ChatChannel,llList2String(strParm2,0)+"=die");
-			}
-			else {
-				//the rezzing
-				string propGroupString=llList2String(params, 4);
-				integer propGroup=(integer)propGroupString;
-				if(propGroupString=="explicit") {
-					propGroup=1;
-				}
-				//This flag will keep the prop from chatting out it's moves. Some props should move but not spam owner.
-				integer quietMode;
-				if(llList2String(params, 5) == "quiet") {
-					quietMode=TRUE;
-				}
-				//calculate pos and rot of the prop
-				vector vDelta = (vector)llList2String(params, 2);
-				vector pos = llGetPos() + (vDelta * llGetRot());
-				rotation rot = llEuler2Rot((vector)llList2String(params, 3) * DEG_TO_RAD) * llGetRot();
-				
-				//build the rez paremeter. Upper 3 Bytes for the chatchannel, lower Byte for data
-				integer rezParam = (ChatChannel << 8);
-				rezParam=rezParam | (quietMode << 1) | ((propGroup & 0x3F) << 2);
-				integer farAway=llVecMag(vDelta) > 9.9;
-				while(llGetListLength(objects)) {
-					obj=llList2String(objects, 0);
-					objects=llDeleteSubList(objects, 0, 0);
-					if(farAway) {
-						//too far to rez it direct.  need to do a prop move
-						llRezAtRoot(obj, llGetPos(), ZERO_VECTOR, rot, rezParam);
-						llSleep(1.0);
-						llRegionSay(ChatChannel, llDumpList2String(["MOVEPROP", obj, (string)pos], "|"));
-					}
-					else {
-						llRezAtRoot(obj, pos, ZERO_VECTOR, rot, rezParam);
-					}
-				}
-			}
-		}
-	}
-	else if(action=="PROPDIE") {
-		llRegionSay(ChatChannel, llList2Json(JSON_ARRAY, [llList2Json(JSON_ARRAY, params)]));
+	else if(!llSubStringIndex(action, "PROP")) {
+		//Prop related
+		llMessageLinked(LINK_SET, PROP_CHANNEL, sLine, avKey);
 	}
 	else if(action=="PAUSE") {
 		llSleep((float)llList2String(params, 1));
 	}
 	else if(action == "LINKMSG") {
+		//notice: LINKMSG will not fire inside the props anymore, use PROPDO|propName|propGroup|LINKMSG....
+		//reason: waste of CPU time
+		//notice: LINKMSG doesn't support the pause parameter anymore
+		//reason: the pause was evil
 		integer num = (integer)llList2String(params, 1);
 		key lmid;
 		if((key)llList2String(params, 3) != "") {
@@ -386,8 +328,7 @@ ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path,
 			lmid = avKey;
 		}
 		llMessageLinked(LINK_SET, num, llList2String(params, 2), lmid);
-		llSleep((float)llList2String(params, 4));
-		llRegionSay(ChatChannel, llDumpList2String(["LINKMSG",num,llList2String(params, 2),lmid], "|"));
+//		llMessageLinked(LINK_SET, PROP_CHANNEL, "PROPDO|*|*|" + sLine, avKey);
 	}
 	else if (action == "ON_SIT" || action == "ON_UNSIT") {
 		//Syntax: ON_SIT|seatNumber|any command ...
@@ -443,7 +384,7 @@ ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path,
 			llMessageLinked(LINK_SET, num, str, avKey);
 			if(llList2Integer(PluginCommands, index+2)) {
 				//this should also be send to props
-				llRegionSay(ChatChannel, llList2Json(JSON_ARRAY, [llList2Json(JSON_ARRAY, ["LINKMSG", num, str, avKey])]));
+				llMessageLinked(LINK_SET, PROP_CHANNEL, "PROPDO|*|*|LINKMSG|" + (string)num + "|" + str, avKey);
 			}
 		}
 		else {
@@ -471,19 +412,11 @@ default{
 		for(index=0; index<=llGetNumberOfPrims(); ++index) {
 		   llLinkSitTarget(index, <0.0,0.0,0.5>, ZERO_ROTATION);
 		}
-		ChatChannel = (integer)("0x7F" + llGetSubString((string)llGetKey(), 0, 5));
-		//let our scripts know the chat channel for props and adjusters
-		integer listener = llListen(ChatChannel, "", "", "");
-		llSleep(1.5); //wait for other scripts
-		llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)ChatChannel, NULL_KEY);
+		llSleep(1.0); //wait for other scripts
 		UpdateDefaultCard();
 	}
 	link_message(integer sender, integer num, string str, key id) {
-		if(num == REQUEST_CHATCHANNEL) {//slave has asked me to reset so it can get the ChatChannel from me.
-			//let our scripts know the chat channel for props and adjusters
-			llMessageLinked(LINK_SET, SEND_CHATCHANNEL, (string)ChatChannel, NULL_KEY);
-		}
-		else if(num == DOPOSE_READER || num == DOBUTTON_READER || num==PREPARE_MENU_STEP3_READER || num==DO) {
+		if(num == DOPOSE_READER || num == DOBUTTON_READER || num==PREPARE_MENU_STEP3_READER || num==DO) {
 			list allData=llParseStringKeepNulls(str, [NC_READER_CONTENT_SEPARATOR], []);
 			str = "";
 			if(num==DO) {
@@ -493,7 +426,7 @@ default{
 			string ncName=llList2String(allData, 0);
 			if(ncName==DefaultCardName && num == DOPOSE_READER) {
 				//props (propGroup 0) die when the default card is read
-				llRegionSay(ChatChannel, "die");
+				llMessageLinked(LINK_SET, PROP_CHANNEL, "PROPDIE|*|0", id);
 			}
 			list paramSet1List=llParseStringKeepNulls(llList2String(allData, 1), ["|"], []);
 			string path=llList2String(paramSet1List, 0);
@@ -516,7 +449,7 @@ default{
 						slotResetFinished=TRUE;
 						run_assignSlots = TRUE;
 						//props (propGroup 0) die if there is an ANIM line inside the NC
-						llRegionSay(ChatChannel, "die");
+						llMessageLinked(LINK_SET, PROP_CHANNEL, "PROPDIE|*|0", id);
 					}
 					if(!llSubStringIndex(data, "SCHMO")) { //finds SCHMO and SCHMOE
 						run_assignSlots = TRUE;
@@ -562,14 +495,17 @@ default{
 			//only relay through the core to keep messages in sync
 			llMessageLinked(LINK_SET, PREPARE_MENU_STEP2, str, id);
 		}
+/*
+		// CORERELAY not longer supported, use llMessageLinked(LINK_SET, PROP_CHANNEL(-800), "PROPDO|*|*|LINKMSG..."
 		else if(num == CORERELAY) {
 			list msg = llParseString2List(str, ["|"], []);
 			if(id != NULL_KEY) msg = llListReplaceList((msg = []) + msg, [id], 2, 2);
 			llRegionSay(ChatChannel,llDumpList2String(["LINKMSG", (string)llList2String(msg, 0),
 				llList2String(msg, 1), (string)llList2String(msg,2)], "|"));
 		}
+*/
 		else if (num == SWAP) {
-			//swap the two slots
+			//swap the two seats
 			//usage LINKMSG|202|1,2
 			list seats2Swap = llCSV2List(str);
 			SwapTwoAvatars((integer)llList2String(seats2Swap, 0), (integer)llList2String(seats2Swap, 1));
@@ -624,67 +560,6 @@ default{
 			 + ", Leaving " + (string)llGetFreeMemory() + " memory free.");
 		llSay(0, "running script time for all scripts in this nPose object are consuming " 
 		 + (string)(llList2Float(llGetObjectDetails(llGetKey(), ([OBJECT_SCRIPT_TIME])), 0)*1000.0) + " ms of cpu time");
-		}
-	}
-
-	listen(integer channel, string name, key id, string message) {
-		if(llJsonValueType(message, [])==JSON_ARRAY) {
-			list commandLines=llJson2List(message);
-			while(llGetListLength(commandLines)) {
-				list commandParts=llJson2List(llList2String(commandLines, 0));
-				//execute
-				string cmd=llList2String(commandParts, 0);
-				//commands are prefixed with PC (Prop->Core) or CP (Core->Prop)
-				if(cmd=="PC_DO") {
-					//modern version of PROPRELAY
-					//JSON Syntax: ["PC_DO", key id, string data(lines separated by NC_READER_CONTENT_SEPARATOR)]
-					llMessageLinked(
-						LINK_SET,
-						DO,
-						llDumpList2String(llDeleteSubList(commandParts, 0, 1), NC_READER_CONTENT_SEPARATOR),
-						(key)llList2String(commandParts, 1)
-					);
-				}
-				else if(cmd=="PC_REZZED") {
-					//modern version of "ping", no "pong" required
-					//JSON Syntax: ["PC_REZZED", string param1, ....]
-					llMessageLinked(
-						LINK_SET,
-						ON_PROP_REZZED,
-						llDumpList2String([name, id, channel] + llDeleteSubList(commandParts, 0, 0), "|"),
-						NULL_KEY
-					);
-				}
-				//remove command from list
-				commandLines=llDeleteSubList(commandLines, 0, 0);
-			}
-		}
-		else {
-			//this is the old message format, don't use it anymore
-
-			list temp = llParseString2List(message, ["|"], []);
-			if(llGetListLength(temp) >= 2 || llGetSubString(message,0,4) == "ping" || llGetSubString(message,0,8) == "PROPRELAY") {
-				if(llGetOwnerKey(id) == llGetOwner()) {
-					if(message == "ping") {
-						llRegionSayTo(id, ChatChannel, "pong|" + (string)llGetPos());
-						llMessageLinked(LINK_SET, ON_PROP_REZZED, llDumpList2String([name, id, channel], "|"), NULL_KEY);
-					}
-					else if(llGetSubString(message,0,8) == "PROPRELAY") {
-						list msg = llParseString2List(message, ["|"], []);
-						llMessageLinked(LINK_SET,llList2Integer(msg,1),llList2String(msg,2),llList2Key(msg,3));
-					}
-					else if(name == "pos_adjuster_hud") {
-					}
-					else {
-						list params = llParseString2List(message, ["|"], []);
-						vector newpos = (vector)llList2String(params, 0) - llGetPos();
-						newpos = newpos / llGetRot();
-						rotation newrot = (rotation)llList2String(params, 1) / llGetRot();
-						llRegionSayTo(llGetOwner(), 0, "\nPROP|" + name + "|" + (string)newpos + "|" + (string)(llRot2Euler(newrot) * RAD_TO_DEG)
-						 + "|" + llList2String(params, 2));
-					}
-				}
-			}
 		}
 	}
 
