@@ -22,7 +22,7 @@ integer SWAPTO=210;
 integer DO=220;
 integer PREPARE_MENU_STEP3_READER=221;
 integer DOPOSE_READER=222;
-integer DOBUTTON_READER=223;
+integer PLUGIN_COMMAND_REGISTER_NO_OVERWRITE=309;
 integer PLUGIN_COMMAND_REGISTER=310;
 integer UNKNOWN_COMMAND=311;
 integer UNSIT=-222;
@@ -40,9 +40,7 @@ integer PREPARE_MENU_STEP2=-821;
 integer PLUGIN_ACTION_DONE=-831;
 integer DIALOG_TIMEOUT=-902;
 
-integer PROP_CHANNEL=-500;
-integer PARENT_CHANNEL=-501;
-
+integer PROP_PLUGIN=-500;
 //define block end
 
 string LastAssignSlotsCardName;
@@ -61,18 +59,23 @@ string SeatAssignList="a";
 string NC_READER_CONTENT_SEPARATOR="%&§";
 
 //PluginCommands=[string name, integer num, integer sendToProps, integer sendUntouchedParams]
-list PluginCommands=[
-	"PLUGINCOMMAND", PLUGIN_COMMAND_REGISTER, 0, 0,
-	"DEFAULTCARD", DEFAULT_CARD, 0, 0,
-	"OPTION", OPTIONS, 0, 0,
-	"OPTIONS", OPTIONS, 0, 0,
-	"UDPBOOL", UDPBOOL, 0, 0,
-	"UDPLIST", UDPLIST, 0, 0,
-	"MACRO", MACRO, 0, 0,
-	"DOCARD", DOPOSE, 0, 0,
-	"TIMER", -600, 0, 1, //If ON_(UN)SIT is known without registration
-	"TIMER_REMOVE", -601, 0, 0 //then we also should know the TIMER(_REMOVE) commands
+list PluginCommandsDefault=[
+	"PLUGINCOMMAND", PLUGIN_COMMAND_REGISTER, 0,
+	"DEFAULTCARD", DEFAULT_CARD, 0,
+	"OPTION", OPTIONS, 0,
+	"OPTIONS", OPTIONS, 0,
+	"UDPBOOL", UDPBOOL, 0,
+	"UDPLIST", UDPLIST, 0,
+	"MACRO", MACRO, 0,
+	"DOCARD", DOPOSE, 0,
+	"TIMER", -600, 1, //If ON_(UN)SIT is known without registration
+	"TIMER_REMOVE", -601, 0 //then we also should know the TIMER(_REMOVE) commands
 ];
+list PluginCommands;
+integer PLUGIN_COMMANDS_NAME=0;
+integer PLUGIN_COMMANDS_NUM=1;
+integer PLUGIN_COMMANDS_SEND_UNTOUCHED=2;
+integer PLUGIN_COMMANDS_STRIDE=3;
 
 UpdateDefaultCard() {
 	if(llGetInventoryType(INIT_CARD_NAME)==INVENTORY_NOTECARD) {
@@ -207,10 +210,29 @@ string insertPlaceholder(string sLine, key avKey, integer avSeat, string ncName,
 		sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%PAGE%"], []), (string)page);
 		sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%DISPLAYNAME%"], []), llGetDisplayName(avKey));
 		sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%USERNAME%"], []), llGetUsername(avKey));
-		sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%SCALECUR%"], []), (string)llGetScale());
+		sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%SCALECUR%"], []), (string)llList2Vector(llGetLinkPrimitiveParams((integer)(llGetNumberOfPrims()>1), [PRIM_SIZE]), 0));
 		sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%SCALEREF%"], []), (string)ScaleRef);
-		sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%POSITION%"], []), (string)llGetPos());
-		sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%ROTATION%"], []), (string)llGetRot());
+		sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%POSITION%"], []), (string)llGetRootPosition());
+		sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%ROTATION%"], []), (string)llGetRootRotation());
+
+		integer index;
+		integer length=llGetListLength(Slots);
+		if(~llSubStringIndex(sLine, ".KEY%")) {
+			sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%OWNER.KEY%"], []), llGetOwner());
+			for(index=0; index<length; index+=STRIDE) {
+				sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%" + (string)(index/STRIDE+1) + ".KEY%"], []), (string)llList2Key(Slots, index + 4));
+			}
+		}
+		if(~llSubStringIndex(sLine, ".USERNAME%")) {
+			for(index=0; index<length; index+=STRIDE) {
+				sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%" + (string)(index/STRIDE+1) + ".USERNAME%"], []), llGetUsername(llList2Key(Slots, index + 4)));
+			}
+		}
+		if(~llSubStringIndex(sLine, ".DISPLAYNAME%")) {
+			for(index=0; index<length; index+=STRIDE) {
+				sLine = llDumpList2String(llParseStringKeepNulls(sLine, ["%" + (string)(index/STRIDE+1) + ".DISPLAYNAME%"], []), llGetDisplayName(llList2Key(Slots, index + 4)));
+			}
+		}
 	}
 	return sLine;
 }
@@ -307,15 +329,11 @@ ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path,
 			}
 		}
 	}
-	else if(!llSubStringIndex(action, "PROP")) {
-		//Prop related
-		llMessageLinked(LINK_SET, PROP_CHANNEL, sLine, avKey);
-	}
 	else if(action=="PAUSE") {
 		llSleep((float)llList2String(params, 1));
 	}
 	else if(action == "LINKMSG") {
-		//notice: LINKMSG will not fire inside the props anymore, use PROPDO|propName|propGroup|LINKMSG....
+		//notice: LINKMSG will not fire inside the props anymore, use PROP_DO|propName|propGroup|LINKMSG....
 		//reason: waste of CPU time
 		//notice: LINKMSG doesn't support the pause parameter anymore
 		//reason: the pause was evil
@@ -328,7 +346,7 @@ ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path,
 			lmid = avKey;
 		}
 		llMessageLinked(LINK_SET, num, llList2String(params, 2), lmid);
-//		llMessageLinked(LINK_SET, PROP_CHANNEL, "PROPDO|*|*|" + sLine, avKey);
+//		llMessageLinked(LINK_SET, PROP_CHANNEL, "PROP_DO|*|*|" + sLine, avKey);
 	}
 	else if (action == "ON_SIT" || action == "ON_UNSIT") {
 		//Syntax: ON_SIT|seatNumber|any command ...
@@ -336,8 +354,8 @@ ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path,
 		//  ON_SIT|1|LINKMSG|1234|This is a test|%AVKEY%
 		//if you want to set the ON_SIT command only for the menu user (like the SCHMO command) then use the new command permissions:
 		//example:
-		//  ON_SIT{2}|2|PROP|propName|<0,0,0>|<0,0,0>
-		//  ON_UNSIT{2}|2|PROPDIE|propName
+		//  ON_SIT{2}|2|PROP_REZ|propName|<0,0,0>|<0,0,0>
+		//  ON_UNSIT{2}|2|PROP_DIE|propName
 
 		integer index=((integer)llList2String(params, 1)-1) * STRIDE + 5 + (action == "ON_UNSIT");
 		if(index>=0 && index < llGetListLength(Slots)) { //sanity
@@ -353,39 +371,26 @@ ProcessLine(string sLine, key avKey, integer avSeat, string ncName, string path,
 			);
 		}
 	}
-	else if (action == "SATMSG" || action == "NOTSATMSG") {
-		//DEPRECATED use ON_SIT
-		//set index for normal (we building Slots list) cards containing ANIM or SCHMOE lines
-		integer index = llGetListLength(Slots) - STRIDE + 5 + (action == "NOTSATMSG");
-		//change that index if we have SCHMO lines
-		if((integer)llList2String(paramsOriginal, 4) >= 1) {
-			index = ((integer)llList2String(params, 4)-1) * STRIDE + 5 + (action == "NOTSATMSG");
-		}
-		if(index>=0 && index < llGetListLength(Slots)) { //sanity
-			Slots = llListReplaceList(
-				Slots,
-				[llDumpList2String([llList2String(Slots,index), llDumpList2String(llDeleteSubList(paramsOriginal, 0, 0), "|")], "§")],
-				index,
-				index
-			);
-		}
-	}
 	else if(action == "PLUGINMENU") {
 		llMessageLinked(LINK_SET, PLUGIN_MENU_REGISTER, llDumpList2String(llListReplaceList(params, [path], 0, 0), "|"), "");
 	}
+	else if(action=="PROPDIE") {
+		//PROPDIE is deprecated and should be replaced by: PROP_DO|propName|propGroup|DIE
+		llMessageLinked(LINK_SET, PROP_PLUGIN, llDumpList2String(["PROP_DO"] + llDeleteSubList(params, 0, 0) + ["DIE"], "|"), avKey);
+	}
+	else if(action=="PROP" || action=="PROP_DO"  || action=="PROP_DO_ALL" || action=="PARENT_DO" || action=="PARENT_DO_ALL" || action=="DIE" || action=="TEMPATTACH" || action=="ATTACH") {
+		//Prop related
+		llMessageLinked(LINK_SET, PROP_PLUGIN, sLine, avKey);
+	}
 	else {
-		integer index=llListFindList(PluginCommands, [action]);
+		integer index=llListFindList(PluginCommands + PluginCommandsDefault, [action]);
 		if(~index) {
-			integer num=llList2Integer(PluginCommands, index+1);
+			integer num=llList2Integer(PluginCommands + PluginCommandsDefault, index + PLUGIN_COMMANDS_NUM);
 			string str=llDumpList2String(llDeleteSubList(params, 0, 0), "|");
-			if(llList2Integer(PluginCommands, index+3)) {
+			if(llList2Integer(PluginCommands + PluginCommandsDefault, index + PLUGIN_COMMANDS_SEND_UNTOUCHED)) {
 				str=llDumpList2String(llDeleteSubList(paramsOriginal, 0, 0), "|");
 			}
 			llMessageLinked(LINK_SET, num, str, avKey);
-			if(llList2Integer(PluginCommands, index+2)) {
-				//this should also be send to props
-				llMessageLinked(LINK_SET, PROP_CHANNEL, "PROPDO|*|*|LINKMSG|" + (string)num + "|" + str, avKey);
-			}
 		}
 		else {
 			llMessageLinked(LINK_SET, UNKNOWN_COMMAND, sLine, avKey);
@@ -416,7 +421,7 @@ default{
 		UpdateDefaultCard();
 	}
 	link_message(integer sender, integer num, string str, key id) {
-		if(num == DOPOSE_READER || num == DOBUTTON_READER || num==PREPARE_MENU_STEP3_READER || num==DO) {
+		if(num == DOPOSE_READER || num==PREPARE_MENU_STEP3_READER || num==DO) {
 			list allData=llParseStringKeepNulls(str, [NC_READER_CONTENT_SEPARATOR], []);
 			str = "";
 			if(num==DO) {
@@ -426,7 +431,7 @@ default{
 			string ncName=llList2String(allData, 0);
 			if(ncName==DefaultCardName && num == DOPOSE_READER) {
 				//props (propGroup 0) die when the default card is read
-				llMessageLinked(LINK_SET, PROP_CHANNEL, "PROPDIE|*|0", id);
+				llMessageLinked(LINK_SET, PROP_PLUGIN, "PROP_DO|*|0|DIE", id);
 			}
 			list paramSet1List=llParseStringKeepNulls(llList2String(allData, 1), ["|"], []);
 			string path=llList2String(paramSet1List, 0);
@@ -449,7 +454,7 @@ default{
 						slotResetFinished=TRUE;
 						run_assignSlots = TRUE;
 						//props (propGroup 0) die if there is an ANIM line inside the NC
-						llMessageLinked(LINK_SET, PROP_CHANNEL, "PROPDIE|*|0", id);
+						llMessageLinked(LINK_SET, PROP_PLUGIN, "PROP_DO|*|0|DIE", id);
 					}
 					if(!llSubStringIndex(data, "SCHMO")) { //finds SCHMO and SCHMOE
 						run_assignSlots = TRUE;
@@ -486,7 +491,7 @@ default{
 					//we are ready to show the menu
 					llMessageLinked(LINK_SET, MENU_SHOW, paramSet1, id);
 				}
-				else if(num==DOPOSE_READER || DOBUTTON_READER) {
+				else if(num==DOPOSE_READER) {
 					llMessageLinked(LINK_SET, PREPARE_MENU_STEP1, paramSet1, id);
 				}
 			}
@@ -496,7 +501,7 @@ default{
 			llMessageLinked(LINK_SET, PREPARE_MENU_STEP2, str, id);
 		}
 /*
-		// CORERELAY not longer supported, use llMessageLinked(LINK_SET, PROP_CHANNEL(-800), "PROPDO|*|*|LINKMSG..."
+		// CORERELAY not longer supported, use llMessageLinked(LINK_SET, PROP_PLUGIN(-500), "PROP_DO|*|*|LINKMSG..."
 		else if(num == CORERELAY) {
 			list msg = llParseString2List(str, ["|"], []);
 			if(id != NULL_KEY) msg = llListReplaceList((msg = []) + msg, [id], 2, 2);
@@ -523,14 +528,30 @@ default{
 			DefaultCardName=str;
 			llMessageLinked(LINK_SET, DOPOSE, DefaultCardName, id);
 		}
-		else if(num == PLUGIN_COMMAND_REGISTER) {
-			list parts=llParseString2List(str, ["|"], []);
-			string action=llList2String(parts, 0);
-			integer index=llListFindList(PluginCommands, [action]);
-			if(~index) {
-				PluginCommands=llDeleteSubList(PluginCommands, index, index+3);
+		else if(num==PLUGIN_COMMAND_REGISTER || num==PLUGIN_COMMAND_REGISTER_NO_OVERWRITE) {
+			//old Format (remove in nPose V5): PLUGINCOMMAND|name|num|[sendToProps[|sendUntouchedParams]]
+			//new Format: PLUGINCOMMAND|name, num[, sendUntouchedParams][|name...]...
+			if(!~llSubStringIndex(str, ",")) {
+				//old Format:convert to new format
+				str=llList2CSV(llDeleteSubList(llParseStringKeepNulls(str, ["|"], []), 2, 2));
 			}
-			PluginCommands+=[action, (integer)llList2String(parts, 1), (integer)llList2String(parts, 2), (integer)llList2String(parts, 3)];
+			list parts=llParseString2List(str, ["|"], []);
+			while(llGetListLength(parts)) {
+				list subParts=llCSV2List(llList2String(parts, 0));
+				parts=llDeleteSubList(parts, 0, 0);
+				string action=llList2String(subParts, PLUGIN_COMMANDS_NAME);
+				integer index=llListFindList(PluginCommands, [action]);
+				if(num==PLUGIN_COMMAND_REGISTER && ~index) {
+					PluginCommands=llDeleteSubList(PluginCommands, index, index + PLUGIN_COMMANDS_STRIDE - 1);
+				}
+				if(num==PLUGIN_COMMAND_REGISTER || !~index) {
+					PluginCommands+=[
+						action,
+						(integer)llList2String(subParts, PLUGIN_COMMANDS_NUM),
+						(integer)llList2String(subParts, PLUGIN_COMMANDS_SEND_UNTOUCHED)
+					];
+				}
+			}
 		}
 		else if(num == DIALOG_TIMEOUT) {
 			if(Cur2default && (llGetObjectPrimCount(llGetKey()) == llGetNumberOfPrims()) && (DefaultCardName != "")) {
@@ -552,7 +573,7 @@ default{
 				if(optionItem == "menuonsit") {CurMenuOnSit = optionSettingFlag;}
 				else if(optionItem == "2default") {Cur2default = optionSettingFlag;}
 				else if(optionItem == "scaleref") {ScaleRef = (vector)optionString;}
-				else if(optionItem == "seatassignlist") {SeatAssignList = optionString;}
+				else if(optionItem == "seatassignlist") {SeatAssignList = optionSetting;}
 			}
 		}
 		else if(num == MEMORY_USAGE) {

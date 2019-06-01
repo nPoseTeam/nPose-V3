@@ -523,8 +523,7 @@ default {
 			}
 		}
 		else if(num == STOPADJUST) { //stopadjust has been chosen from the menu
-			string command=addCommand("", ["SA_DUMP"]);
-			command=addCommand(command, ["SA_DIE"]);
+			string command=addCommand("", ["SA_DIE"]);
 			llRegionSay(AdjusterChannel, command);
 			AdjusterList = [];
 			llListenRemove(AdjusterListenerHandle);
@@ -646,7 +645,7 @@ default {
 		}
 		else if(num == MENU_USAGE) {
 			llSay(0,"Memory Used by " + llGetScriptName() + ": " + (string)llGetUsedMemory() + " of " + (string)llGetMemoryLimit()
-				 + ",Leaving " + (string)llGetFreeMemory() + " memory free.");
+			 + ", Leaving " + (string)llGetFreeMemory() + " memory free.");
 		}
 	}
  

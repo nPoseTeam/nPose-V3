@@ -22,7 +22,6 @@ integer DOMENU=-800;
 integer DOMENU_ACCESSCTRL=-801;
 integer UDPBOOL=-804;
 integer UDPLIST=-805;
-integer USER_PERMISSION_UPDATE=-806;
 integer MACRO=-807;
 integer PLUGIN_MENU_REGISTER=-810;
 integer MENU_SHOW=-815;
@@ -72,8 +71,6 @@ string MME_NC_NAME=".nPose MenuMemoryExtension";
 
 
 //default options settings.  Change these to suit personal preferences
-string Permissions = "public"; //default permit option Public, Locked, Group
-integer Sit2GetMenu;  //required to be seated to get a menu
 float MenuDistance = 30.0;
 integer OptionUseDisplayNames=1; //use display names instead of usernames in changeSeat/unsit menu
 integer OptionAutoLanguage=1; //if disabled, only the default language will be used, if enabled the script tries to determine the agent language
@@ -129,53 +126,47 @@ DoMenu(key rcpt, string path, integer page, string prompt, list additionalButton
 	choices+=additionalButtons;
 	
 	//check menu permissions
-	if(
-		//the whole if statement only exists for backward compability, because all this (and more) could be done via button permissions on root level
-		(rcpt == llGetOwner() || (Permissions == "group" && llSameGroup(rcpt)) || Permissions == "public") &&
-		(rcpt == llGetOwner() || !Sit2GetMenu || ~llListFindList(Slots, [rcpt]))
-	) {
-		list thisMenuPath=llParseStringKeepNulls(path , [":"], []);
-		//check button permission for this path up to the root
-		//this also means that button permissions are inheritable
-		list tempPath=thisMenuPath;
-		integer rcptSlotNumber=llListFindList(Slots, [rcpt]);
-		if(~rcptSlotNumber) {
-			rcptSlotNumber=rcptSlotNumber/2;
-		}
-		do {
-			integer indexc=llListFindList(MenuPermPath, [llDumpList2String(tempPath, ":")]);
-			if(~indexc) {
-				if(!isAllowed(0, rcpt, rcptSlotNumber, llList2String(MenuPermPerms, indexc))) {
-					return;
-				}
-			}
-		} while (llGetListLength(tempPath=llDeleteSubList(tempPath, -1, -1)));
-		//check button permission for each button
-		integer stopc = llGetListLength(choices);
-		integer nc;
-		for(nc=0; nc < stopc; ++nc) {
-			integer indexc = llListFindList(MenuPermPath, [llDumpList2String(thisMenuPath + llList2String(choices, nc), ":")]);
-			if(indexc != -1) {
-				if(!isAllowed(0, rcpt, rcptSlotNumber, llList2String(MenuPermPerms, indexc))) {
-					choices = llDeleteSubList(choices, nc, nc);
-					--nc;
-					--stopc;
-				}
-			}
-		}
-		//generate utility buttons
-		list utilitybuttons;
-
-		//call the dialog
-		llMessageLinked(LINK_SET, DIALOG, llDumpList2String([
-			(string)rcpt,
-			prompt,
-			(string)page,
-			llDumpList2String(choices, "`"),
-			llDumpList2String(utilitybuttons, "`"),
-			path
-		], "|"), ScriptId);
+	list thisMenuPath=llParseStringKeepNulls(path , [":"], []);
+	//check button permission for this path up to the root
+	//this also means that button permissions are inheritable
+	list tempPath=thisMenuPath;
+	integer rcptSlotNumber=llListFindList(Slots, [rcpt]);
+	if(~rcptSlotNumber) {
+		rcptSlotNumber=rcptSlotNumber/2;
 	}
+	do {
+		integer indexc=llListFindList(MenuPermPath, [llDumpList2String(tempPath, ":")]);
+		if(~indexc) {
+			if(!isAllowed(0, rcpt, rcptSlotNumber, llList2String(MenuPermPerms, indexc))) {
+				return;
+			}
+		}
+	} while (llGetListLength(tempPath=llDeleteSubList(tempPath, -1, -1)));
+	//check button permission for each button
+	integer stopc = llGetListLength(choices);
+	integer nc;
+	for(nc=0; nc < stopc; ++nc) {
+		integer indexc = llListFindList(MenuPermPath, [llDumpList2String(thisMenuPath + llList2String(choices, nc), ":")]);
+		if(indexc != -1) {
+			if(!isAllowed(0, rcpt, rcptSlotNumber, llList2String(MenuPermPerms, indexc))) {
+				choices = llDeleteSubList(choices, nc, nc);
+				--nc;
+				--stopc;
+			}
+		}
+	}
+	//generate utility buttons
+	list utilitybuttons;
+	
+	//call the dialog
+	llMessageLinked(LINK_SET, DIALOG, llDumpList2String([
+		(string)rcpt,
+		prompt,
+		(string)page,
+		llDumpList2String(choices, "`"),
+		llDumpList2String(utilitybuttons, "`"),
+		path
+	], "|"), ScriptId);
 }
 
 integer isAllowed(integer mode, key avatarKey, integer slotNumber, string permissions) {
@@ -827,9 +818,7 @@ default{
 					}
 				}
 				else if(num==OPTIONS) {
-					if(optionItem == "permit") {Permissions = optionSetting;}
-					else if(optionItem == "sit2getmenu") {Sit2GetMenu = optionSettingFlag;}
-					else if(optionItem == "menudist") {MenuDistance = (float)optionSetting;}
+					if(optionItem == "menudist") {MenuDistance = (float)optionSetting;}
 					else if(optionItem == "usedisplaynames") {OptionUseDisplayNames = optionSettingFlag;}
 					else if(optionItem == "autolanguage") {OptionAutoLanguage = optionSettingFlag;}
 					else if(optionItem == "defaultlanguageprefix") {OptionDefaultLanguagePrefix = llToUpper(optionSetting);}
@@ -880,27 +869,6 @@ default{
 						BuildMenus([]);
 					}
 				}
-			}
-		}
-		else if(num == USER_PERMISSION_UPDATE) {
-			// DEPRECATED: Use UDPBOOL or UDPLIST instead
-			// @param str string CSV: permissionName, permissionType, permissionValue[, permissionName, permissionType, permissionValue[, ...]]
-			// permissionName: a unique name for a permission. A permission name of the type macro should begin with a @
-			// permissionType: bool|list
-			// permissionValue:
-			//   bool: 0|1
-			//   list: a list with Avatar UUIDs (must not contain a ",")
-
-			list newPermission=llCSV2List(str);
-			integer index;
-			integer length=llGetListLength(newPermission);
-			for(index=0; index<length; index+=3) {
-				string permissionName=llToLower(llList2String(newPermission, index));
-				integer permissionIndex=llListFindList(UserDefinedPermissionsList, [permissionName]);
-				if(~permissionIndex) {
-					UserDefinedPermissionsList=llDeleteSubList(UserDefinedPermissionsList, permissionIndex, permissionIndex+2);
-				}
-				UserDefinedPermissionsList+=[permissionName] + llList2List(newPermission, index+1, index+2);
 			}
 		}
 		else if(num==SEAT_UPDATE) {

@@ -5,7 +5,10 @@ float TEXT_ALPHA=1.0;
 
 string DefaultPose="nPose Adjuster Default Pose"; //Prio 0 looping Animation with all bones loc/rot/scale set to 0
 
-integer ANIMESH_LINK_NUMBER=2;
+//The plain Adjuster consits of 1 Prim (Linknumber 0)
+//Animesh Adjusters consists of more than one Prim and each prim can be an Animesh object
+integer ActiveAnimeshLinkNumber=2;
+float ANIMESH_ALPHA_FOR_INACTIVE_ANIMESH=0.0;
 float ANIMESH_ALPHA_FOR_OCCUPIED_SEATS=0.4;
 float ANIMESH_ALPHA_FOR_UNOCCUPIED_SEATS=1.0;
 
@@ -58,6 +61,25 @@ rotation ParentRootRot;
 
 debug(list message){
 	llOwnerSay((((llGetScriptName() + "\n##########\n#>") + llDumpList2String(message,"\n#>")) + "\n##########"));
+}
+
+setAlpha() {
+	if(IsAnimeshAdjuster) {
+		float activeAlpha=ANIMESH_ALPHA_FOR_UNOCCUPIED_SEATS;
+		if(MySitterKey!="" && MySitterKey!=NULL_KEY) {
+			activeAlpha=ANIMESH_ALPHA_FOR_OCCUPIED_SEATS;
+		}
+		integer index;
+		integer length=llGetNumberOfPrims();
+		for(index=2; index<=length; index++) {
+			if(index==ActiveAnimeshLinkNumber) {
+				llSetLinkAlpha(index, activeAlpha, ALL_SIDES);
+			}
+			else {
+				llSetLinkAlpha(index, ANIMESH_ALPHA_FOR_INACTIVE_ANIMESH, ALL_SIDES);
+			}
+		}
+	}
 }
 
 stopAllAnimations() {
@@ -167,6 +189,7 @@ default {
 		llSetTimerEvent(0.0);
 		llSetText("", ZERO_VECTOR, 0.0);
 		IsAnimeshAdjuster=llGetLinkNumber(); //a plain adjuster has only 1 prim, an animesh adjuster is a linkset of 2 prims
+		ActiveAnimeshLinkNumber=2;
 		MyParentId=llList2Key(llGetObjectDetails(llGetKey(), [OBJECT_REZZER_KEY]), 0);
 		AdjusterChannel=(integer)("0x7F" + llGetSubString((string)MyParentId, 1, 6));
 		llListen(AdjusterChannel, "", "", "");
@@ -174,8 +197,12 @@ default {
 		getParentPos();
 	}
 
-	touch_start(integer total_number){
-//		llSay(AdjusterChannel, (string)pos + "|" + (string)rot);
+	touch_start(integer total_number) {
+		ActiveAnimeshLinkNumber++;
+		if(ActiveAnimeshLinkNumber>llGetNumberOfPrims()) {
+			ActiveAnimeshLinkNumber=2;
+		}
+		setAlpha();
 	}
 
 	listen(integer channel, string name, key id, string message) {
@@ -210,12 +237,7 @@ default {
 						}
 						MyFacials=llList2String(commandParts, 7);
 						MySitterKey=(key)llList2String(commandParts, 8);
-						if(MySitterKey!=NULL_KEY && MySitterKey!="") {
-							llSetLinkAlpha(ANIMESH_LINK_NUMBER, ANIMESH_ALPHA_FOR_OCCUPIED_SEATS, ALL_SIDES);
-						}
-						else {
-							llSetLinkAlpha(ANIMESH_LINK_NUMBER, ANIMESH_ALPHA_FOR_UNOCCUPIED_SEATS, ALL_SIDES);
-						}
+						setAlpha();
 						list temp=llParseStringKeepNulls(llList2String(commandParts, 9), ["§"], []);
 						MyUserSeatName=llList2String(temp, 0);
 						MySeatName=llList2String(temp, 1);

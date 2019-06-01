@@ -22,10 +22,8 @@ integer CARDS_TO_BE_USED=50;
 string NC_READER_CONTENT_SEPARATOR="%&§";
 
 integer DOPOSE=200;
-integer DOBUTTON=207;
 integer PREPARE_MENU_STEP3_READER=221;
 integer DOPOSE_READER=222;
-integer DOBUTTON_READER=223;
 integer NC_READER_REQUEST=224;
 integer NC_READER_RESPONSE=225;
 integer MEM_USAGE=34334;
@@ -171,11 +169,6 @@ default {
 			//str (separated by NC_READER_CONTENT_SEPARATOR): ncName, userDefinedData1, userDefinedData1
 			//id: userDefinedKey
 			fetchNcContent(str, id, DOPOSE_READER);
-		}
-		else if(num==DOBUTTON) {
-			//str (separated by NC_READER_CONTENT_SEPARATOR): ncName, userDefinedData1, userDefinedData1
-			//id: userDefinedKey
-			fetchNcContent(str, id, DOBUTTON_READER);
 		}
 		else if(num==PREPARE_MENU_STEP3) {
 			//str (separated by NC_READER_CONTENT_SEPARATOR): ncName, userDefinedData1, userDefinedData1
